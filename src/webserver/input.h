@@ -41,6 +41,30 @@ private:
 	std::vector<InputEvent> events = {};
 };
 
+namespace InputRecording {
+	void Start();
+	void Pause();
+	bool Stop(std::vector<InputEvent>& out_events);
+	bool IsRecording();
+	bool IsPaused();
+	size_t EventCount();
+	double DurationMs();
+
+	void OnKeyEvent(int key, bool pressed);
+	void OnMouseMove(float x_rel, float y_rel, float x_abs, float y_abs);
+	void OnMouseButton(const std::string& button, bool pressed);
+	void OnMouseWheel(float delta);
+
+	void InstallHooks();
+}
+
+struct RecordingHandlers {
+	static void PostStart(const httplib::Request&, httplib::Response& res);
+	static void PostPause(const httplib::Request&, httplib::Response& res);
+	static void PostStop(const httplib::Request&, httplib::Response& res);
+	static void GetStatus(const httplib::Request&, httplib::Response& res);
+};
+
 } // namespace Webserver
 
 #endif // DOSBOX_WEBSERVER_INPUT_H

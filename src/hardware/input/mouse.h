@@ -92,6 +92,13 @@ void MOUSE_EventButton(const MouseButtonId button_id, const bool pressed,
 void MOUSE_EventWheel(const float w_rel);
 void MOUSE_EventWheel(const int16_t w_rel, const MouseInterfaceId device_id);
 
+using MouseMoveHookFn = void (*)(float x_rel, float y_rel, float x_abs, float y_abs);
+using MouseButtonHookFn = void (*)(int button_id, bool pressed);
+using MouseWheelHookFn = void (*)(float delta);
+extern MouseMoveHookFn mouse_move_hook;
+extern MouseButtonHookFn mouse_button_hook;
+extern MouseWheelHookFn mouse_wheel_hook;
+
 // Notify that guest OS is being booted, so that certain
 // parts of the emulation (like DOS driver) should be disabled
 void MOUSE_NotifyBooting();

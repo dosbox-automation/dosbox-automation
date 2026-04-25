@@ -5,9 +5,11 @@
 #include "bridge.h"
 #include "webserver.h"
 
-#include "hardware/input/keyboard.h"
-#include "hardware/input/mouse.h"
+#include "hardware/input/keyboard.h"  // KBD_KEYS, KEYBOARD_AddKey, keyboard_input_hook
+#include "hardware/input/mouse.h"     // MOUSE_Event*, mouse_*_hook
 #include "hardware/pic.h"
+
+#include <chrono>
 
 #include "libs/json/json.h"
 
@@ -213,6 +215,269 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 	result["status"] = "ok";
 	result["events_scheduled"] = body["events"].size();
 	send_json(res, result);
+}
+
+// --- Input Recording ---
+
+static std::mutex rec_mutex;
+static bool rec_active = false;
+static bool rec_paused = false;
+static std::vector<InputEvent> rec_buffer;
+static std::chrono::steady_clock::time_point rec_start_time;
+
+static const std::unordered_map<int, std::string> button_id_to_name = {
+	{0, "left"}, {1, "right"}, {2, "middle"},
+};
+
+static const std::unordered_map<int, std::string> key_id_to_name = [] {
+	std::unordered_map<int, std::string> m;
+	for (const auto& [name, key] : key_name_map) {
+		m[static_cast<int>(key)] = name;
+	}
+	return m;
+}();
+
+static double rec_elapsed_ms()
+{
+	return std::chrono::duration<double, std::milli>(
+	               std::chrono::steady_clock::now() - rec_start_time)
+	        .count();
+}
+
+void InputRecording::Start()
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	rec_buffer.clear();
+	rec_active = true;
+	rec_paused = false;
+	rec_start_time = std::chrono::steady_clock::now();
+}
+
+void InputRecording::Pause()
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	if (rec_active) {
+		rec_paused = !rec_paused;
+	}
+}
+
+bool InputRecording::Stop(std::vector<InputEvent>& out_events)
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	if (!rec_active) {
+		return false;
+	}
+	rec_active = false;
+	rec_paused = false;
+	out_events = std::move(rec_buffer);
+	rec_buffer.clear();
+	return true;
+}
+
+bool InputRecording::IsRecording()
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	return rec_active;
+}
+
+bool InputRecording::IsPaused()
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	return rec_paused;
+}
+
+size_t InputRecording::EventCount()
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	return rec_buffer.size();
+}
+
+double InputRecording::DurationMs()
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	if (!rec_active) {
+		return 0;
+	}
+	return rec_elapsed_ms();
+}
+
+void InputRecording::OnKeyEvent(int key, bool pressed)
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	if (!rec_active || rec_paused) return;
+	InputEvent ev;
+	ev.t_ms = rec_elapsed_ms();
+	ev.type = InputEvent::Type::Key;
+	ev.key = key;
+	ev.pressed = pressed;
+	rec_buffer.push_back(std::move(ev));
+}
+
+void InputRecording::OnMouseMove(float x_rel, float y_rel, float x_abs, float y_abs)
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	if (!rec_active || rec_paused) return;
+	InputEvent ev;
+	ev.t_ms = rec_elapsed_ms();
+	ev.type = InputEvent::Type::MouseMove;
+	ev.x_rel = x_rel;
+	ev.y_rel = y_rel;
+	ev.x_abs = x_abs;
+	ev.y_abs = y_abs;
+	rec_buffer.push_back(std::move(ev));
+}
+
+void InputRecording::OnMouseButton(const std::string& button, bool pressed)
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	if (!rec_active || rec_paused) return;
+	InputEvent ev;
+	ev.t_ms = rec_elapsed_ms();
+	ev.type = InputEvent::Type::MouseButton;
+	ev.button = button;
+	ev.pressed = pressed;
+	rec_buffer.push_back(std::move(ev));
+}
+
+void InputRecording::OnMouseWheel(float delta)
+{
+	std::lock_guard<std::mutex> lock(rec_mutex);
+	if (!rec_active || rec_paused) return;
+	InputEvent ev;
+	ev.t_ms = rec_elapsed_ms();
+	ev.type = InputEvent::Type::MouseWheel;
+	ev.wheel_delta = delta;
+	rec_buffer.push_back(std::move(ev));
+}
+
+static void hook_keyboard(int key, bool pressed)
+{
+	InputRecording::OnKeyEvent(key, pressed);
+}
+
+static void hook_mouse_move(float x_rel, float y_rel, float x_abs, float y_abs)
+{
+	InputRecording::OnMouseMove(x_rel, y_rel, x_abs, y_abs);
+}
+
+static void hook_mouse_button(int button_id, bool pressed)
+{
+	auto it = button_id_to_name.find(button_id);
+	if (it != button_id_to_name.end()) {
+		InputRecording::OnMouseButton(it->second, pressed);
+	}
+}
+
+static void hook_mouse_wheel(float delta)
+{
+	InputRecording::OnMouseWheel(delta);
+}
+
+void InputRecording::InstallHooks()
+{
+	keyboard_input_hook = hook_keyboard;
+	mouse_move_hook = hook_mouse_move;
+	mouse_button_hook = hook_mouse_button;
+	mouse_wheel_hook = hook_mouse_wheel;
+}
+
+static json event_to_json(const InputEvent& ev)
+{
+	json j;
+	j["t"] = ev.t_ms;
+
+	switch (ev.type) {
+	case InputEvent::Type::Key: {
+		j["type"] = "key";
+		auto it = key_id_to_name.find(ev.key);
+		j["key"] = (it != key_id_to_name.end()) ? it->second
+		                                         : "KBD_NONE";
+		j["pressed"] = ev.pressed;
+		break;
+	}
+	case InputEvent::Type::MouseMove:
+		j["type"] = "mouse_move";
+		j["x_rel"] = ev.x_rel;
+		j["y_rel"] = ev.y_rel;
+		j["x_abs"] = ev.x_abs;
+		j["y_abs"] = ev.y_abs;
+		break;
+	case InputEvent::Type::MouseButton:
+		j["type"] = "mouse_button";
+		j["button"] = ev.button;
+		j["pressed"] = ev.pressed;
+		break;
+	case InputEvent::Type::MouseWheel:
+		j["type"] = "mouse_wheel";
+		j["delta"] = ev.wheel_delta;
+		break;
+	}
+	return j;
+}
+
+void RecordingHandlers::PostStart(const httplib::Request&, httplib::Response& res)
+{
+	if (InputRecording::IsRecording()) {
+		res.status = 409;
+		json err;
+		err["error"] = "Already recording";
+		send_json(res, err);
+		return;
+	}
+	InputRecording::Start();
+	json j;
+	j["status"] = "recording";
+	send_json(res, j);
+}
+
+void RecordingHandlers::PostPause(const httplib::Request&, httplib::Response& res)
+{
+	if (!InputRecording::IsRecording()) {
+		res.status = 409;
+		json err;
+		err["error"] = "Not recording";
+		send_json(res, err);
+		return;
+	}
+	InputRecording::Pause();
+	json j;
+	j["status"] = InputRecording::IsPaused() ? "paused" : "recording";
+	send_json(res, j);
+}
+
+void RecordingHandlers::PostStop(const httplib::Request&, httplib::Response& res)
+{
+	std::vector<InputEvent> events;
+	if (!InputRecording::Stop(events)) {
+		res.status = 409;
+		json err;
+		err["error"] = "Not recording";
+		send_json(res, err);
+		return;
+	}
+
+	json j;
+	j["event_count"] = events.size();
+	j["events"] = json::array();
+	double duration = 0;
+	for (const auto& ev : events) {
+		j["events"].push_back(event_to_json(ev));
+		if (ev.t_ms > duration) {
+			duration = ev.t_ms;
+		}
+	}
+	j["duration_ms"] = duration;
+	send_json(res, j);
+}
+
+void RecordingHandlers::GetStatus(const httplib::Request&, httplib::Response& res)
+{
+	json j;
+	j["recording"] = InputRecording::IsRecording();
+	j["paused"] = InputRecording::IsPaused();
+	j["event_count"] = InputRecording::EventCount();
+	j["duration_ms"] = InputRecording::DurationMs();
+	send_json(res, j);
 }
 
 } // namespace Webserver

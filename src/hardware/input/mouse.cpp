@@ -24,6 +24,10 @@
 
 CHECK_NARROWING();
 
+MouseMoveHookFn mouse_move_hook = nullptr;
+MouseButtonHookFn mouse_button_hook = nullptr;
+MouseWheelHookFn mouse_wheel_hook = nullptr;
+
 static callback_number_t int74_ret_callback = 0;
 
 static ManyMouseGlue &manymouse = ManyMouseGlue::GetInstance();
@@ -590,6 +594,10 @@ void MOUSE_EventMoved(const float x_rel, const float y_rel,
 			                      state.cursor_y_abs);
 		}
 	}
+
+	if (mouse_move_hook) {
+		mouse_move_hook(x_rel, y_rel, x_abs, y_abs);
+	}
 }
 
 void MOUSE_EventMoved(const float x_rel, const float y_rel,
@@ -653,6 +661,10 @@ void MOUSE_EventButton(const MouseButtonId button_id, const bool pressed)
 			interface.NotifyButton(button_id, pressed);
 		}
 	}
+
+	if (mouse_button_hook) {
+		mouse_button_hook(static_cast<int>(button_id), pressed);
+	}
 }
 
 void MOUSE_EventButton(const MouseButtonId button_id, const bool pressed,
@@ -689,6 +701,10 @@ void MOUSE_EventWheel(const float w_rel)
 		if (interface.IsUsingHostPointer()) {
 			interface.NotifyWheel(w_rel);
 		}
+	}
+
+	if (mouse_wheel_hook) {
+		mouse_wheel_hook(w_rel);
 	}
 }
 

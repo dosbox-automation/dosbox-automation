@@ -83,6 +83,11 @@ static void setup_api_handlers()
 	server.Post("/api/v1/control/shutdown", ShutdownCommand::Post);
 
 	server.Post("/api/v1/drive/swap", DriveSwapCommand::Post);
+
+	server.Post("/api/v1/input/record/start", RecordingHandlers::PostStart);
+	server.Post("/api/v1/input/record/pause", RecordingHandlers::PostPause);
+	server.Post("/api/v1/input/record/stop", RecordingHandlers::PostStop);
+	server.Get("/api/v1/input/record/status", RecordingHandlers::GetStatus);
 }
 
 static std::string strip_port(const std::string& host)
@@ -216,6 +221,8 @@ void WEBSERVER_Init()
 		const auto addr = section->GetString("webserver_bind_address");
 		const auto port = section->GetInt("webserver_port");
 		const auto resource_home = get_resource_path("webserver").string();
+
+		Webserver::InputRecording::InstallHooks();
 
 		std::thread thread(Webserver::run, addr, port, resource_home);
 

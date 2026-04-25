@@ -9,6 +9,8 @@
 
 #include <array>
 
+KeyboardHookFn keyboard_input_hook = nullptr;
+
 #include "config/config.h"
 #include "cpu/cpu.h"
 #include "dosbox.h"
@@ -682,6 +684,10 @@ void KEYBOARD_AddKey(const KBD_KEYS key_type, const bool is_pressed)
 	}
 
 	buffer_add(scan_code);
+
+	if (keyboard_input_hook) {
+		keyboard_input_hook(static_cast<int>(key_type), is_pressed);
+	}
 }
 
 uint8_t KEYBOARD_GetLedState()

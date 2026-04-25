@@ -210,6 +210,9 @@ void KEYBOARD_WaitForSecureMode();
 // Simulate key press or release
 void KEYBOARD_AddKey(const KBD_KEYS key_type, const bool is_pressed);
 
+using KeyboardHookFn = void (*)(int key, bool pressed);
+extern KeyboardHookFn keyboard_input_hook;
+
 // bit 0: scroll_lock, bit 1: num_lock, bit 2: caps_lock
 // TODO: BIOS does not update LEDs as of yet
 uint8_t KEYBOARD_GetLedState();
