@@ -4,6 +4,7 @@
 #include "titlebar.h"
 
 #include <map>
+#include <mutex>
 #include <vector>
 
 #include "private/common.h"
@@ -82,6 +83,26 @@ static struct {
 	SDL_TimerID timer_id           = {};
 	bool animation_phase_alternate = false;
 } state = {};
+
+static std::mutex state_mutex;
+
+std::string TITLEBAR_GetSegmentName()
+{
+	std::lock_guard<std::mutex> lock(state_mutex);
+	return state.segment_name;
+}
+
+std::string TITLEBAR_GetCanonicalName()
+{
+	std::lock_guard<std::mutex> lock(state_mutex);
+	return state.canonical_name;
+}
+
+bool TITLEBAR_IsBooted()
+{
+	std::lock_guard<std::mutex> lock(state_mutex);
+	return state.is_guest_os_booted;
+}
 
 // ***************************************************************************
 // Constant strings
@@ -393,7 +414,10 @@ void TITLEBAR_RefreshTitle()
 
 void TITLEBAR_NotifyBooting()
 {
-	state.is_guest_os_booted = true;
+	{
+		std::lock_guard<std::mutex> lock(state_mutex);
+		state.is_guest_os_booted = true;
+	}
 	TITLEBAR_RefreshTitle();
 }
 
@@ -437,8 +461,11 @@ void TITLEBAR_NotifyProgramName(const std::string& segment_name,
 	trim(segment_name_dos);
 
 	// Store new names as UTF-8, refresh titlebar
-	state.segment_name   = dos_to_utf8(segment_name_dos, ConvertMode);
-	state.canonical_name = dos_to_utf8(canonical_name, ConvertMode);
+	{
+		std::lock_guard<std::mutex> lock(state_mutex);
+		state.segment_name   = dos_to_utf8(segment_name_dos, ConvertMode);
+		state.canonical_name = dos_to_utf8(canonical_name, ConvertMode);
+	}
 	TITLEBAR_RefreshTitle();
 }
 

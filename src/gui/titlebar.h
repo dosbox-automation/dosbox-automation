@@ -24,4 +24,8 @@ void TITLEBAR_NotifyProgramName(const std::string& segment_name,
 
 void TITLEBAR_NotifyCyclesChanged();
 
+std::string TITLEBAR_GetSegmentName();
+std::string TITLEBAR_GetCanonicalName();
+bool TITLEBAR_IsBooted();
+
 #endif // DOSBOX_TITLEBAR_H
