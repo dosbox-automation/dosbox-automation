@@ -8,6 +8,7 @@
 #include "private/dos.h"
 #include "private/dosbox.h"
 #include "private/memory.h"
+#include "video.h"
 
 #include <set>
 #include <string>
@@ -71,6 +72,9 @@ static void setup_api_handlers()
 	server.Put("/api/v1/memory/:segment/:offset", WriteMemoryCommand::Put);
 
 	server.Post("/api/v1/input/sequence", InputSequenceCommand::Post);
+
+	server.Get("/api/v1/video/frame", VideoHandlers::GetFrame);
+	server.Get("/api/v1/video/frame/info", VideoHandlers::GetFrameInfo);
 }
 
 static std::string strip_port(const std::string& host)
