@@ -1,0 +1,108 @@
+// SPDX-FileCopyrightText: 2026 The DOSBox Staging Team
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#include "drive.h"
+#include "bridge.h"
+#include "webserver.h"
+
+#include "dos/dos.h"
+#include "dos/drives.h"
+#include "ints/bios_disk.h"
+
+#include "libs/json/json.h"
+
+#include <cctype>
+#include <sys/stat.h>
+
+using json = nlohmann::json;
+
+namespace Webserver {
+
+DriveSwapCommand::DriveSwapCommand(char drive_letter, std::string image_path)
+        : drive_letter(drive_letter), image_path(std::move(image_path))
+{
+}
+
+void DriveSwapCommand::Execute()
+{
+	struct stat st = {};
+	if (stat(image_path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
+		error = "File not found: " + image_path;
+		return;
+	}
+
+	const auto file_size_kb = static_cast<uint32_t>(st.st_size / 1024);
+	bool is_floppy = false;
+	for (int i = 0; DiskGeometryList[i].ksize != 0; i++) {
+		if (DiskGeometryList[i].ksize == file_size_kb) {
+			is_floppy = true;
+			break;
+		}
+	}
+
+	const auto drv_idx = static_cast<uint8_t>(
+	        std::toupper(drive_letter) - 'A');
+
+	if (drv_idx >= DOS_DRIVES) {
+		error = "Invalid drive letter";
+		return;
+	}
+
+	Drives[drv_idx].reset();
+
+	auto new_drive = std::make_shared<fatDrive>(
+	        image_path.c_str(), 512, 0, 0, 0,
+	        is_floppy ? 0xF0 : 0xF8, false);
+
+	if (!new_drive->created_successfully) {
+		error = "Failed to mount image: " + image_path;
+		return;
+	}
+
+	Drives[drv_idx] = new_drive;
+
+	if (drv_idx < MAX_DISK_IMAGES) {
+		imageDiskList[drv_idx] = new_drive->loadedDisk;
+	}
+}
+
+void DriveSwapCommand::Post(const httplib::Request& req, httplib::Response& res)
+{
+	auto body = json::parse(req.body);
+
+	if (!body.contains("drive") || !body.contains("image")) {
+		res.status = 400;
+		json err;
+		err["error"] = "Missing 'drive' or 'image' field";
+		send_json(res, err);
+		return;
+	}
+
+	const auto drive_str = body["drive"].get<std::string>();
+	if (drive_str.empty() || !std::isalpha(drive_str[0])) {
+		res.status = 400;
+		json err;
+		err["error"] = "Invalid drive letter";
+		send_json(res, err);
+		return;
+	}
+
+	DriveSwapCommand cmd(drive_str[0], body["image"].get<std::string>());
+	cmd.WaitForCompletion(5000);
+
+	if (!cmd.error.empty()) {
+		res.status = 400;
+		json err;
+		err["error"] = cmd.error;
+		send_json(res, err);
+		return;
+	}
+
+	json result;
+	result["status"] = "ok";
+	result["drive"] = std::string(1, std::toupper(drive_str[0]));
+	result["image"] = body["image"];
+	send_json(res, result);
+}
+
+} // namespace Webserver
