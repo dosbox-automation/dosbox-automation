@@ -3,6 +3,7 @@
 
 #include "webserver.h"
 #include "bridge.h"
+#include "input.h"
 #include "private/cpu.h"
 #include "private/dos.h"
 #include "private/dosbox.h"
@@ -68,6 +69,8 @@ static void setup_api_handlers()
 	server.Get("/api/v1/memory/:segment/:offset/:len", ReadMemoryCommand::Get);
 	server.Put("/api/v1/memory/:offset", WriteMemoryCommand::Put);
 	server.Put("/api/v1/memory/:segment/:offset", WriteMemoryCommand::Put);
+
+	server.Post("/api/v1/input/sequence", InputSequenceCommand::Post);
 }
 
 static std::string strip_port(const std::string& host)
