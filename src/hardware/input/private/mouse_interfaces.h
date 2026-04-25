@@ -41,6 +41,7 @@ void MOUSEDOS_FinalizeInterrupt();
 
 void MOUSEDOS_NotifyMoved(const float x_rel, const float y_rel,
                           const float x_abs, const float y_abs);
+void MOUSEDOS_InjectRelativeMoved(const float x_rel, const float y_rel);
 void MOUSEDOS_NotifyButton(const MouseButtons12S buttons_12S);
 void MOUSEDOS_NotifyWheel(const float w_rel);
 

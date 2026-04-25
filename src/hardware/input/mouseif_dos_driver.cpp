@@ -102,6 +102,8 @@ static bool delay_finished = true;
 
 // true = ignore absolute mouse position
 static bool use_relative = true;
+// true = force relative mode for the next move_cursor() call (API inject)
+static bool force_relative_next = false;
 // true = no host mouse acceleration pre-applied
 static bool is_input_raw = true;
 
@@ -1358,7 +1360,8 @@ static uint8_t move_cursor()
 	const auto old_mickey_x = state.GetMickeyCounterX();
 	const auto old_mickey_y = state.GetMickeyCounterY();
 
-	if (use_relative) {
+	if (use_relative || force_relative_next) {
+		force_relative_next = false;
 		move_cursor_captured(MOUSE_ClampRelativeMovement(pending.x_rel),
 		                     MOUSE_ClampRelativeMovement(pending.y_rel));
 
@@ -1552,6 +1555,16 @@ void MOUSEDOS_NotifyMoved(const float x_rel, const float y_rel,
 		pending.has_mouse_moved = true;
 		maybe_trigger_event();
 	}
+}
+
+void MOUSEDOS_InjectRelativeMoved(const float x_rel, const float y_rel)
+{
+	pending.x_rel = MOUSE_ClampRelativeMovement(pending.x_rel + x_rel);
+	pending.y_rel = MOUSE_ClampRelativeMovement(pending.y_rel + y_rel);
+
+	force_relative_next = true;
+	pending.has_mouse_moved = true;
+	maybe_trigger_event();
 }
 
 void MOUSEDOS_NotifyButton(const MouseButtons12S new_buttons_12S)

@@ -92,17 +92,17 @@ static void pic_input_handler(uint32_t)
 		KEYBOARD_AddKey(static_cast<KBD_KEYS>(ev.key), ev.pressed);
 		break;
 	case InputEvent::Type::MouseMove:
-		MOUSE_EventMoved(ev.x_rel, ev.y_rel, ev.x_abs, ev.y_abs);
+		MOUSE_InjectMoved(ev.x_rel, ev.y_rel);
 		break;
 	case InputEvent::Type::MouseButton: {
 		auto it = button_name_map.find(ev.button);
 		if (it != button_name_map.end()) {
-			MOUSE_EventButton(it->second, ev.pressed);
+			MOUSE_InjectButton(it->second, ev.pressed);
 		}
 		break;
 	}
 	case InputEvent::Type::MouseWheel:
-		MOUSE_EventWheel(ev.wheel_delta);
+		MOUSE_InjectWheel(ev.wheel_delta);
 		break;
 	}
 }
@@ -121,17 +121,17 @@ void InputSequenceCommand::Execute()
 				KEYBOARD_AddKey(static_cast<KBD_KEYS>(ev.key), ev.pressed);
 				break;
 			case InputEvent::Type::MouseMove:
-				MOUSE_EventMoved(ev.x_rel, ev.y_rel, ev.x_abs, ev.y_abs);
+				MOUSE_InjectMoved(ev.x_rel, ev.y_rel);
 				break;
 			case InputEvent::Type::MouseButton: {
 				auto it = button_name_map.find(ev.button);
 				if (it != button_name_map.end()) {
-					MOUSE_EventButton(it->second, ev.pressed);
+					MOUSE_InjectButton(it->second, ev.pressed);
 				}
 				break;
 			}
 			case InputEvent::Type::MouseWheel:
-				MOUSE_EventWheel(ev.wheel_delta);
+				MOUSE_InjectWheel(ev.wheel_delta);
 				break;
 			}
 		} else {

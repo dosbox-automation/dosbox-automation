@@ -92,6 +92,11 @@ void MOUSE_EventButton(const MouseButtonId button_id, const bool pressed,
 void MOUSE_EventWheel(const float w_rel);
 void MOUSE_EventWheel(const int16_t w_rel, const MouseInterfaceId device_id);
 
+// API injection — bypasses capture/focus/drop guards
+void MOUSE_InjectMoved(const float x_rel, const float y_rel);
+void MOUSE_InjectButton(const MouseButtonId button_id, const bool pressed);
+void MOUSE_InjectWheel(const float w_rel);
+
 using MouseMoveHookFn = void (*)(float x_rel, float y_rel, float x_abs, float y_abs);
 using MouseButtonHookFn = void (*)(int button_id, bool pressed);
 using MouseWheelHookFn = void (*)(float delta);
