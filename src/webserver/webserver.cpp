@@ -3,6 +3,7 @@
 
 #include "webserver.h"
 #include "bridge.h"
+#include "control.h"
 #include "input.h"
 #include "private/cpu.h"
 #include "private/dos.h"
@@ -75,6 +76,10 @@ static void setup_api_handlers()
 
 	server.Get("/api/v1/video/frame", VideoHandlers::GetFrame);
 	server.Get("/api/v1/video/frame/info", VideoHandlers::GetFrameInfo);
+
+	server.Get("/api/v1/program/state", ControlHandlers::GetProgramState);
+	server.Get("/api/v1/status", ControlHandlers::GetStatus);
+	server.Post("/api/v1/control/shutdown", ShutdownCommand::Post);
 }
 
 static std::string strip_port(const std::string& host)
