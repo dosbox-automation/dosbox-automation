@@ -6,6 +6,7 @@
 #include "gui/private/common.h"
 
 #include "capture/capture.h"
+#include "config/config.h"
 #include "config/setup.h"
 #include "misc/video.h"
 #include "utils/checks.h"
@@ -27,16 +28,23 @@ SdlRenderer::SdlRenderer(const int x, const int y, const int width,
 	SDL_SetHint(SDL_HINT_MAC_COLOR_SPACE, "srgb");
 #endif
 
-	window = SDL_CreateWindow(DOSBOX_NAME, x, y, width, height, flags);
+	const auto& parent_window_opt = control->arguments.parent_window;
+	if (parent_window_opt) {
+		auto parent_id = reinterpret_cast<void*>(*parent_window_opt);
+		window = SDL_CreateWindowFrom(parent_id);
+		if (!window) {
+			LOG_WARNING("SDL: Failed to embed in parent window 0x%lx: %s — falling back to standalone",
+			            static_cast<unsigned long>(*parent_window_opt),
+			            SDL_GetError());
+		}
+	}
+
+	if (!window) {
+		window = SDL_CreateWindow(DOSBOX_NAME, x, y, width, height, flags);
+	}
 
 	if (!window && (flags & SDL_WINDOW_OPENGL)) {
-		// The opengl_driver_crash_workaround() call above conditionally
-		// sets SDL_WINDOW_OPENGL. It sometimes gets this wrong (e.g.,
-		// SDL_VIDEODRIVER=dummy). This can only be determined reliably
-		// by trying SDL_CreateWindow(). If we failed to create the
-		// window, try again without it.
 		flags &= ~SDL_WINDOW_OPENGL;
-
 		window = SDL_CreateWindow(DOSBOX_NAME, x, y, width, height, flags);
 	}
 	if (!window) {

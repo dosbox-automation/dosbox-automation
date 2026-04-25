@@ -597,6 +597,13 @@ void Config::ParseArguments()
 	arguments.socket   = cmdline->FindRemoveIntArgument("socket");
 	arguments.wait_pid = cmdline->FindRemoveIntArgument("waitpid");
 
+	{
+		auto pw_str = cmdline->FindRemoveStringArgument("parent-window");
+		if (!pw_str.empty()) {
+			arguments.parent_window = std::stoull(pw_str, nullptr, 0);
+		}
+	}
+
 	arguments.conf = cmdline->FindRemoveVectorArgument("conf");
 	arguments.set  = cmdline->FindRemoveVectorArgument("set");
 

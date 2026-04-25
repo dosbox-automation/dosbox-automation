@@ -53,6 +53,7 @@ struct CommandLineArguments {
 
 	std::optional<int> socket;
 	std::optional<int> wait_pid;
+	std::optional<uint64_t> parent_window;
 };
 
 class Config {
