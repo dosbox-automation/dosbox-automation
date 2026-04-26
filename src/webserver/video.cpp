@@ -77,7 +77,7 @@ static std::vector<uint8_t> convert_to_rgb888(const RenderedImage& image)
 	return rgb;
 }
 
-static std::string encode_jpeg(const RenderedImage& image, int quality = 80)
+static std::string encode_jpeg(const RenderedImage& image, int quality = 98)
 {
 	auto rgb = convert_to_rgb888(image);
 	const auto w = image.params.width;
@@ -211,7 +211,16 @@ void VideoHandlers::GetFrame(const httplib::Request& req, httplib::Response& res
 	}
 
 	auto frame = RENDER_GetSharedFrame();
-	const auto format = req.get_param_value("format");
+	auto format = req.get_param_value("format");
+
+	if (format.empty()) {
+		const auto accept = req.get_header_value("Accept");
+		if (accept.find("image/png") != std::string::npos) {
+			format = "png";
+		} else if (accept.find("application/octet-stream") != std::string::npos) {
+			format = "raw";
+		}
+	}
 
 	if (format == "png") {
 		auto data = encode_png(frame);
@@ -220,7 +229,12 @@ void VideoHandlers::GetFrame(const httplib::Request& req, httplib::Response& res
 		auto data = encode_raw(frame);
 		res.set_content(std::move(data), "application/octet-stream");
 	} else {
-		auto data = encode_jpeg(frame);
+		int quality = 98;
+		const auto q_str = req.get_param_value("quality");
+		if (!q_str.empty()) {
+			quality = std::clamp(std::stoi(q_str), 1, 100);
+		}
+		auto data = encode_jpeg(frame, quality);
 		res.set_content(std::move(data), "image/jpeg");
 	}
 
