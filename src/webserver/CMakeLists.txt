@@ -1,9 +1,22 @@
 target_sources(dosboxcommon PRIVATE
   bridge.cpp
-  webserver.cpp
+  control.cpp
   cpu.cpp
-  memory.cpp
   dos.cpp
-  dosbox.cpp)
+  dosbox.cpp
+  drive.cpp
+  input.cpp
+  memory.cpp
+  video.cpp
+  webserver.cpp)
 
-target_link_libraries(dosboxcommon PRIVATE simde base64 httplib json)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBJPEG REQUIRED IMPORTED_TARGET libjpeg)
+
+target_link_libraries(dosboxcommon PRIVATE
+  simde
+  base64
+  httplib
+  json
+  PkgConfig::LIBJPEG
+  png)
