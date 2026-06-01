@@ -3,51 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DOSBox Staging API</title>
+    <title>dosbox-automation API</title>
     <link rel="stylesheet" href="./style-index.css">
 </head>
 
 <body>
     <header class="header">
         <div class="header-content">
-            <div class="header-title">DOSBox Staging API</div>
+            <div class="header-title">dosbox-automation API</div>
             <div class="header-subtitle">Version:</div>
         </div>
     </header>
 
     <div class="container">
-        <h1>DOSBox Staging API</h1>
+        <h1>dosbox-automation API</h1>
         <p>
-            Welcome to the DOSBox REST API. This embedded webserver exposes
-            REST endpoints to access the internal state of the emulated
-            machine and control DOSBox Staging remotely.
+            A REST API for programmatic control of DOSBox Staging. Automate
+            installations, test games, capture frames, record and replay
+            input sequences.
         </p>
 
         <p>
-            For example, <a
-              href="./api/v1/memory/0/0x100000">api/v1/memory/0/0x100000</a>
-            downloads a snapshot of the entire lower memory area.
+            Default port: <strong>8386</strong>. Configure with
+            <code>webserver_port</code> in <code>[webserver]</code> or
+            <code>--set webserver_port=NNNN</code>.
         </p>
 
         <p>
             All endpoints access the internal state atomically between steps
             of the emulated CPU. They will <em>never</em> be executed during
-            natively implemented DOS functions or interrupts — this means the
-            internal data structures are guaranteed to be consistent in any
-            given snapshot.
-        </p>
-
-        <p>
-            <strong>NOTE</strong>: This feature has been primarily tested with
-            <code>core = normal</code> running 16-bit real-mode applications
-            at the moment. Your experience with other CPU modes and different
-            memory models may vary.
+            natively implemented DOS functions or interrupts — the internal
+            data structures are guaranteed to be consistent.
         </p>
 
         <section id="docs">
+
+            <!-- ========== STATUS & CONTROL ========== -->
+
+            <h2 class="single">GET /api/v1/status</h2>
+            <p>Overall emulator status.</p>
+            <pre><code>{
+    "running": true,
+    "shutdown_requested": false,
+    "is_booted": false,
+    "is_shell": true,
+    "program": "COMMAND",
+    "canonical_name": "COMMAND.COM"
+}</code></pre>
+
+            <h2 class="single">GET /api/v1/program/state</h2>
+            <p>Currently running program information.</p>
+            <pre><code>{
+    "segment_name": "DOOM",
+    "canonical_name": "DOOM.EXE",
+    "is_shell": false,
+    "is_booted": false
+}</code></pre>
+
+            <h2 class="single">GET /api/v1/dosbox/info</h2>
+            <p>DOSBox version and configuration paths.</p>
+
+            <h2 class="single">POST /api/v1/control/shutdown</h2>
+            <p>Request a graceful shutdown.</p>
+
+            <!-- ========== INPUT ========== -->
+
+            <h2 class="single">POST /api/v1/input/sequence</h2>
+            <p>Inject a sequence of keyboard, mouse, and wheel events.
+            Events with <code>t > 0</code> are scheduled via the PIC timer
+            for cycle-accurate delivery.</p>
+            <p><strong>Request</strong></p>
+            <pre><code>{
+    "events": [
+        {"t": 0, "type": "key", "key": "KBD_enter", "pressed": true},
+        {"t": 50, "type": "key", "key": "KBD_enter", "pressed": false},
+        {"type": "mouse_move", "x_rel": 5.0, "y_rel": -3.0},
+        {"type": "mouse_button", "button": "left", "pressed": true},
+        {"type": "mouse_wheel", "delta": 1.0}
+    ]
+}</code></pre>
+            <p><strong>Response</strong></p>
+            <pre><code>{"status": "ok", "events_scheduled": 5}</code></pre>
+            <p>Key names: <code>KBD_a</code>–<code>KBD_z</code>,
+            <code>KBD_0</code>–<code>KBD_9</code>,
+            <code>KBD_f1</code>–<code>KBD_f12</code>,
+            <code>KBD_enter</code>, <code>KBD_space</code>,
+            <code>KBD_esc</code>, <code>KBD_tab</code>,
+            <code>KBD_backspace</code>, <code>KBD_up</code>,
+            <code>KBD_down</code>, <code>KBD_left</code>,
+            <code>KBD_right</code>, and all modifier/special keys.</p>
+            <p>Button names: <code>left</code>, <code>right</code>,
+            <code>middle</code>.</p>
+            <p>Returns 400 for unknown key names, event types, or button names.</p>
+
+            <!-- ========== RECORDING ========== -->
+
+            <h2 class="single">POST /api/v1/input/record/start</h2>
+            <p>Start recording all keyboard and mouse input. Returns 409 if
+            already recording.</p>
+
+            <h2 class="single">POST /api/v1/input/record/pause</h2>
+            <p>Toggle pause on the active recording. Returns 409 if not
+            recording.</p>
+
+            <h2 class="single">POST /api/v1/input/record/stop</h2>
+            <p>Stop recording and return all captured events. The returned
+            events can be replayed via <code>/input/sequence</code>.</p>
+            <pre><code>{
+    "event_count": 42,
+    "duration_ms": 5234.5,
+    "events": [
+        {"t": 0.0, "type": "key", "key": "KBD_a", "pressed": true},
+        ...
+    ]
+}</code></pre>
+            <p>Returns 409 if not recording.</p>
+
+            <h2 class="single">GET /api/v1/input/record/status</h2>
+            <p>Query recording state.</p>
+            <pre><code>{
+    "recording": true,
+    "paused": false,
+    "event_count": 42,
+    "duration_ms": 5234.5
+}</code></pre>
+
+            <!-- ========== VIDEO ========== -->
+
+            <h2 class="single">GET /api/v1/video/frame</h2>
+            <p>Capture the current video frame.</p>
+            <p>Query parameters:</p>
+            <ul>
+                <li><code>format</code>: <code>jpeg</code> (default),
+                <code>png</code>, or <code>raw</code></li>
+                <li><code>quality</code>: 1–100 (JPEG only, default 98)</li>
+            </ul>
+            <p>Also respects the <code>Accept</code> header:
+            <code>image/png</code> or
+            <code>application/octet-stream</code>.</p>
+            <p>Returns 503 if no frame has been rendered yet.</p>
+            <p>The raw format contains a binary header: uint32 width,
+            uint32 height, int32 pitch, uint8 pixel_format, uint16
+            palette_count, followed by palette data (if paletted) and
+            image data.</p>
+
+            <h2 class="single">GET /api/v1/video/frame/info</h2>
+            <p>Frame metadata without image data.</p>
+            <pre><code>{
+    "width": 720,
+    "height": 400,
+    "pixel_format": "BGRX32_ByteArray",
+    "pitch": 2880,
+    "is_paletted": false
+}</code></pre>
+
+            <!-- ========== DRIVE ========== -->
+
+            <h2 class="single">POST /api/v1/drive/swap</h2>
+            <p>Mount or swap a floppy or hard disk image on a drive letter.
+            For multi-disk game installations, call this when the installer
+            prompts for the next disk.</p>
+            <p><strong>Request</strong></p>
+            <pre><code>{
+    "drive": "A",
+    "image": "/path/to/disk2.img"
+}</code></pre>
+            <p>Returns 400 for missing fields, invalid drive letters, or
+            files that do not exist.</p>
+
+            <!-- ========== CPU ========== -->
+
             <h2 class="single">GET /api/v1/cpu/state</h2>
-            <p>Read the state of the CPU. Returns the values of all CPU
-            registers.</p>
+            <p>Read all CPU registers.</p>
+
+            <!-- ========== MEMORY ========== -->
 
             <h2 class="first">GET /api/v1/memory/:offset/:len</h2>
             <h2 class="last">GET /api/v1/memory/:segment/:offset/:len</h2>
@@ -68,15 +197,13 @@
             <p>Write memory to the given address.</p>
             <p>Path parameters work the same as for GET.</p>
 
-            <p>This accept either raw binary data with <code>Content-Type:
+            <p>Accepts either raw binary data with <code>Content-Type:
               application/octet-stream</code> or a JSON object with a Base64
             encoded field <code>data</code> with <code>Content-Type:
               application/json</code>.</p>
 
             <p>The <code>If-Match</code> header can be set to Base64 encoded
-            data to perform an atomic compare-and-swap operation. The length
-            of this comparison data can be different from the written
-            data.</p>
+            data to perform an atomic compare-and-swap operation.</p>
 
             <p>Returns 412 (Precondition Failed) if the current data does
             not match the <code>If-Match</code> header.</p>
@@ -87,42 +214,23 @@
             <p><strong>Request</strong></p>
             <pre><code>{
     "size": size_bytes,
-    "area": "conv"|"UMA"|"XMS
-    "strategy": "best_fit"|"first_fit"|"last_fit"
+    "area": "CONV"|"UMA"|"XMS",
+    "strategy": "BEST_FIT"|"FIRST_FIT"|"LAST_FIT"
 }</code></pre>
             <p><strong>Response</strong></p>
-            <pre><code>{
-    "addr": physical_address
-}</code></pre>
-
-            <code>conv</code> and <code>UMA</code> allocate memory from DOS.
-            <code>XMS</code> allocates raw pages and marks them as reserved
-            for EMS and XMS.
-
-            <p><code>strategy</code> controls the allocator behavior, the
-            default is <code>best_fit</code> which is almost always the best
-            setting. The other options will prefer lower/higer addresses in
-            the selected area.</p>
-
-            <p>The XMS allocator only supports <code>best_fit</code>.</p>
+            <pre><code>{"addr": physical_address}</code></pre>
+            <p>The XMS allocator only supports <code>BEST_FIT</code>.</p>
 
             <h2 class="single">POST /api/v1/memory/free</h2>
-            <p>Frees allocated memory at the given address.</p>
-            <p><strong>Request</strong></p>
-            <pre><code>{
-    "addr": physical_address,
-}</code></pre>
+            <p>Free allocated memory at the given address.</p>
+            <pre><code>{"addr": physical_address}</code></pre>
             <p>Returns 400 on invalid addresses.</p>
 
+            <!-- ========== DOS ========== -->
+
             <h2 class="single">GET /api/v1/dos/internals</h2>
-            <p>Retrieve pointers to internal DOS data structures like the DOS
-            swappable area and list of lists.</p>
-
-            <h2 class="single">GET /api/v1/dosbox/info</h2>
-            <p>Retrieve DOSBox version and relevant paths.</p>
-
-            <h2 class="single">POST /api/v1/dosbox/shutdown</h2>
-            <p>Request a graceful shutdown of DOSBox Staging.</p>
+            <p>Pointers to internal DOS data structures (list of lists,
+            DOS swappable area, first shell).</p>
         </section>
     </div>
 
