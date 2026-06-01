@@ -13,15 +13,14 @@ body:
         - provided a descriptive and succinct title
         - have read all questions carefully have answered **all** of them
 
-        [Please consider a donation to the DOSBox Staging project](https://www.dosbox-staging.org/get-involved/#make-a-donation).
 
   - type: checkboxes
     id: version
     attributes:
-      label: Are you using the latest DOSBox Staging version?
+      label: Are you using the latest dosbox-automation version?
       description: |
-        Look up the latest release version [on our website](https://www.dosbox-staging.org/) or the [releases page](https://github.com/dosbox-staging/dosbox-staging/releases).
-        To check your version, run `dosbox --version` or execute the `VER` command inside DOSBox Staging. If the version is reported as `git` (meaning you compiled it yourself), put the result of `git describe` in the version field below.
+        Look up the latest release version [on our website](https://www.github.com/augra-project/dosbox-automation/releases or the [releases page](https://github.com/augra-project/dosbox-automation/releases).
+        To check your version, run `dosbox --version` or execute the `VER` command inside dosbox-automation. If the version is reported as `git` (meaning you compiled it yourself), put the result of `git describe` in the version field below.
       options:
         - label: I have checked and I'm using the latest release.
           required: true
@@ -65,10 +64,10 @@ body:
   - type: checkboxes
     id: checked
     attributes:
-      label: Are you running DOSBox Staging on a native OS?
-      description: We only support running DOSBox Staging on a native operating system; running on a guest OS in a VM or hypervisor is not supported.
+      label: Are you running on a native OS?
+      description: We only support running dosbox-automation on a native operating system; running on a guest OS in a VM or hypervisor is not supported.
       options:
-        - label: I am running Staging on a native OS
+        - label: I am running on a native OS
           required: true
 
   - type: textarea
@@ -84,7 +83,7 @@ body:
     id: terms
     attributes:
       label: Code of conduct and contributing guidelines
-      description: By submitting this issue, you agree to follow our [contributing guidelines](https://github.com/dosbox-staging/dosbox-staging/blob/master/docs/CONTRIBUTING.md) and [code of conduct](https://github.com/dosbox-staging/dosbox-staging/blob/master/CODE_OF_CONDUCT.md).
+      description: By submitting this issue, you agree to follow our [contributing guidelines](https://github.com/augra-project/dosbox-automation/blob/master/docs/CONTRIBUTING.md) and [code of conduct](https://github.com/augra-project/dosbox-automation/blob/master/CODE_OF_CONDUCT.md).
       options:
         - label: Yes, I agree.
           required: true
