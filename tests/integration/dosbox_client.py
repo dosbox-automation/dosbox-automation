@@ -68,18 +68,45 @@ class DosboxClient:
         key_map[" "] = "KBD_space"
         key_map["\n"] = "KBD_enter"
         key_map["\r"] = "KBD_enter"
-        key_map[":"] = "KBD_semicolon"
         key_map["\\"] = "KBD_backslash"
+        key_map["."] = "KBD_period"
+        key_map[","] = "KBD_comma"
+        key_map["-"] = "KBD_minus"
+        key_map["="] = "KBD_equals"
+        key_map["/"] = "KBD_slash"
+
+        shifted = {
+            ":": "KBD_semicolon",
+            "!": "KBD_1",
+            "@": "KBD_2",
+            "#": "KBD_3",
+            "$": "KBD_4",
+            "%": "KBD_5",
+            "^": "KBD_6",
+            "&": "KBD_7",
+            "*": "KBD_8",
+            "(": "KBD_9",
+            ")": "KBD_0",
+            "_": "KBD_minus",
+            "+": "KBD_equals",
+            "?": "KBD_slash",
+        }
 
         events = []
         t = 0.0
-        for ch in text.lower():
-            k = key_map.get(ch)
+        for ch in text:
+            lower = ch.lower()
+            need_shift = ch in shifted or (ch.isalpha() and ch.isupper())
+            k = shifted.get(ch) or key_map.get(lower)
             if k:
+                if need_shift:
+                    events.append({"t": t, "type": "key", "key": "KBD_leftshift", "pressed": True})
                 events.append({"t": t, "type": "key", "key": k, "pressed": True})
                 events.append(
                     {"t": t + delay_ms / 2, "type": "key", "key": k, "pressed": False}
                 )
+                if need_shift:
+                    events.append({"t": t + delay_ms / 2, "type": "key", "key": "KBD_leftshift", "pressed": False})
                 t += delay_ms
         return self.input_sequence(events)
 
