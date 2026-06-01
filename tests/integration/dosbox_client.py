@@ -1,0 +1,202 @@
+import time
+from pathlib import Path
+
+import requests
+
+
+class DosboxClient:
+    """Thin wrapper for the dosbox-automation REST API."""
+
+    def __init__(self, base_url: str, timeout: float = 10.0):
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+        self.session = requests.Session()
+        self.session.headers["Host"] = "127.0.0.1"
+
+    def _url(self, path: str) -> str:
+        return f"{self.base_url}{path}"
+
+    def _get(self, path: str, **kwargs) -> requests.Response:
+        return self.session.get(self._url(path), timeout=self.timeout, **kwargs)
+
+    def _post(self, path: str, **kwargs) -> requests.Response:
+        return self.session.post(self._url(path), timeout=self.timeout, **kwargs)
+
+    def _put(self, path: str, **kwargs) -> requests.Response:
+        return self.session.put(self._url(path), timeout=self.timeout, **kwargs)
+
+    # --- Status & Info ---
+
+    def status(self) -> requests.Response:
+        return self._get("/api/v1/status")
+
+    def program_state(self) -> requests.Response:
+        return self._get("/api/v1/program/state")
+
+    def dosbox_info(self) -> requests.Response:
+        return self._get("/api/v1/dosbox/info")
+
+    # --- CPU ---
+
+    def cpu_state(self) -> requests.Response:
+        return self._get("/api/v1/cpu/state")
+
+    # --- DOS ---
+
+    def dos_internals(self) -> requests.Response:
+        return self._get("/api/v1/dos/internals")
+
+    # --- Input ---
+
+    def input_sequence(self, events: list[dict]) -> requests.Response:
+        return self._post("/api/v1/input/sequence", json={"events": events})
+
+    def input_sequence_raw(self, body: str) -> requests.Response:
+        return self._post(
+            "/api/v1/input/sequence",
+            data=body,
+            headers={"Content-Type": "application/json"},
+        )
+
+    def press_key(self, key: str, pressed: bool = True) -> requests.Response:
+        return self.input_sequence(
+            [{"type": "key", "key": key, "pressed": pressed}]
+        )
+
+    def type_string(self, text: str, delay_ms: float = 80) -> requests.Response:
+        key_map = {c: f"KBD_{c}" for c in "abcdefghijklmnopqrstuvwxyz0123456789"}
+        key_map[" "] = "KBD_space"
+        key_map["\n"] = "KBD_enter"
+        key_map["\r"] = "KBD_enter"
+        key_map[":"] = "KBD_semicolon"
+        key_map["\\"] = "KBD_backslash"
+
+        events = []
+        t = 0.0
+        for ch in text.lower():
+            k = key_map.get(ch)
+            if k:
+                events.append({"t": t, "type": "key", "key": k, "pressed": True})
+                events.append(
+                    {"t": t + delay_ms / 2, "type": "key", "key": k, "pressed": False}
+                )
+                t += delay_ms
+        return self.input_sequence(events)
+
+    # --- Recording ---
+
+    def recording_start(self) -> requests.Response:
+        return self._post("/api/v1/input/record/start")
+
+    def recording_pause(self) -> requests.Response:
+        return self._post("/api/v1/input/record/pause")
+
+    def recording_stop(self) -> requests.Response:
+        return self._post("/api/v1/input/record/stop")
+
+    def recording_status(self) -> requests.Response:
+        return self._get("/api/v1/input/record/status")
+
+    # --- Video ---
+
+    def frame(self, fmt: str = "jpeg", quality: int = 98) -> requests.Response:
+        params = {"format": fmt, "quality": str(quality)}
+        return self._get("/api/v1/video/frame", params=params)
+
+    def frame_info(self) -> requests.Response:
+        return self._get("/api/v1/video/frame/info")
+
+    def capture_frame(self, path: Path, fmt: str = "jpeg") -> Path:
+        r = self.frame(fmt=fmt)
+        r.raise_for_status()
+        path.write_bytes(r.content)
+        return path
+
+    # --- Drive ---
+
+    def drive_swap(self, drive: str, image: str) -> requests.Response:
+        return self._post("/api/v1/drive/swap", json={"drive": drive, "image": image})
+
+    def drive_swap_raw(self, body: str) -> requests.Response:
+        return self._post(
+            "/api/v1/drive/swap",
+            data=body,
+            headers={"Content-Type": "application/json"},
+        )
+
+    # --- Memory ---
+
+    def memory_read(self, offset: int, length: int) -> requests.Response:
+        return self._get(f"/api/v1/memory/{offset}/{length}")
+
+    def memory_read_json(self, offset: int, length: int) -> requests.Response:
+        return self._get(
+            f"/api/v1/memory/{offset}/{length}",
+            headers={"Accept": "application/json"},
+        )
+
+    def memory_write(self, offset: int, data: bytes) -> requests.Response:
+        return self._put(
+            f"/api/v1/memory/{offset}",
+            data=data,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+
+    def memory_allocate(
+        self, size: int, area: str = "CONV", strategy: str = "BEST_FIT"
+    ) -> requests.Response:
+        return self._post(
+            "/api/v1/memory/allocate",
+            json={"size": size, "area": area, "strategy": strategy},
+        )
+
+    def memory_free(self, addr: int) -> requests.Response:
+        return self._post("/api/v1/memory/free", json={"addr": addr})
+
+    # --- Control ---
+
+    def shutdown(self) -> requests.Response:
+        return self._post("/api/v1/control/shutdown")
+
+    # --- Helpers ---
+
+    def wait_ready(self, timeout: float = 10.0):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                r = self.status()
+                if r.status_code == 200:
+                    return
+            except requests.ConnectionError:
+                pass
+            time.sleep(0.2)
+        raise TimeoutError(f"DOSBox webserver not ready after {timeout}s")
+
+    def wait_program(self, name: str, timeout: float = 15.0):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            r = self.program_state()
+            if r.status_code == 200:
+                state = r.json()
+                if name.lower() in state.get("segment_name", "").lower():
+                    return state
+            time.sleep(0.5)
+        raise TimeoutError(f"Program '{name}' not detected after {timeout}s")
+
+    def wait_shell(self, timeout: float = 15.0):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            r = self.program_state()
+            if r.status_code == 200:
+                state = r.json()
+                if state.get("is_shell"):
+                    return state
+            time.sleep(0.5)
+        raise TimeoutError(f"Shell not detected after {timeout}s")
+
+    def get_with_host(self, path: str, host: str) -> requests.Response:
+        return self.session.get(
+            self._url(path),
+            timeout=self.timeout,
+            headers={"Host": host},
+        )
