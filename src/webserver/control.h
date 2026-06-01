@@ -4,16 +4,11 @@
 #ifndef DOSBOX_WEBSERVER_CONTROL_H
 #define DOSBOX_WEBSERVER_CONTROL_H
 
-#include "bridge.h"
-#include "libs/http/http.h"
+#include "private/dosbox.h"
+
+#include "http/http.h"
 
 namespace Webserver {
-
-class ShutdownCommand : public Command {
-public:
-	void Execute() override;
-	static void Post(const httplib::Request& req, httplib::Response& res);
-};
 
 struct ControlHandlers {
 	static void GetProgramState(const httplib::Request& req, httplib::Response& res);

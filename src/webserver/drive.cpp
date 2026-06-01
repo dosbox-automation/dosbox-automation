@@ -33,8 +33,8 @@ void DriveSwapCommand::Execute()
 
 	const auto file_size_kb = static_cast<uint32_t>(st.st_size / 1024);
 	bool is_floppy = false;
-	for (int i = 0; DiskGeometryList[i].ksize != 0; i++) {
-		if (DiskGeometryList[i].ksize == file_size_kb) {
+	for (const auto& geom : BIOS_GetDiskGeometryList()) {
+		if (geom.ksize == file_size_kb) {
 			is_floppy = true;
 			break;
 		}
