@@ -55,9 +55,9 @@ def test_dosbox_info(dosbox):
     assert r.status_code == 200
     data = r.json()
     assert "version" in data
-    assert "configHome" in data
-    assert "configWebserver" in data
     assert len(data["version"]) > 0
+    assert "configHome" not in data
+    assert "configWebserver" not in data
 
 
 # ---------------------------------------------------------------------------
@@ -425,3 +425,64 @@ def test_host_validation_rejects_bad_host(dosbox):
 def test_host_validation_accepts_localhost(dosbox):
     r = dosbox.get_with_host("/api/v1/status", "localhost")
     assert r.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Token authentication
+# ---------------------------------------------------------------------------
+
+def test_token_auth_rejects_no_token(dosbox):
+    r = dosbox.get_without_token("/api/v1/status")
+    assert r.status_code == 401
+
+
+def test_token_auth_rejects_wrong_token(dosbox):
+    import requests as req
+    r = req.get(
+        dosbox._url("/api/v1/status"),
+        headers={
+            "Host": "127.0.0.1",
+            "Authorization": "Bearer 0000000000000000000000000000000000000000000000000000000000000000",
+        },
+        timeout=dosbox.timeout,
+    )
+    assert r.status_code == 401
+
+
+def test_cors_headers_present(dosbox):
+    r = dosbox.status()
+    assert r.status_code == 200
+    assert r.headers.get("Access-Control-Allow-Origin") == "null"
+    assert r.headers.get("X-Content-Type-Options") == "nosniff"
+
+
+def test_options_preflight_rejected(dosbox):
+    import requests as req
+    r = req.options(
+        dosbox._url("/api/v1/status"),
+        headers={
+            "Host": "127.0.0.1",
+            "Authorization": f"Bearer {dosbox.session.headers.get('Authorization', '').replace('Bearer ', '')}",
+        },
+        timeout=dosbox.timeout,
+    )
+    assert r.status_code == 403
+
+
+def test_event_array_size_cap(dosbox):
+    giant = [{"type": "key", "key": "KBD_a", "pressed": True}] * 10001
+    r = dosbox.input_sequence(giant)
+    assert r.status_code == 400
+    assert "max" in r.json()["error"].lower()
+
+
+def test_event_array_at_limit(dosbox):
+    events = [{"type": "key", "key": "KBD_a", "pressed": True}] * 10000
+    r = dosbox.input_sequence(events)
+    assert r.status_code == 200
+
+
+def test_drive_swap_no_path_leak(dosbox):
+    r = dosbox.drive_swap("A", "/tmp/does-not-exist-ever.img")
+    assert r.status_code == 400
+    assert "/tmp" not in r.json().get("image", "")

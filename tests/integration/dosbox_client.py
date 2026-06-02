@@ -7,11 +7,13 @@ import requests
 class DosboxClient:
     """Thin wrapper for the dosbox-automation REST API."""
 
-    def __init__(self, base_url: str, timeout: float = 10.0):
+    def __init__(self, base_url: str, token: str = "", timeout: float = 10.0):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.session = requests.Session()
         self.session.headers["Host"] = "127.0.0.1"
+        if token:
+            self.session.headers["Authorization"] = f"Bearer {token}"
 
     def _url(self, path: str) -> str:
         return f"{self.base_url}{path}"
@@ -222,8 +224,17 @@ class DosboxClient:
         raise TimeoutError(f"Shell not detected after {timeout}s")
 
     def get_with_host(self, path: str, host: str) -> requests.Response:
+        headers = {"Host": host}
+        if "Authorization" in self.session.headers:
+            headers["Authorization"] = self.session.headers["Authorization"]
         return self.session.get(
             self._url(path),
             timeout=self.timeout,
-            headers={"Host": host},
+            headers=headers,
+        )
+
+    def get_without_token(self, path: str) -> requests.Response:
+        headers = {"Host": "127.0.0.1"}
+        return requests.get(
+            self._url(path), timeout=self.timeout, headers=headers
         )

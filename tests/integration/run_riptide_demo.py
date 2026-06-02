@@ -5,10 +5,12 @@ Run this directly to watch the installation on the augra pane.
 """
 
 import os
+import re
 import shutil
 import socket
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -69,6 +71,22 @@ def main():
         env["SDL_VIDEODRIVER"] = "dummy"
         env["SDL_AUDIODRIVER"] = "dummy"
 
+    token_re = re.compile(r"WEBSERVER: API token: ([0-9a-f]{64})")
+    token_holder = {"token": None}
+    token_found = threading.Event()
+    stderr_log = work_dir / "dosbox-stderr.log"
+
+    def read_stderr(pipe, log_path):
+        with open(log_path, "w") as log:
+            for raw in pipe:
+                line = raw.decode(errors="replace").rstrip()
+                log.write(line + "\n")
+                log.flush()
+                m = token_re.search(line)
+                if m:
+                    token_holder["token"] = m.group(1)
+                    token_found.set()
+
     proc = subprocess.Popen(
         [
             DOSBOX_BIN,
@@ -85,7 +103,16 @@ def main():
         cwd=str(work_dir),
     )
 
-    client = DosboxClient(f"http://127.0.0.1:{port}")
+    reader = threading.Thread(
+        target=read_stderr, args=(proc.stderr, stderr_log), daemon=True
+    )
+    reader.start()
+
+    if not token_found.wait(timeout=10):
+        proc.kill()
+        sys.exit("ERROR: DOSBox did not emit API token within 10s")
+
+    client = DosboxClient(f"http://127.0.0.1:{port}", token=token_holder["token"])
 
     try:
         client.wait_ready(timeout=10)

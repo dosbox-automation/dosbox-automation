@@ -19,9 +19,9 @@ using json = nlohmann::json;
 namespace Webserver {
 
 DriveSwapCommand::DriveSwapCommand(char drive_letter, std::string image_path)
-        : drive_letter(drive_letter), image_path(std::move(image_path))
-{
-}
+        : drive_letter(drive_letter),
+          image_path(std::move(image_path))
+{}
 
 void DriveSwapCommand::Execute()
 {
@@ -32,7 +32,7 @@ void DriveSwapCommand::Execute()
 	}
 
 	const auto file_size_kb = static_cast<uint32_t>(st.st_size / 1024);
-	bool is_floppy = false;
+	bool is_floppy          = false;
 	for (const auto& geom : BIOS_GetDiskGeometryList()) {
 		if (geom.ksize == file_size_kb) {
 			is_floppy = true;
@@ -40,8 +40,7 @@ void DriveSwapCommand::Execute()
 		}
 	}
 
-	const auto drv_idx = static_cast<uint8_t>(
-	        std::toupper(drive_letter) - 'A');
+	const auto drv_idx = static_cast<uint8_t>(std::toupper(drive_letter) - 'A');
 
 	if (drv_idx >= DOS_DRIVES) {
 		error = "Invalid drive letter";
@@ -51,8 +50,7 @@ void DriveSwapCommand::Execute()
 	Drives[drv_idx].reset();
 
 	auto new_drive = std::make_shared<fatDrive>(
-	        image_path.c_str(), 512, 0, 0, 0,
-	        is_floppy ? 0xF0 : 0xF8, false);
+	        image_path.c_str(), 512, 0, 0, 0, is_floppy ? 0xF0 : 0xF8, false);
 
 	if (!new_drive->created_successfully) {
 		error = "Failed to mount image: " + image_path;
@@ -100,8 +98,7 @@ void DriveSwapCommand::Post(const httplib::Request& req, httplib::Response& res)
 
 	json result;
 	result["status"] = "ok";
-	result["drive"] = std::string(1, std::toupper(drive_str[0]));
-	result["image"] = body["image"];
+	result["drive"]  = std::string(1, std::toupper(drive_str[0]));
 	send_json(res, result);
 }
 

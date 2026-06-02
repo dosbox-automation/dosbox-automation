@@ -8,10 +8,12 @@ in the terminal when done — the recording is saved to a JSON file.
 
 import json
 import os
+import re
 import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -44,6 +46,21 @@ def main():
     output_file = work_dir / "recording.json"
     stderr_log = work_dir / "dosbox-stderr.log"
 
+    token_re = re.compile(r"WEBSERVER: API token: ([0-9a-f]{64})")
+    token_holder = {"token": None}
+    token_found = threading.Event()
+
+    def read_stderr(pipe, log_path):
+        with open(log_path, "w") as log:
+            for raw in pipe:
+                line = raw.decode(errors="replace").rstrip()
+                log.write(line + "\n")
+                log.flush()
+                m = token_re.search(line)
+                if m:
+                    token_holder["token"] = m.group(1)
+                    token_found.set()
+
     print(f"Starting DOSBox on port {port}...")
     env = {**os.environ, "HOME": str(work_dir)}
     proc = subprocess.Popen(
@@ -58,11 +75,20 @@ def main():
         ],
         env=env,
         stdout=subprocess.DEVNULL,
-        stderr=open(stderr_log, "w"),
+        stderr=subprocess.PIPE,
         cwd=str(work_dir),
     )
 
-    client = DosboxClient(f"http://127.0.0.1:{port}")
+    reader = threading.Thread(
+        target=read_stderr, args=(proc.stderr, stderr_log), daemon=True
+    )
+    reader.start()
+
+    if not token_found.wait(timeout=10):
+        proc.kill()
+        sys.exit("ERROR: DOSBox did not emit API token within 10s")
+
+    client = DosboxClient(f"http://127.0.0.1:{port}", token=token_holder["token"])
 
     try:
         client.wait_ready(timeout=10)

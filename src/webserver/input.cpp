@@ -5,8 +5,8 @@
 #include "bridge.h"
 #include "webserver.h"
 
-#include "hardware/input/keyboard.h"  // KBD_KEYS, KEYBOARD_AddKey, keyboard_input_hook
-#include "hardware/input/mouse.h"     // MOUSE_Event*, mouse_*_hook
+#include "hardware/input/keyboard.h" // KBD_KEYS, KEYBOARD_AddKey, keyboard_input_hook
+#include "hardware/input/mouse.h" // MOUSE_Event*, mouse_*_hook
 #include "hardware/pic.h"
 
 #include <algorithm>
@@ -14,66 +14,127 @@
 
 #include "libs/json/json.h"
 
-#include <unordered_map>
-#include <queue>
 #include <mutex>
+#include <queue>
+#include <unordered_map>
 
 using json = nlohmann::json;
 
 namespace Webserver {
 
 static const std::unordered_map<std::string, KBD_KEYS> key_name_map = {
-	{"KBD_NONE", KBD_NONE},
-	{"KBD_1", KBD_1}, {"KBD_2", KBD_2}, {"KBD_3", KBD_3},
-	{"KBD_4", KBD_4}, {"KBD_5", KBD_5}, {"KBD_6", KBD_6},
-	{"KBD_7", KBD_7}, {"KBD_8", KBD_8}, {"KBD_9", KBD_9}, {"KBD_0", KBD_0},
-	{"KBD_q", KBD_q}, {"KBD_w", KBD_w}, {"KBD_e", KBD_e}, {"KBD_r", KBD_r},
-	{"KBD_t", KBD_t}, {"KBD_y", KBD_y}, {"KBD_u", KBD_u}, {"KBD_i", KBD_i},
-	{"KBD_o", KBD_o}, {"KBD_p", KBD_p},
-	{"KBD_a", KBD_a}, {"KBD_s", KBD_s}, {"KBD_d", KBD_d}, {"KBD_f", KBD_f},
-	{"KBD_g", KBD_g}, {"KBD_h", KBD_h}, {"KBD_j", KBD_j}, {"KBD_k", KBD_k},
-	{"KBD_l", KBD_l},
-	{"KBD_z", KBD_z}, {"KBD_x", KBD_x}, {"KBD_c", KBD_c}, {"KBD_v", KBD_v},
-	{"KBD_b", KBD_b}, {"KBD_n", KBD_n}, {"KBD_m", KBD_m},
-	{"KBD_f1", KBD_f1}, {"KBD_f2", KBD_f2}, {"KBD_f3", KBD_f3},
-	{"KBD_f4", KBD_f4}, {"KBD_f5", KBD_f5}, {"KBD_f6", KBD_f6},
-	{"KBD_f7", KBD_f7}, {"KBD_f8", KBD_f8}, {"KBD_f9", KBD_f9},
-	{"KBD_f10", KBD_f10}, {"KBD_f11", KBD_f11}, {"KBD_f12", KBD_f12},
-	{"KBD_esc", KBD_esc}, {"KBD_tab", KBD_tab},
-	{"KBD_backspace", KBD_backspace}, {"KBD_enter", KBD_enter},
-	{"KBD_space", KBD_space},
-	{"KBD_leftalt", KBD_leftalt}, {"KBD_rightalt", KBD_rightalt},
-	{"KBD_leftctrl", KBD_leftctrl}, {"KBD_rightctrl", KBD_rightctrl},
-	{"KBD_leftgui", KBD_leftgui}, {"KBD_rightgui", KBD_rightgui},
-	{"KBD_leftshift", KBD_leftshift}, {"KBD_rightshift", KBD_rightshift},
-	{"KBD_capslock", KBD_capslock}, {"KBD_scrolllock", KBD_scrolllock},
-	{"KBD_numlock", KBD_numlock},
-	{"KBD_grave", KBD_grave}, {"KBD_minus", KBD_minus},
-	{"KBD_equals", KBD_equals}, {"KBD_backslash", KBD_backslash},
-	{"KBD_leftbracket", KBD_leftbracket}, {"KBD_rightbracket", KBD_rightbracket},
-	{"KBD_semicolon", KBD_semicolon}, {"KBD_quote", KBD_quote},
-	{"KBD_oem102", KBD_oem102},
-	{"KBD_period", KBD_period}, {"KBD_comma", KBD_comma},
-	{"KBD_slash", KBD_slash}, {"KBD_abnt1", KBD_abnt1},
-	{"KBD_printscreen", KBD_printscreen}, {"KBD_pause", KBD_pause},
-	{"KBD_insert", KBD_insert}, {"KBD_home", KBD_home},
-	{"KBD_pageup", KBD_pageup}, {"KBD_delete", KBD_delete},
-	{"KBD_end", KBD_end}, {"KBD_pagedown", KBD_pagedown},
-	{"KBD_left", KBD_left}, {"KBD_up", KBD_up},
-	{"KBD_down", KBD_down}, {"KBD_right", KBD_right},
-	{"KBD_kp1", KBD_kp1}, {"KBD_kp2", KBD_kp2}, {"KBD_kp3", KBD_kp3},
-	{"KBD_kp4", KBD_kp4}, {"KBD_kp5", KBD_kp5}, {"KBD_kp6", KBD_kp6},
-	{"KBD_kp7", KBD_kp7}, {"KBD_kp8", KBD_kp8}, {"KBD_kp9", KBD_kp9},
-	{"KBD_kp0", KBD_kp0},
-	{"KBD_kpdivide", KBD_kpdivide}, {"KBD_kpmultiply", KBD_kpmultiply},
-	{"KBD_kpminus", KBD_kpminus}, {"KBD_kpplus", KBD_kpplus},
-	{"KBD_kpenter", KBD_kpenter}, {"KBD_kpperiod", KBD_kpperiod},
+        {        "KBD_NONE",         KBD_NONE},
+        {           "KBD_1",            KBD_1},
+        {           "KBD_2",            KBD_2},
+        {           "KBD_3",            KBD_3},
+        {           "KBD_4",            KBD_4},
+        {           "KBD_5",            KBD_5},
+        {           "KBD_6",            KBD_6},
+        {           "KBD_7",            KBD_7},
+        {           "KBD_8",            KBD_8},
+        {           "KBD_9",            KBD_9},
+        {           "KBD_0",            KBD_0},
+        {           "KBD_q",            KBD_q},
+        {           "KBD_w",            KBD_w},
+        {           "KBD_e",            KBD_e},
+        {           "KBD_r",            KBD_r},
+        {           "KBD_t",            KBD_t},
+        {           "KBD_y",            KBD_y},
+        {           "KBD_u",            KBD_u},
+        {           "KBD_i",            KBD_i},
+        {           "KBD_o",            KBD_o},
+        {           "KBD_p",            KBD_p},
+        {           "KBD_a",            KBD_a},
+        {           "KBD_s",            KBD_s},
+        {           "KBD_d",            KBD_d},
+        {           "KBD_f",            KBD_f},
+        {           "KBD_g",            KBD_g},
+        {           "KBD_h",            KBD_h},
+        {           "KBD_j",            KBD_j},
+        {           "KBD_k",            KBD_k},
+        {           "KBD_l",            KBD_l},
+        {           "KBD_z",            KBD_z},
+        {           "KBD_x",            KBD_x},
+        {           "KBD_c",            KBD_c},
+        {           "KBD_v",            KBD_v},
+        {           "KBD_b",            KBD_b},
+        {           "KBD_n",            KBD_n},
+        {           "KBD_m",            KBD_m},
+        {          "KBD_f1",           KBD_f1},
+        {          "KBD_f2",           KBD_f2},
+        {          "KBD_f3",           KBD_f3},
+        {          "KBD_f4",           KBD_f4},
+        {          "KBD_f5",           KBD_f5},
+        {          "KBD_f6",           KBD_f6},
+        {          "KBD_f7",           KBD_f7},
+        {          "KBD_f8",           KBD_f8},
+        {          "KBD_f9",           KBD_f9},
+        {         "KBD_f10",          KBD_f10},
+        {         "KBD_f11",          KBD_f11},
+        {         "KBD_f12",          KBD_f12},
+        {         "KBD_esc",          KBD_esc},
+        {         "KBD_tab",          KBD_tab},
+        {   "KBD_backspace",    KBD_backspace},
+        {       "KBD_enter",        KBD_enter},
+        {       "KBD_space",        KBD_space},
+        {     "KBD_leftalt",      KBD_leftalt},
+        {    "KBD_rightalt",     KBD_rightalt},
+        {    "KBD_leftctrl",     KBD_leftctrl},
+        {   "KBD_rightctrl",    KBD_rightctrl},
+        {     "KBD_leftgui",      KBD_leftgui},
+        {    "KBD_rightgui",     KBD_rightgui},
+        {   "KBD_leftshift",    KBD_leftshift},
+        {  "KBD_rightshift",   KBD_rightshift},
+        {    "KBD_capslock",     KBD_capslock},
+        {  "KBD_scrolllock",   KBD_scrolllock},
+        {     "KBD_numlock",      KBD_numlock},
+        {       "KBD_grave",        KBD_grave},
+        {       "KBD_minus",        KBD_minus},
+        {      "KBD_equals",       KBD_equals},
+        {   "KBD_backslash",    KBD_backslash},
+        { "KBD_leftbracket",  KBD_leftbracket},
+        {"KBD_rightbracket", KBD_rightbracket},
+        {   "KBD_semicolon",    KBD_semicolon},
+        {       "KBD_quote",        KBD_quote},
+        {      "KBD_oem102",       KBD_oem102},
+        {      "KBD_period",       KBD_period},
+        {       "KBD_comma",        KBD_comma},
+        {       "KBD_slash",        KBD_slash},
+        {       "KBD_abnt1",        KBD_abnt1},
+        { "KBD_printscreen",  KBD_printscreen},
+        {       "KBD_pause",        KBD_pause},
+        {      "KBD_insert",       KBD_insert},
+        {        "KBD_home",         KBD_home},
+        {      "KBD_pageup",       KBD_pageup},
+        {      "KBD_delete",       KBD_delete},
+        {         "KBD_end",          KBD_end},
+        {    "KBD_pagedown",     KBD_pagedown},
+        {        "KBD_left",         KBD_left},
+        {          "KBD_up",           KBD_up},
+        {        "KBD_down",         KBD_down},
+        {       "KBD_right",        KBD_right},
+        {         "KBD_kp1",          KBD_kp1},
+        {         "KBD_kp2",          KBD_kp2},
+        {         "KBD_kp3",          KBD_kp3},
+        {         "KBD_kp4",          KBD_kp4},
+        {         "KBD_kp5",          KBD_kp5},
+        {         "KBD_kp6",          KBD_kp6},
+        {         "KBD_kp7",          KBD_kp7},
+        {         "KBD_kp8",          KBD_kp8},
+        {         "KBD_kp9",          KBD_kp9},
+        {         "KBD_kp0",          KBD_kp0},
+        {    "KBD_kpdivide",     KBD_kpdivide},
+        {  "KBD_kpmultiply",   KBD_kpmultiply},
+        {     "KBD_kpminus",      KBD_kpminus},
+        {      "KBD_kpplus",       KBD_kpplus},
+        {     "KBD_kpenter",      KBD_kpenter},
+        {    "KBD_kpperiod",     KBD_kpperiod},
 };
 
 static const std::unordered_map<std::string, MouseButtonId> button_name_map = {
-	{"left", MouseButtonId::Left},
-	{"right", MouseButtonId::Right},
-	{"middle", MouseButtonId::Middle},
+        {  "left",   MouseButtonId::Left},
+        { "right",  MouseButtonId::Right},
+        {"middle", MouseButtonId::Middle},
 };
 
 static std::mutex pending_mutex;
@@ -101,7 +162,7 @@ static void dispatch_input_event(const InputEvent& ev)
 	}
 }
 
-static size_t pending_total = 0;
+static size_t pending_total      = 0;
 static size_t pending_dispatched = 0;
 
 static void pic_input_handler(uint32_t)
@@ -117,25 +178,34 @@ static void pic_input_handler(uint32_t)
 	switch (ev.type) {
 	case InputEvent::Type::Key:
 		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms key %d %s",
-		          pending_dispatched, pending_total,
-		          ev.t_ms, ev.key,
+		          pending_dispatched,
+		          pending_total,
+		          ev.t_ms,
+		          ev.key,
 		          ev.pressed ? "DOWN" : "UP");
 		break;
 	case InputEvent::Type::MouseMove:
 		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms mouse_move rel=(%.1f,%.1f)",
-		          pending_dispatched, pending_total,
-		          ev.t_ms, ev.x_rel, ev.y_rel);
+		          pending_dispatched,
+		          pending_total,
+		          ev.t_ms,
+		          ev.x_rel,
+		          ev.y_rel);
 		break;
 	case InputEvent::Type::MouseButton:
 		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms mouse_button %s %s",
-		          pending_dispatched, pending_total,
-		          ev.t_ms, ev.button.c_str(),
+		          pending_dispatched,
+		          pending_total,
+		          ev.t_ms,
+		          ev.button.c_str(),
 		          ev.pressed ? "DOWN" : "UP");
 		break;
 	case InputEvent::Type::MouseWheel:
 		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms mouse_wheel delta=%.1f",
-		          pending_dispatched, pending_total,
-		          ev.t_ms, ev.wheel_delta);
+		          pending_dispatched,
+		          pending_total,
+		          ev.t_ms,
+		          ev.wheel_delta);
 		break;
 	}
 
@@ -147,14 +217,14 @@ static void pic_input_handler(uint32_t)
 		PIC_AddEvent(pic_input_handler, delay);
 	} else {
 		LOG_DEBUG("REPLAY chain complete: %zu/%zu events dispatched",
-		          pending_dispatched, pending_total);
+		          pending_dispatched,
+		          pending_total);
 	}
 }
 
 InputSequenceCommand::InputSequenceCommand(std::vector<InputEvent> events)
         : events(std::move(events))
-{
-}
+{}
 
 void InputSequenceCommand::Execute()
 {
@@ -170,7 +240,7 @@ void InputSequenceCommand::Execute()
 			pending_events.push(ev);
 		}
 	}
-	pending_total = pending_events.size();
+	pending_total      = pending_events.size();
 	pending_dispatched = 0;
 	LOG_DEBUG("REPLAY starting chain: %zu timed events, first at %.1fms, last at %.1fms",
 	          pending_total,
@@ -193,6 +263,16 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 		return;
 	}
 
+	constexpr size_t max_events = 10000;
+	if (body["events"].size() > max_events) {
+		res.status = 400;
+		json err;
+		err["error"] = "Too many events (max " +
+		               std::to_string(max_events) + ")";
+		send_json(res, err);
+		return;
+	}
+
 	std::vector<InputEvent> events;
 	for (const auto& jev : body["events"]) {
 		InputEvent ev = {};
@@ -204,9 +284,9 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 		const auto type_str = jev.value("type", "key");
 
 		if (type_str == "key") {
-			ev.type = InputEvent::Type::Key;
+			ev.type             = InputEvent::Type::Key;
 			const auto key_name = jev.value("key", "KBD_NONE");
-			auto it = key_name_map.find(key_name);
+			auto it             = key_name_map.find(key_name);
 			if (it == key_name_map.end()) {
 				res.status = 400;
 				json err;
@@ -214,17 +294,17 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 				send_json(res, err);
 				return;
 			}
-			ev.key = static_cast<int>(it->second);
+			ev.key     = static_cast<int>(it->second);
 			ev.pressed = jev.value("pressed", true);
 		} else if (type_str == "mouse_move") {
-			ev.type = InputEvent::Type::MouseMove;
+			ev.type  = InputEvent::Type::MouseMove;
 			ev.x_rel = jev.value("x_rel", 0.0f);
 			ev.y_rel = jev.value("y_rel", 0.0f);
 			ev.x_abs = jev.value("x_abs", 0.0f);
 			ev.y_abs = jev.value("y_abs", 0.0f);
 		} else if (type_str == "mouse_button") {
-			ev.type = InputEvent::Type::MouseButton;
-			ev.button = jev.value("button", "left");
+			ev.type    = InputEvent::Type::MouseButton;
+			ev.button  = jev.value("button", "left");
 			ev.pressed = jev.value("pressed", true);
 			if (button_name_map.find(ev.button) == button_name_map.end()) {
 				res.status = 400;
@@ -234,7 +314,7 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 				return;
 			}
 		} else if (type_str == "mouse_wheel") {
-			ev.type = InputEvent::Type::MouseWheel;
+			ev.type        = InputEvent::Type::MouseWheel;
 			ev.wheel_delta = jev.value("delta", 0.0f);
 		} else {
 			res.status = 400;
@@ -251,7 +331,7 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 	cmd.WaitForCompletion(5000);
 
 	json result;
-	result["status"] = "ok";
+	result["status"]           = "ok";
 	result["events_scheduled"] = body["events"].size();
 	send_json(res, result);
 }
@@ -265,7 +345,9 @@ static std::vector<InputEvent> rec_buffer;
 static double rec_start_pic_ms;
 
 static const std::unordered_map<int, std::string> button_id_to_name = {
-	{0, "left"}, {1, "right"}, {2, "middle"},
+        {0,   "left"},
+        {1,  "right"},
+        {2, "middle"},
 };
 
 static const std::unordered_map<int, std::string> key_id_to_name = [] {
@@ -285,8 +367,8 @@ void InputRecording::Start()
 {
 	std::lock_guard<std::mutex> lock(rec_mutex);
 	rec_buffer.clear();
-	rec_active = true;
-	rec_paused = false;
+	rec_active       = true;
+	rec_paused       = false;
 	rec_start_pic_ms = PIC_FullIndex();
 }
 
@@ -341,11 +423,13 @@ double InputRecording::DurationMs()
 void InputRecording::OnKeyEvent(int key, bool pressed)
 {
 	std::lock_guard<std::mutex> lock(rec_mutex);
-	if (!rec_active || rec_paused) return;
+	if (!rec_active || rec_paused) {
+		return;
+	}
 	InputEvent ev;
-	ev.t_ms = rec_elapsed_ms();
-	ev.type = InputEvent::Type::Key;
-	ev.key = key;
+	ev.t_ms    = rec_elapsed_ms();
+	ev.type    = InputEvent::Type::Key;
+	ev.key     = key;
 	ev.pressed = pressed;
 	rec_buffer.push_back(std::move(ev));
 }
@@ -353,10 +437,12 @@ void InputRecording::OnKeyEvent(int key, bool pressed)
 void InputRecording::OnMouseMove(float x_rel, float y_rel, float x_abs, float y_abs)
 {
 	std::lock_guard<std::mutex> lock(rec_mutex);
-	if (!rec_active || rec_paused) return;
+	if (!rec_active || rec_paused) {
+		return;
+	}
 	InputEvent ev;
-	ev.t_ms = rec_elapsed_ms();
-	ev.type = InputEvent::Type::MouseMove;
+	ev.t_ms  = rec_elapsed_ms();
+	ev.type  = InputEvent::Type::MouseMove;
 	ev.x_rel = x_rel;
 	ev.y_rel = y_rel;
 	ev.x_abs = x_abs;
@@ -367,11 +453,13 @@ void InputRecording::OnMouseMove(float x_rel, float y_rel, float x_abs, float y_
 void InputRecording::OnMouseButton(const std::string& button, bool pressed)
 {
 	std::lock_guard<std::mutex> lock(rec_mutex);
-	if (!rec_active || rec_paused) return;
+	if (!rec_active || rec_paused) {
+		return;
+	}
 	InputEvent ev;
-	ev.t_ms = rec_elapsed_ms();
-	ev.type = InputEvent::Type::MouseButton;
-	ev.button = button;
+	ev.t_ms    = rec_elapsed_ms();
+	ev.type    = InputEvent::Type::MouseButton;
+	ev.button  = button;
 	ev.pressed = pressed;
 	rec_buffer.push_back(std::move(ev));
 }
@@ -379,10 +467,12 @@ void InputRecording::OnMouseButton(const std::string& button, bool pressed)
 void InputRecording::OnMouseWheel(float delta)
 {
 	std::lock_guard<std::mutex> lock(rec_mutex);
-	if (!rec_active || rec_paused) return;
+	if (!rec_active || rec_paused) {
+		return;
+	}
 	InputEvent ev;
-	ev.t_ms = rec_elapsed_ms();
-	ev.type = InputEvent::Type::MouseWheel;
+	ev.t_ms        = rec_elapsed_ms();
+	ev.type        = InputEvent::Type::MouseWheel;
 	ev.wheel_delta = delta;
 	rec_buffer.push_back(std::move(ev));
 }
@@ -413,9 +503,9 @@ static void hook_mouse_wheel(float delta)
 void InputRecording::InstallHooks()
 {
 	keyboard_input_hook = hook_keyboard;
-	mouse_move_hook = hook_mouse_move;
-	mouse_button_hook = hook_mouse_button;
-	mouse_wheel_hook = hook_mouse_wheel;
+	mouse_move_hook     = hook_mouse_move;
+	mouse_button_hook   = hook_mouse_button;
+	mouse_wheel_hook    = hook_mouse_wheel;
 }
 
 static json event_to_json(const InputEvent& ev)
@@ -426,26 +516,25 @@ static json event_to_json(const InputEvent& ev)
 	switch (ev.type) {
 	case InputEvent::Type::Key: {
 		j["type"] = "key";
-		auto it = key_id_to_name.find(ev.key);
-		j["key"] = (it != key_id_to_name.end()) ? it->second
-		                                         : "KBD_NONE";
+		auto it   = key_id_to_name.find(ev.key);
+		j["key"] = (it != key_id_to_name.end()) ? it->second : "KBD_NONE";
 		j["pressed"] = ev.pressed;
 		break;
 	}
 	case InputEvent::Type::MouseMove:
-		j["type"] = "mouse_move";
+		j["type"]  = "mouse_move";
 		j["x_rel"] = ev.x_rel;
 		j["y_rel"] = ev.y_rel;
 		j["x_abs"] = ev.x_abs;
 		j["y_abs"] = ev.y_abs;
 		break;
 	case InputEvent::Type::MouseButton:
-		j["type"] = "mouse_button";
-		j["button"] = ev.button;
+		j["type"]    = "mouse_button";
+		j["button"]  = ev.button;
 		j["pressed"] = ev.pressed;
 		break;
 	case InputEvent::Type::MouseWheel:
-		j["type"] = "mouse_wheel";
+		j["type"]  = "mouse_wheel";
 		j["delta"] = ev.wheel_delta;
 		break;
 	}
@@ -495,8 +584,8 @@ void RecordingHandlers::PostStop(const httplib::Request&, httplib::Response& res
 
 	json j;
 	j["event_count"] = events.size();
-	j["events"] = json::array();
-	double duration = 0;
+	j["events"]      = json::array();
+	double duration  = 0;
 	for (const auto& ev : events) {
 		j["events"].push_back(event_to_json(ev));
 		if (ev.t_ms > duration) {
@@ -510,8 +599,8 @@ void RecordingHandlers::PostStop(const httplib::Request&, httplib::Response& res
 void RecordingHandlers::GetStatus(const httplib::Request&, httplib::Response& res)
 {
 	json j;
-	j["recording"] = InputRecording::IsRecording();
-	j["paused"] = InputRecording::IsPaused();
+	j["recording"]   = InputRecording::IsRecording();
+	j["paused"]      = InputRecording::IsPaused();
 	j["event_count"] = InputRecording::EventCount();
 	j["duration_ms"] = InputRecording::DurationMs();
 	send_json(res, j);
