@@ -9,6 +9,7 @@
 #include "hardware/input/mouse.h"     // MOUSE_Event*, mouse_*_hook
 #include "hardware/pic.h"
 
+#include <algorithm>
 #include <chrono>
 
 #include "libs/json/json.h"
@@ -78,15 +79,8 @@ static const std::unordered_map<std::string, MouseButtonId> button_name_map = {
 static std::mutex pending_mutex;
 static std::queue<InputEvent> pending_events;
 
-static void pic_input_handler(uint32_t)
+static void dispatch_input_event(const InputEvent& ev)
 {
-	std::lock_guard<std::mutex> lock(pending_mutex);
-	if (pending_events.empty()) {
-		return;
-	}
-	auto ev = pending_events.front();
-	pending_events.pop();
-
 	switch (ev.type) {
 	case InputEvent::Type::Key:
 		KEYBOARD_AddKey(static_cast<KBD_KEYS>(ev.key), ev.pressed);
@@ -107,6 +101,56 @@ static void pic_input_handler(uint32_t)
 	}
 }
 
+static size_t pending_total = 0;
+static size_t pending_dispatched = 0;
+
+static void pic_input_handler(uint32_t)
+{
+	std::lock_guard<std::mutex> lock(pending_mutex);
+	if (pending_events.empty()) {
+		return;
+	}
+	auto ev = pending_events.front();
+	pending_events.pop();
+	++pending_dispatched;
+
+	switch (ev.type) {
+	case InputEvent::Type::Key:
+		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms key %d %s",
+		          pending_dispatched, pending_total,
+		          ev.t_ms, ev.key,
+		          ev.pressed ? "DOWN" : "UP");
+		break;
+	case InputEvent::Type::MouseMove:
+		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms mouse_move rel=(%.1f,%.1f)",
+		          pending_dispatched, pending_total,
+		          ev.t_ms, ev.x_rel, ev.y_rel);
+		break;
+	case InputEvent::Type::MouseButton:
+		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms mouse_button %s %s",
+		          pending_dispatched, pending_total,
+		          ev.t_ms, ev.button.c_str(),
+		          ev.pressed ? "DOWN" : "UP");
+		break;
+	case InputEvent::Type::MouseWheel:
+		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms mouse_wheel delta=%.1f",
+		          pending_dispatched, pending_total,
+		          ev.t_ms, ev.wheel_delta);
+		break;
+	}
+
+	dispatch_input_event(ev);
+
+	if (!pending_events.empty()) {
+		const auto& next = pending_events.front();
+		const auto delay = std::max(next.t_ms - ev.t_ms, 0.0);
+		PIC_AddEvent(pic_input_handler, delay);
+	} else {
+		LOG_DEBUG("REPLAY chain complete: %zu/%zu events dispatched",
+		          pending_dispatched, pending_total);
+	}
+}
+
 InputSequenceCommand::InputSequenceCommand(std::vector<InputEvent> events)
         : events(std::move(events))
 {
@@ -116,29 +160,24 @@ void InputSequenceCommand::Execute()
 {
 	for (auto& ev : events) {
 		if (ev.t_ms <= 0) {
-			switch (ev.type) {
-			case InputEvent::Type::Key:
-				KEYBOARD_AddKey(static_cast<KBD_KEYS>(ev.key), ev.pressed);
-				break;
-			case InputEvent::Type::MouseMove:
-				MOUSE_InjectMoved(ev.x_rel, ev.y_rel);
-				break;
-			case InputEvent::Type::MouseButton: {
-				auto it = button_name_map.find(ev.button);
-				if (it != button_name_map.end()) {
-					MOUSE_InjectButton(it->second, ev.pressed);
-				}
-				break;
-			}
-			case InputEvent::Type::MouseWheel:
-				MOUSE_InjectWheel(ev.wheel_delta);
-				break;
-			}
-		} else {
-			std::lock_guard<std::mutex> lock(pending_mutex);
-			pending_events.push(ev);
-			PIC_AddEvent(pic_input_handler, ev.t_ms);
+			dispatch_input_event(ev);
 		}
+	}
+
+	std::lock_guard<std::mutex> lock(pending_mutex);
+	for (auto& ev : events) {
+		if (ev.t_ms > 0) {
+			pending_events.push(ev);
+		}
+	}
+	pending_total = pending_events.size();
+	pending_dispatched = 0;
+	LOG_DEBUG("REPLAY starting chain: %zu timed events, first at %.1fms, last at %.1fms",
+	          pending_total,
+	          pending_events.empty() ? 0.0 : pending_events.front().t_ms,
+	          events.empty() ? 0.0 : events.back().t_ms);
+	if (!pending_events.empty()) {
+		PIC_AddEvent(pic_input_handler, pending_events.front().t_ms);
 	}
 }
 
@@ -223,7 +262,7 @@ static std::mutex rec_mutex;
 static bool rec_active = false;
 static bool rec_paused = false;
 static std::vector<InputEvent> rec_buffer;
-static std::chrono::steady_clock::time_point rec_start_time;
+static double rec_start_pic_ms;
 
 static const std::unordered_map<int, std::string> button_id_to_name = {
 	{0, "left"}, {1, "right"}, {2, "middle"},
@@ -239,9 +278,7 @@ static const std::unordered_map<int, std::string> key_id_to_name = [] {
 
 static double rec_elapsed_ms()
 {
-	return std::chrono::duration<double, std::milli>(
-	               std::chrono::steady_clock::now() - rec_start_time)
-	        .count();
+	return PIC_FullIndex() - rec_start_pic_ms;
 }
 
 void InputRecording::Start()
@@ -250,7 +287,7 @@ void InputRecording::Start()
 	rec_buffer.clear();
 	rec_active = true;
 	rec_paused = false;
-	rec_start_time = std::chrono::steady_clock::now();
+	rec_start_pic_ms = PIC_FullIndex();
 }
 
 void InputRecording::Pause()
