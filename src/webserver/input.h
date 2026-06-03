@@ -41,8 +41,13 @@ private:
 	std::vector<InputEvent> events = {};
 };
 
+class StartRecordingCommand : public Command {
+public:
+	void Execute() override;
+};
+
 namespace InputRecording {
-	void Start();
+	void StartOnEmulationThread();
 	void Pause();
 	bool Stop(std::vector<InputEvent>& out_events);
 	bool IsRecording();

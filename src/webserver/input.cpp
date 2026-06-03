@@ -358,18 +358,28 @@ static const std::unordered_map<int, std::string> key_id_to_name = [] {
 	return m;
 }();
 
-static double rec_elapsed_ms()
+static double rec_elapsed_ms_precise()
 {
 	return PIC_FullIndex() - rec_start_pic_ms;
 }
 
-void InputRecording::Start()
+static double rec_elapsed_ms_approx()
+{
+	return PIC_AtomicIndex() - rec_start_pic_ms;
+}
+
+void InputRecording::StartOnEmulationThread()
 {
 	std::lock_guard<std::mutex> lock(rec_mutex);
 	rec_buffer.clear();
 	rec_active       = true;
 	rec_paused       = false;
 	rec_start_pic_ms = PIC_FullIndex();
+}
+
+void StartRecordingCommand::Execute()
+{
+	InputRecording::StartOnEmulationThread();
 }
 
 void InputRecording::Pause()
@@ -417,7 +427,7 @@ double InputRecording::DurationMs()
 	if (!rec_active) {
 		return 0;
 	}
-	return rec_elapsed_ms();
+	return rec_elapsed_ms_approx();
 }
 
 void InputRecording::OnKeyEvent(int key, bool pressed)
@@ -427,7 +437,7 @@ void InputRecording::OnKeyEvent(int key, bool pressed)
 		return;
 	}
 	InputEvent ev;
-	ev.t_ms    = rec_elapsed_ms();
+	ev.t_ms    = rec_elapsed_ms_precise();
 	ev.type    = InputEvent::Type::Key;
 	ev.key     = key;
 	ev.pressed = pressed;
@@ -441,7 +451,7 @@ void InputRecording::OnMouseMove(float x_rel, float y_rel, float x_abs, float y_
 		return;
 	}
 	InputEvent ev;
-	ev.t_ms  = rec_elapsed_ms();
+	ev.t_ms  = rec_elapsed_ms_precise();
 	ev.type  = InputEvent::Type::MouseMove;
 	ev.x_rel = x_rel;
 	ev.y_rel = y_rel;
@@ -457,7 +467,7 @@ void InputRecording::OnMouseButton(const std::string& button, bool pressed)
 		return;
 	}
 	InputEvent ev;
-	ev.t_ms    = rec_elapsed_ms();
+	ev.t_ms    = rec_elapsed_ms_precise();
 	ev.type    = InputEvent::Type::MouseButton;
 	ev.button  = button;
 	ev.pressed = pressed;
@@ -471,7 +481,7 @@ void InputRecording::OnMouseWheel(float delta)
 		return;
 	}
 	InputEvent ev;
-	ev.t_ms        = rec_elapsed_ms();
+	ev.t_ms        = rec_elapsed_ms_precise();
 	ev.type        = InputEvent::Type::MouseWheel;
 	ev.wheel_delta = delta;
 	rec_buffer.push_back(std::move(ev));
@@ -550,7 +560,8 @@ void RecordingHandlers::PostStart(const httplib::Request&, httplib::Response& re
 		send_json(res, err);
 		return;
 	}
-	InputRecording::Start();
+	StartRecordingCommand cmd;
+	cmd.WaitForCompletion(1000);
 	json j;
 	j["status"] = "recording";
 	send_json(res, j);
