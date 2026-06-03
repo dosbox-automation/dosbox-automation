@@ -1,84 +1,41 @@
-# DOSBox Staging
+# dosbox-automation
 
 ![GPL-2.0-or-later][gpl-badge]
-[![Chat][discord-badge]][discord]
 
-**DOSBox Staging** is a modern continuation of DOSBox with advanced features and current development practices.
+A DOSBOX variant for Linux and Windows, mainly for automated installation of games, supporting DOS developers, better launcher support, export of pristine game screenshots and replaying recorded keyboard and mouse events.
 
 It is a (mostly) drop-in replacement for older DOSBox versions—your existing configurations will continue to work, and you will have access to many advanced features.
 
-For a detailed description of the project's scope please refer to the [About](https://www.dosbox-staging.org/about/) page on our website.
+**dosbox-automation controls DOSBox through a local HTTP REST API.**
 
-## Donations
+What does that mean?
+- automated game installs, including multi disk installs
+- recording of keyboard and mouse with deterministic replay (pre recorded game demos)
+- tighter launcher integration by controlling starting, installing and stopping games and programmatic shutdown of dosbox-automation
+- controllable disk image support, with swapping disks via API
+- support for unit and regression testing for DOS developers (via automation features)
 
-If you enjoy using DOSBox Staging, please [consider a
-donation](https://www.dosbox-staging.org/get-involved/#make-a-donation) to the
-project.
-
-If you want to help but can't afford a donation, check out the [Get
-involved](https://www.dosbox-staging.org/get-involved/) page of our website
-for other ways to contribute.
-
+**Security considerations**
+If you open a web server with your system, you automatically open up an attack surface. dosbox-automation factors this in and we strive to provide proper security with our webserver. This is often overlooked and still important to us to protect our users from malicious software trying to exploit our product.
 
 ## Project website
 
-https://www.dosbox-staging.org/
-
-First-time users and people migrating from other DOSBox variants should start by reading the [Getting started guide](https://www.dosbox-staging.org/getting-started/).
-
-## Build status
-
-[![Windows (VisualStudio) build status][build-win-msvc-badge]][build-win-msvc-ci]
-[![macOS build status][build-mac-badge]][build-mac-ci]
-[![Linux x86\_64 build status][build-lin1-badge]][build-lin1-ci]
+https://www.dosbox-automation.org/
 
 ## Stable release builds
 
 Regular users should use our stable release builds available on our project website:
 
-- [Windows](https://www.dosbox-staging.org/releases/windows/)
-- [macOS](https://www.dosbox-staging.org/releases/macos/)
-- [Linux](https://www.dosbox-staging.org/releases/linux/)
-
+- [Linux](https://github.com/dosbox-automation/dosbox-automation/releases)
+- [Windows](https://github.com/dosbox-automation/dosbox-automation/releases)
 
 ## Development builds
 
-Development builds are automatically created on every commit merged to the `main` branch. You need to be logged in to GitHub to download the development builds.
-
-[Development builds]
-
-## Key features for developers
-
-| **Feature**                | **Status**                          |
-| -------------------------- | -------------------------------     |
-| **Version control**        | Git                                 |
-| **Language**               | C++23                               |
-| **Logging**                | Loguru for C++<sup>[3]</sup>        |
-| **Build system**           | CMake + Ninja or Visual Studio 2022 |
-| **Dependency manager**     | vcpkg                               |
-| **CI**                     | Yes                                 |
-| **Static analysis**        | Yes<sup>[1],[2]</sup>               |
-| **Dynamic analysis**       | Yes                                 |
-| **clang-format**           | Yes                                 |
-| **[Development builds]**   | Yes                                 |
-| **Unit tests**             | Yes<sup>[4]</sup>                   |
-
-[1]: https://github.com/dosbox-staging/dosbox-staging/actions/workflows/clang-analysis.yml
-[2]: https://github.com/dosbox-staging/dosbox-staging/actions/workflows/pvs-studio.yml
-[3]: https://github.com/emilk/loguru
-[4]: https://github.com/dosbox-staging/dosbox-staging/tree/main/tests
-[Development builds]: https://www.dosbox-staging.org/releases/development-builds/
-
-## Source code analysis tools
-
-- [PVS-Studio](https://pvs-studio.com/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source) — C++ static analyser
-- [Pylint](https://pypi.org/project/pylint/) — Python static analyser
-- [markdownlint](https://github.com/DavidAnson/markdownlint) — style checker and linter for Markdown
-- [ShellCheck](https://www.shellcheck.net/) — shell script analysis tool
+Development builds are automatically created on every commit merged to the `dosbox-automation` branch. You need to be logged in to GitHub to download the development builds.
 
 ## Dependencies
 
-DOSBox Staging has the following library dependencies:
+dosbox-automation has the following library dependencies:
 
 | Dependency                                                | Provides feature                                | vcpkg package name | vcpkg version     | Optional?           |
 | --------------------------------------------------------- | ----------------------------------------------- | ------------------ | ----------------- | ------------------- |
@@ -98,30 +55,123 @@ DOSBox Staging has the following library dependencies:
 _¹ You can use plain old zlib instead._
 
 
-### Dynamically loaded dependencies
+## Get the sources
 
-**Slirp** is built separately as a dynamic library (via
-vcpkg) and is loaded on-demand at runtime if available. Please refer to the
-[dosbox-staging-ext](https://github.com/dosbox-staging/dosbox-staging-ext)
-project for further details. To check the version of this dependency 
-included in our stable and dev build packages, check out the comments of the
-[releases packages](https://github.com/dosbox-staging/dosbox-staging-ext/releases) of
-the [dosbox-staging-ext](https://github.com/dosbox-staging/dosbox-staging-ext)
-project.
+Clone the repository (one-time step):
 
-For information on the optional **Nuked SC-55 CLAP** audio plugin, check out
-the [plugin's GitHub repository](https://github.com/johnnovak/Nuked-SC55-CLAP/) (note Nuked SC-55
-CLAP is _not_ a DOSBox Staging project).
-
+``` shell
+git clone https://github.com/dosbox-automation/dosbox-automation.git
+```
 
 ## Build instructions
 
 Please refer to the platform specific build instructions:
 
-- [Windows](docs/build-windows.md)
-- [macOS](docs/build-macos.md)
 - [Linux](docs/build-linux.md)
+- [Windows](docs/build-windows.md)
+- [macOS](docs/build-macos.md)   (note: this is untested, use them with caution)
 
+### Linux, macOS
+
+Install build dependencies appropriate for your OS:
+
+``` shell
+# Fedora
+sudo dnf install ccache gcc-c++ meson alsa-lib-devel libatomic libpng-devel \
+                 SDL2-devel asio-devel opusfile-devel \
+                 fluidsynth-devel iir1-devel mt32emu-devel libslirp-devel \
+                 speexdsp-devel libXi-devel zlib-ng-devel
+```
+
+``` shell
+# Debian, Ubuntu
+sudo apt install ccache build-essential libasound2-dev libatomic1 libpng-dev \
+                 libsdl2-dev libasio-dev libopusfile-dev \
+                 libfluidsynth-dev libslirp-dev libspeexdsp-dev libxi-dev
+
+# Install Meson on Debian-11 "Bullseye" or Ubuntu-21.04 and newer
+sudo apt install meson
+```
+
+``` shell
+# Arch, Manjaro
+sudo pacman -S ccache gcc meson alsa-lib libpng sdl2 sdl2_net \
+               asio opusfile fluidsynth libslirp speexdsp libxi pkgconf
+```
+
+``` shell
+# openSUSE
+sudo zypper install ccache gcc gcc-c++ meson alsa-devel libatomic1 libpng-devel \
+                    libSDL2-devel asio-devel \
+                    opusfile-devel fluidsynth-devel libmt32emu-devel libslirp-devel \
+                    speexdsp libXi-devel
+```
+
+``` shell
+# macOS
+xcode-select --install
+brew install cmake ccache meson libpng sdl2 asio opusfile \
+     fluid-synth libslirp pkg-config python3 speexdsp
+```
+
+### Build and stay up-to-date with the latest sources
+
+1. Check out the main branch:
+
+    ``` shell
+    # commit or stash any personal code changes
+    git checkout main -f
+    ```
+
+2. Pull the latest updates. This is necessary every time you want a new build:
+
+    ``` shell
+    git pull
+    ```
+
+3. Set up the build. This is a one-time step either after cloning the repo or
+    cleaning your working directories:
+
+    ``` shell
+    meson setup build
+    ```
+
+    The above enables all of DOSBox Staging's functional features. If you're
+    interested in seeing all of Meson's setup options, run `meson configure`.
+
+4. Compile the sources. This is necessary every time you want a new build:
+
+    ``` shell
+    meson compile -C build
+    ```
+
+    Your binary is: `build/dosbox`
+
+    The binary depends on local resources relative to it, so we suggest
+    symlinking to the binary from your `PATH`, such as into `~/.local/bin/`.
+
+
+### Windows – Visual Studio (2022 or newer)
+
+First, you need to setup [vcpkg] to install build dependencies. Once vcpkg
+is bootstrapped, open PowerShell and run:
+
+``` powershell
+PS:\> .\vcpkg integrate install
+```
+
+This step will ensure that MSVC can use vcpkg to build, find and links all
+dependencies.
+
+Start Visual Studio and open the file `vs\dosbox.sln`. Make sure you have
+`x64` selected as the solution platform.  Use **Ctrl+Shift+B** to build all
+projects.
+
+Note, the first time you build a configuration, dependencies will be built
+automatically and stored in the `vcpkg_installed` directory. This can take
+a significant length of time.
+
+[vcpkg]: https://github.com/microsoft/vcpkg
 
 ## Imported branches, community patches, old forks
 
@@ -147,21 +197,16 @@ git fetch origin "refs/notes/*:refs/notes/*"
 Please refer to the [documentation guide](DOCUMENTATION.md) before making
 changes to the website or the documentation.
 
-[`svn/*`]:     https://github.com/dosbox-staging/dosbox-staging/branches/all?utf8=%E2%9C%93&query=svn%2F
-[`svn/trunk`]: https://github.com/dosbox-staging/dosbox-staging/tree/svn/trunk
-[`vogons/*`]:  https://github.com/dosbox-staging/dosbox-staging/branches/all?utf8=%E2%9C%93&query=vogons%2F
-[`forks/*`]:   https://github.com/dosbox-staging/dosbox-staging/branches/all?utf8=%E2%9C%93&query=forks%2F
+
+[`svn/*`]:     https://github.com/dosbox-automation/dosbox-automation/branches/all?utf8=%E2%9C%93&query=svn%2F
+[`svn/trunk`]: https://github.com/dosbox-automation/dosbox-automation/tree/svn/trunk
+[`vogons/*`]:  https://github.com/dosbox-automation/dosbox-automation/branches/all?utf8=%E2%9C%93&query=vogons%2F
+[`forks/*`]:   https://github.com/dosbox-automation/dosbox-automation/branches/all?utf8=%E2%9C%93&query=forks%2F
 [git-notes]:   https://git-scm.com/docs/git-notes
 
 [gpl-badge]:     https://img.shields.io/badge/license-GPL--2.0--or--later-blue
-[discord-badge]: https://img.shields.io/discord/514567252864008206?color=%237289da&logo=discord&logoColor=white&label=discord
-[discord]:       https://discord.gg/WwAg3Xf
 
-[build-lin1-badge]: https://img.shields.io/github/actions/workflow/status/dosbox-staging/dosbox-staging/linux.yml?label=Linux%20%28x86_64%29
-[build-lin1-ci]:    https://github.com/dosbox-staging/dosbox-staging/actions/workflows/linux.yml?query=branch%3Amain
+*Note: this is a preliminarily document version. Information may be outdated and will reworked*
 
-[build-win-msvc-badge]: https://img.shields.io/github/actions/workflow/status/dosbox-staging/dosbox-staging/windows-msvc.yml?label=Windows%20%28Visual%20Studio%29
-[build-win-msvc-ci]:    https://github.com/dosbox-staging/dosbox-staging/actions/workflows/windows-msvc.yml?query=branch%3Amain
-
-[build-mac-badge]: https://img.shields.io/github/actions/workflow/status/dosbox-staging/dosbox-staging/macos.yml?label=macOS%20%28x86_64%2C%20arm64%29
-[build-mac-ci]:    https://github.com/dosbox-staging/dosbox-staging/actions/workflows/macos.yml?query=branch%3Amain
+---
+Built with AI-assisted development, using industry-standard software engineering practices. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for exactly what that means.

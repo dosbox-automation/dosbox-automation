@@ -5,16 +5,37 @@ globs: src/**/*.{cpp,h}
 
 # General principles
 
-- Simplest, most minimal solution wins; don't overengineer or future-proof
-- Prefer composition over inheritance; prefer immutability
+- No "easy fixes", "simple fixes", "quick fixes", any "something fixes" or any shortcut 
+  that suppresses symptoms instead of addressing the root cause. Understand *why* something 
+  is broken, then fix it properly.
+- Safe and secure code is paramount. Write code defensively.
+- Functions should validate their input. Fail early, fail loudly.
+- Keep code readable and easy to maintain.
 - Small, focused, pure functions; single responsibility per component
-- Look for existing patterns in the codebase first — don't reinvent the wheel
+- Look for existing patterns in the codebase first. Don't reinvent the wheel.
 - Self-documenting code; no restating the obvious in comments
-- Only add abstractions when justified by current needs
 - Prefer loose coupling and high cohesion
 - Keep testability in mind
-- Clarity and maintainability first; only optimise with measurements
-- When in doubt, underengineer
+- New code or changes that have no unit tests: add meaningful unit tests.
+- New unit tests should also cover potential exploits.
+- When in doubt, keep code readable and understandable.
+
+# Security posture
+
+This is an emulator with a REST API. The webserver is an attack surface.
+
+- All HTTP input is untrusted. Validate types, ranges, and sizes before use.
+  Never pass raw request data into emulator internals without checking it first.
+- Bounds-check array indices, buffer sizes, and numeric parameters from API
+  requests. A malformed JSON payload must not crash or corrupt the emulator.
+- Sanitize file paths from API input. Canonicalize with `realpath()` or
+  `std::filesystem::canonical()` and reject anything outside allowed roots.
+  Watch for `../`, symlinks, and null bytes.
+- Cap resource consumption: request body sizes, event array lengths, allocation
+  counts. No endpoint should allow an attacker to exhaust memory or CPU.
+- The emulator core trusts its own internal state. The webserver layer does not
+  trust anything that arrived over HTTP. The Bridge is the trust boundary:
+  commands crossing it must carry already-validated data.
 
 # Scope
 
@@ -31,7 +52,13 @@ conventions — do not reformat it.
 - Never use C++ iostreams
 - Never use C string functions — only `std::string` and `std::string_view`
 - Never write `using namespace std;`
-- Avoid exceptions except for signalling RAII construction failures
+- Emulator core (`src/hardware/`, `src/cpu/`, `src/dos/`): avoid exceptions.
+  Use return values, error codes, or assertions. Performance and C interop
+  matter here.
+- Webserver layer (`src/webserver/`): exceptions are fine and already in use
+  (httplib throws, json::parse throws, Bridge throws on timeout). Use them
+  where they're natural. Catch at handler boundaries so a bad request
+  returns an error response, not a crash.
 - Avoid complex template metaprogramming and complex macros
 - Use RAII and smart pointers for resource management
 - Prefer `constexpr`, `static_assert`, lambdas, range-based loops
@@ -53,7 +80,8 @@ conventions — do not reformat it.
 
 # Types
 
-- Prefer `auto`
+- Use `auto` when the type is obvious from context or too verbose to spell out.
+  Don't use it when it hides what you're working with.
 - Prefer plain `int` for numbers; don't micro-optimise integer sizes
 - Use `int64_t` for large numbers rather than `uint32_t`
 - Use `intXX_t`/`uintXX_t` only for binary protocols; `size_t` only for stdlib interfaces

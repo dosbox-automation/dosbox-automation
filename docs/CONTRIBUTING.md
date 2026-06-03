@@ -1,127 +1,147 @@
-# Contributing to DOSBox Staging
+# Contributing to dosbox-automation
 
-Thank you for your interest in contributing to DOSBox Staging! There are many
+Thank you for your interest in contributing to dosbox-automation! There are many
 ways to participate, and we appreciate all of them.
 
+- [AI usage](#ai-usage)
 - [Feature requests and bug reports](#feature-requests-and-bug-reports)
 - [Find something to work on](#find-something-to-work-on)
-- [Policy on the use of generative AI tools](#policy-on-the-use-of-generative-ai-tools)
 - [Contributing code](#contributing-code)
+  - [General principles](#general-principles)
+  - [Security posture](#security-posture)
   - [Language standard](#language-standard)
+  - [Naming](#naming)
+  - [Types](#types)
   - [Code formatting](#code-formatting)
   - [Code style](#code-style)
   - [Code style examples](#code-style-examples)
   - [Submitting code changes](#submitting-code-changes)
+- [Documentation](#documentation)
+- [Writing style](#writing-style)
+- [Versioning](#versioning)
 - [Tools](#tools)
   - [compile-commits](#compile-commits)
   - [clang-format](#clang-format)
   - [count-warnings](#count-warnings)
 
 
+## AI Usage
+
+This project uses tool assisted development. Your contributions are judged on merit,
+not on who or what wrote them. The same rules apply to maintainers and
+contributors alike: there are no double standards, where maintainer code gets a 
+pass while outside contributors face extra scrutiny for being tool assisted. One set of
+coding guidelines, documented here, applies to everyone.
+
+If you use a LLM, we prepared a set of instructions within this repository
+(`.claude/` directory). If you use another model than that, instruct yours to read them
+in. 
+
+Those instructions reference the same rules as this document and will cause your model 
+to produce code that fits our codebase.
+
+Submissions generated with LLMs must include:
+
+- a declaration of AI use, as well as what model has been used for code generation (family and version)
+- a confirmation that the project's shipped code generation rules
+
+
+### Development process
+
+For transparency, this how tool assisted development is used.
+Contributors using LLMs for code generation should follow the same approach.
+
+1. **Architecture and design decisions** are made by human software engineers.
+   Major features start as design documents, before any code is written. The
+   LLM does not decide scope, technical direction or trade-offs.
+
+2. **Implementation** is specified by the developer with full context: what to
+   build, which patterns to follow, what constraints apply, what to avoid. The
+   AI stays within these set boundaries and is not permitted to cross them.
+
+3. **Review and responsibility** rests with the developer. Every change must be
+   read and understood before commit. If something is unclear, question it and
+   have it explained before greenlighting. This applies to source code,
+   commits, release notes, and any public-facing text. 
+
+4. **Testing and verification** goes beyond generated unit tests. Every change
+   requires direct testing, debugging, and review by the human developer.
+
+This is not "generate and ship." It is closer to pair programming where one
+partner is fast at typing but needs guidance, clear direction and regular correction.
+
+
 ## Feature requests and bug reports
 
 If you find a [feature request][enhancement_label] you're interested in, leave
-a comment—this will help us decide where to focus our development effort.
+a comment. This will help us decide where to focus development effort.
 
-Report bugs via our [bugtracker][issues]. Issues and requests reported via
-comments on social media or private messages are very likely going to be lost.
+Report bugs via our [bugtracker][issues]. Issues and requests sent via comments
+on social media or private messages will very likely be lost.
 
-[enhancement_label]: https://github.com/dosbox-staging/dosbox-staging/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement
-[issues]: https://github.com/dosbox-staging/dosbox-staging/issues
-
-
-## Find something to work on
-
-There are plenty of tasks to work on all around. Here are some ideas:
-
-- Test DOSBox Staging with your DOS games.
-
-- Improve our documentation (in the repo, or in the [project
-  wiki](https://github.com/dosbox-staging/dosbox-staging/wiki)).
-
-- Promote the project in gaming communities 😎
-
-- Provide translations (refer to our [translations guide](https://github.com/dosbox-staging/dosbox-staging/blob/main/docs/TRANSLATING.md)).
-
-- Look at warnings in the code (build with `-Wall -Weffc++` to see the long
-  list of potential code improvements), and try to eliminate them.
-
-- Peruse the list of [open bug
-  reports](https://github.com/dosbox-staging/dosbox-staging/issues?q=is%3Aissue+is%3Aopen+label%3Abug)
-  and try to reproduce or fix them. If the issue is not assigned to anyone,
-  then it's for the picking! Leave a comment saying that you're working on
-  it.
-
-- Look through our static analysis reports, pick an issue, investigate if the
-  problem is true-positive or false-positive and if the code can be improved.
-  See the [PVS-Studio analysis][pvs] artifacts and reports.
-
-- Check out the reports tagged with ["good first
-  issue"](https://github.com/dosbox-staging/dosbox-staging/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)—these
-  are suitable for people getting familiar with the project.
-
-Or just send us a Pull Request with your improvement (but please read
-[Submitting code changes](#submitting-code-changes) first).
-
-If you plan to work on a new, bigger feature, then it might be a good idea to
-discuss it with us early, e.g., by creating a new issue ticket.
-
-[pvs]: https://github.com/dosbox-staging/dosbox-staging/actions/workflows/pvs-studio.yml
+[enhancement_label]: https://github.com/dosbox-automation/dosbox-automation/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement
+[issues]: https://github.com/dosbox-automation/dosbox-automation/issues
 
 
-## Policy on the use of generative AI tools
+## Do something with dosbox-automation
 
-We welcome all useful contributions, including those developed with the
-assistance of generative AI tools, also known as LLMs or coding agents.
-However, the use of such tools does not change our expectations for
-contributor responsibility, engagement, or code quality. The following apply
-to all contributions:
+- Have a project using dosbox-automation as an integration runtime or do something great with it? Yes? Contact us,
+  so we can build up a showcase page, linking back to your project!
+  
+- Take your time and audit our code, for security holes and bugs, ideally with patch to fix them. We believe
+  in proper public, technical discourse about these things in order to make dosbox-automation a safer dosbox
+  for everyone, who wants to play DOS games or uses it for automated usage, integration into launchers or
+  other usage as an integration runtime for your own applications.
+  
+  The current list of open issues is availabe [here to see](https://github.com/dosbox-automation/dosbox-automation/issues?q=is%3Aissue+is%3Aopen+label%3Abug).
 
-- You are responsible for all submitted content, regardless of whether
-  generative AI tools were used.
 
-- Only submit changes you understand and can justify.
+Code contributions, which improve dosbox-automation are welcome, but please read the section [Submitting code changes](#submitting-code-changes) first.
 
-- You must be able to explain all your changes, edge cases, and your thought
-  process.
-
-- You are expected to actively engage with reviewer feedback _yourself_.
-  Blindly copy-pasting replies to/from a generative AI tool does _not_ count
-  as engaging with the reviewer! If we have a reason to suspect you only act
-  as a message courier between us and a coding agent, we will close the PR and
-  probably ban you from the project. Believe us — we will know.
-
-- You must verify the accuracy of any AI-generated text you include in the PR
-  description or review discussion comments. Same story: it's very easy to
-  generate unlimited explanations, arguments, and walls of text with
-  generative AI tools that sound plausible. We simply don't have time to argue
-  with generative tools that never get tired — we want to engage with a human
-  who takes responsibility for their changes.
-
-- Autonomous coding agents without a human in the loop will be banned swiftly
-  from the project with _extreme prejudice_.
-
-- You may use generative tools to update the user manual, but all the above
-  points apply.
-
-- You must ensure all submitted code is compatible with the project's GPL-2.0
-  license, regardless of how it was produced.
-
-Again, we are not against AI tools; we use them frequently ourselves. We want
-to enforce certain behaviours, not how you got there. If you submit a pull
-request with code changes you do not understand, it does not matter whether it
-was entirely generated by you or a coding agent — the PR is problematic,
-regardless. Use AI tools as accelerators, not substitutes for skill and
-knowledge, and all will be well.
+If you plan to work on a bigger feature, discuss it with us early by
+creating a new issue ticket.
 
 
 ## Contributing code
 
-These rules apply to code in `src/` and `include/` directories. They don't
-apply to vendored libraries in the `src/libs/` directory (these have their own
-coding conventions).
+These rules apply to code in `src/` and `include/` directories. Vendored libraries in `src/libs/` follow their own conventions: do not reformat them.
 
-The rules outlined below apply to new code landing in the `main` branch.
+The rules below apply to new code landing in the `main` branch.
+
+
+### General principles
+
+- No shortcuts that suppress symptoms instead of addressing the root cause.
+  Understand *why* something is broken, then fix it properly.
+- Safe and secure code is paramount. Write code defensively.
+- Functions should validate their input. Fail early, fail loudly.
+- Keep code readable and easy to maintain.
+- Small, focused, pure functions. Single responsibility per component.
+- Look for existing patterns in the codebase first. Don't reinvent the wheel.
+- Self-documenting code. Don't restate the obvious in comments.
+- Prefer loose coupling and high cohesion.
+- Keep testability in mind.
+- New code or changes without unit tests: add meaningful unit tests.
+  New unit tests should also cover potential exploits.
+
+
+### Security posture
+
+This is an emulator with a REST API. The webserver is an attack surface.
+
+- All HTTP input is untrusted. Validate types, ranges, and sizes before use.
+  Never pass raw request data into emulator internals without checking it.
+- Bounds-check array indices, buffer sizes, and numeric parameters from API
+  requests. A malformed JSON payload must not crash or corrupt the emulator.
+- Sanitize file paths from API input. Canonicalize with `realpath()` or
+  `std::filesystem::canonical()` and reject anything outside allowed roots.
+  Watch for `../`, symlinks, and null bytes.
+- Cap resource consumption: request body sizes, event array lengths, allocation
+  counts. No endpoint should allow an attacker to exhaust memory or CPU.
+- The emulator core trusts its own internal state. The webserver layer does not
+  trust anything that arrived over HTTP. The Bridge is the trust boundary:
+  commands crossing it must carry already-validated data.
+
 
 ### Language standard
 
@@ -131,151 +151,140 @@ design. To clarify:
 - Avoid designing your code in a complex object-oriented style. This does not
   mean "don't use classes"; it means "don't use stuff like multiple
   inheritance, overblown class hierarchies, operator overloading, iostreams
-  for stdout/stderr, etc".
+  for stdout/stderr, etc."
 
 - C++23 has a [rich standard library](https://en.cppreference.com/w/cpp/23),
   use it. We use [STL
   containers](https://en.cppreference.com/w/cpp/container),
   [std::filesystem](https://en.cppreference.com/w/cpp/filesystem), and various
   [concurrency constructs](https://en.cppreference.com/w/cpp/thread) in our
-  new code. All new code must use the C++ standard library instead of C
-  arrays, C filesystem functions, and OS-specific concurrency APIs if possible.
+  code. All new code must use the C++ standard library instead of C
+  arrays, C filesystem functions, and OS-specific concurrency APIs.
 
-- Before starting to use platform-specific, OS-level APIs, check if the C++
+- Before using platform-specific, OS-level APIs, check if the C++
   standard library or SDL provides a cross-platform implementation already.
-  They probably do. If that's not the case, look into using battle-tested
-  libraries instead of adding lots of platform-specific custom code.
+  If not, look into using battle-tested libraries instead of adding custom
+  platform-specific code.
 
-- In general, try to use well-established libraries for common tasks. Don't
-  reinvent the wheel unnecessarily.
+- In general, use well-established libraries for common tasks.
 
-- Our use of SDL is generally restricted to the texture renderer fallback
-  option, and interfacing with OS-specific APIs that aren't covered by the C++
-  standard. So that means window management, OpenGL context creation, input
-  handling, and interfacing with OS-level audio and MIDI APIs. We should avoid
-  using SDL's thread, timer, filesystem and similar APIs when equivalent
-  functionality is available in the C++ standard library (we prefer to use
-  `std::thread`, `std::mutex`, `std::lock_guard`, `std::filesystem`,
-  `std::atomic`, etc.)
+- Our use of SDL is restricted to the texture renderer fallback option, and
+  interfacing with OS-specific APIs not covered by the C++ standard: window
+  management, OpenGL context creation, input handling, and OS-level audio and
+  MIDI APIs. Do not use SDL's thread, timer, filesystem, or similar APIs when
+  the C++ standard library provides equivalents (prefer `std::thread`,
+  `std::mutex`, `std::lock_guard`, `std::filesystem`, `std::atomic`, etc.)
 
-- The use of SDL-specific types should be restricted to a minimum. We don't
-  want them to "infect" the entire codebase (ideally, they should be only used
-  in a few files that directly interface with SDL).
+- Restrict SDL-specific types to the files that directly interface with SDL.
+  They should not spread across the codebase.
 
 - Prefer [RAII](https://en.cppreference.com/w/cpp/language/raii) patterns for
-  resource lifecycle management when possible. This means using [smart
+  resource lifecycle management. Use [smart
   pointers](https://en.cppreference.com/w/cpp/memory) (`unique_ptr`,
-  `shared_ptr`, `weak_ptr`, etc.) Using raw C pointers is heavily
-  discouraged and should be only used as a last resort when interfacing with
-  legacy DOSBox code.
+  `shared_ptr`, `weak_ptr`). Raw C pointers should only be used as a last
+  resort when interfacing with legacy DOSBox code.
 
-- Use modern C++ features like `constexpr`, `static_assert`, lambda
-  expressions, for-each and range-expression loops, etc.
+- Use modern C++ features: `constexpr`, `static_assert`, lambda expressions,
+  for-each and range-expression loops.
 
-- But do not use C++ iostreams at all.
+- Do not use C++ iostreams.
 
-- Do not use C string functions and low-level C string manipulation in new
+- Do not use C string functions or low-level C string manipulation in new
   code. Only use `std::string` and `std::string_view`.
 
-- Avoid using exceptions. C++ exceptions are trickier than you think.
-  No, you won't get it right. Or the person touching the code after you won't
-  get it right. Or the person using your exception-ridden interface won't get
-  it right. 😅 Let errors like `std::logic_error` or `std::bad_alloc`
-  terminate the process, so it's easier to notice during testing and can be
-  fixed early. The single good use case for exceptions is signalling
-  construction failures in RAII-style lifecycle management. That's vastly
-  preferable to two-stage initialisation (i.e., to have a separate `Init()`
-  method you need to call after object construction). Other than that, don't
-  throw exceptions anywhere else.
+- Emulator core (`src/hardware/`, `src/cpu/`, `src/dos/`): avoid exceptions.
+  Use return values, error codes, or assertions. Performance and C interop
+  matter here. Let errors like `std::logic_error` or `std::bad_alloc`
+  terminate the process so they're caught during testing. The one valid use
+  case for exceptions in core code is signalling construction failures in
+  RAII-style lifecycle management: that's preferable to two-stage
+  initialisation with a separate `Init()` method.
 
-- Don't micro-optimise, and avoid writing "clever code". Always optimise for
-  clarity of intent, maintainability, and readability in the first round,
-  and only deviate from that if warranted due to performance considerations
-  backed by real-world measurements. _Do not attempt to "optimise"
-  anything before proving you are indeed dealing with a bottleneck, and even
-  then, only optimise things that cause measurable, user-observable issues
-  during real-world usage (e.g., speeding something up 50-fold in a
-  synthetic micro-benchmark might or might not matter during real usage)._
+- Webserver layer (`src/webserver/`): exceptions are fine and already in use
+  (httplib throws, json::parse throws, Bridge throws on timeout). Use them
+  where they're natural. Catch at handler boundaries so a bad request returns
+  an error response, not a crash.
+
+- Outside these two areas, prefer not to throw exceptions unless there is a
+  clear reason. When in doubt, don't.
+
+- Don't micro-optimise, and avoid "clever code." Always optimise for clarity,
+  maintainability, and readability first, and only deviate when warranted by
+  performance measurements. Do not attempt to "optimise" anything before
+  proving it is a bottleneck, and even then, only optimise things that cause
+  measurable, user-observable issues during real-world usage.
 
 - Avoid complex template metaprogramming. Simple templates are fine.
 
-- Avoid complex macros. If possible, write a `constexpr` function or a simple
-  template instead.
+- Avoid complex macros. Write a `constexpr` function or a simple template
+  instead when possible.
 
-- Never write `using namespace std;`. We don't want any confusion about what
-  comes from STL and what's project-specific.
+- Never write `using namespace std;`.
 
-- Prefer using namespaces in new code instead of name prefixes. Namespaces are
-  also handy for grouping strings and constants.
+- Prefer namespaces in new code for grouping instead of name prefixes.
+
+
+### Naming
+
+- `UpperCamelCase` for types, free functions, methods, enums, constants.
+- `lower_snake_case` for variables, arguments, struct members, static
+  functions.
+- Don't uppercase acronyms: `PngWriter`, not `PNGWriter`.
+- No Hungarian notation.
+- Always include unit suffixes: `delay_ms`, `cutoff_freq_hz`.
+- Old code uses `MODULENAME_FunctionName` for public module interfaces. Do
+  **not** replace these with namespaces.
+
+
+### Types
+
+- Use `auto` when the type is obvious from context or too verbose to spell
+  out. Don't use it when it hides what you're working with.
+- Be `const`-correct. Keep `const` in sync between declarations and
+  definitions.
+- Prefer plain `int` for numbers. Don't micro-optimise integer sizes. Use
+  `int64_t` for large numbers rather than `uint32_t`. Only use
+  `intXX_t`/`uintXX_t` for binary protocols, and `size_t` only for stdlib
+  interfaces.
+- Prefer enum classes.
+- Prefer `std::optional` over sentinel values or out-parameters.
+- Default to `std::vector`. Use `std::unordered_map` over `std::map` unless
+  ordering is needed.
+- Always initialise all variables and struct members.
+- Struct-nesting is encouraged as logical groupings improve readability.
 
 
 ### Code formatting
 
-For new code, follow K&R style—see [Linux coding style] for examples and some
+For new code, follow K&R style. See [Linux coding style] for examples and
 advice on good C coding style.
 
-Following all the details of formatting style is tedious; that's why we use a
-custom [clang-format](https://clang.llvm.org/docs/ClangFormat.html) ruleset to
-make it crystal clear. See the [clang-format](#clang-format) section to learn
-how.
+Following all formatting details by hand is tedious; we use a custom
+[clang-format](https://clang.llvm.org/docs/ClangFormat.html) ruleset to make
+it clear. See the [clang-format](#clang-format) section to learn how.
 
-[Linux coding style]:https://www.kernel.org/doc/html/latest/process/coding-style.html
+[Linux coding style]: https://www.kernel.org/doc/html/latest/process/coding-style.html
 
 
 ### Code style
 
-1. Use `auto` as much as you can.
+1. Prefer pre-increment/decrement whenever possible: `++i` and `--i`.
 
-2. Try hard to be `const`-correct as much as possible.
+2. Sort includes according to [Google C++ Style
+   Guide](https://google.github.io/styleguide/cppguide.html#Names_and_Order_of_Includes).
 
-3. Keep the `const`s in sync in the function/method declarations and
-   definitions.
+3. Enable narrowing checks in new code and when reworking a file by adding
+   `CHECK_NARROWING()` and including `"util/checks.h"` (search for
+   `CHECK_NARROWING()` for examples).
 
-4. Prefer to use enum classes.
+4. Use header guards in the format: `DOSBOX_HEADERNAME_H` or
+   `DOSBOX_MODULENAME_HEADERNAME_H`.
 
-5. Always initialise all variables and struct members.
+5. Use `//` for block comments. End-of-line comments only for tabular data.
 
-6. Struct-nesting is encouraged as logical groupings improve readability.
-
-7. **NEVER** use Hungarian notation!
-
-8. But always include unit of measurement suffixes (e.g., `delay_ms` instead
-   of just `delay`, `cutoff_freq_hz` instead of just `cutoff_freq`, etc.)
-
-9. Prefer using plain `int`s for numbers. Do not micro-optimise the size of
-the integer and avoid using unsigned types. Prefer using `int64_t` over
-`uint32_t` if you need to represent big numbers. Only use `intXX_t`/`uintXX_t`
-when dealing with binary protocols, and `size_t` only if it makes interfacing
-with standard library functions less cumbersome.
-
-10. Most old code uses the naming convention `MODULENAME_FunctionName` for
-    public module interfaces. Do **NOT** replace it with namespaces.
-
-11. Generally, we only use `UpperCamelCase` and `lower_snake_case`. Function
-    arguments, variable names, struct members, and static functions are
-    `lower_snake_case`—everything else is `UpperCamelCase`. See the code
-    example below for concrete examples.
-
-12. Don't uppercase acronyms, so use `PngWriter` instead of `PNGWriter`.
-
-13. Prefer to use pre-increment/decrement whenever possible, so `++i` and `--i`.
-
-14. Sort includes according to [Google C++ Style
-    Guide](https://google.github.io/styleguide/cppguide.html#Names_and_Order_of_Includes).
-
-15. Enable narrowing checks in new code and when you rework a file by adding
-    `CHECK_NARROWING()` and including `"util/checks.h"` (just search for
-    `CHECK_NARROWING())`.
-
-16. Use header guards in the format: `DOSBOX_HEADERNAME_H` or
-    `DOSBOX_MODULENAME_HEADERNAME_H`.
-
-17. Use end-of-line comments very sparingly (only for tabular data), and use
-    `//` for block comments.
-
-18. Surround debug logging with `#if 0` & `#endif` pairs instead of commenting
-    the log statements out, or better yet, introduce define switches per topic
-    (e.g., `#define DEBUG_VGA_DRAW`).
+6. Surround debug logging with `#if 0` / `#endif` pairs instead of commenting
+   log statements out, or better yet, introduce define switches per topic
+   (e.g., `#define DEBUG_VGA_DRAW`).
 
 
 ### Code style examples
@@ -286,7 +295,7 @@ enum class CaptureState { Off, Pending, InProgress };
 // Static function
 static int32_t get_next_capture_index(const CaptureType type);
 
-// Public function prefixed by `MODULENAME_`
+// Public function prefixed by MODULENAME_
 void CAPTURE_AddFrame(const RenderedImage& image, const float frames_per_second);
 
 // Static inline struct; always initialise members
@@ -330,64 +339,42 @@ private:
     State state = {};
 
     std_fs::path rendered_path = {};
-}
+};
 ```
 
-Check out these more recently introduced files for further examples:
+Check out these files for further examples:
 
-- [src/audio/clap/*](https://github.com/dosbox-staging/dosbox-staging/tree/main/src/audio/clap) (all files)
-- [src/midi/midi_soundcanvas.cpp](https://github.com/dosbox-staging/dosbox-staging/blob/main/src/midi/midi_soundcanvas.cpp)
-- [src/midi/midi_soundcanvas.h](https://github.com/dosbox-staging/dosbox-staging/blob/main/src/midi/midi_soundcanvas.h)
-- [src/capture/image/*](https://github.com/dosbox-staging/dosbox-staging/tree/main/src/capture/image) (all files)
+- [src/audio/clap/*](https://github.com/dosbox-automation/dosbox-automation/tree/main/src/audio/clap) (all files)
+- [src/midi/midi_soundcanvas.cpp](https://github.com/dosbox-automation/dosbox-automation/blob/main/src/midi/midi_soundcanvas.cpp)
+- [src/midi/midi_soundcanvas.h](https://github.com/dosbox-automation/dosbox-automation/blob/main/src/midi/midi_soundcanvas.h)
+- [src/capture/image/*](https://github.com/dosbox-automation/dosbox-automation/tree/main/src/capture/image) (all files)
 
 
 ### Submitting code changes
 
-You'll need to submit code changes via GitHub PRs. The key points
+Submit code changes via GitHub PRs. The key points:
 
-1. Prefer small, focused commits with clearly defined scope. This aids
-   bisecting when tracking down bugs and regressions. The smaller commits, the
-   better!
+1. Group related changes into one commit. A fix that touches formatting or
+   docs around it is one commit, not three. When reformatting larger code
+   blocks (more than 10-20 lines), create a separate reformat commit first,
+   followed by the actual code change in a second commit.
 
-2. Including style changes in functional code change commits is fine as long
-   as they only affect 10-20 lines of code. When reformatting larger code
-   blocks, always create a separate reformat commit first, followed by the
-   actual code change in a second commit. The reformat commit's title should
-   be prefixed with `style:` (e.g., `style: Reformat midi_fluidsynth.cpp`).
-
-3. Make sure that all your commits can be compiled individually. This is very
-   important for bisecting, and we strictly enforce it. You can just run
-   `scripts/tools/compile-commits.sh` to compile all commits of the PR you're
-   working on.
+2. Make sure all your commits compile individually. This is critical for
+   bisecting, and we enforce it. Run `scripts/tools/compile-commits.sh` to
+   compile all commits of the PR you're working on.
 
 
 #### Commit messages
 
-Read [How to Write a Git Commit Message]. Then read it again, and follow "the
-seven rules" 😎
+Read [How to Write a Git Commit Message]. Then read it again, and follow
+the seven rules.
 
-The only exception to these rules is commits landing from our upstream
-project, so occasionally you might find a commit originating from the
-`svn/trunk` branch that does not follow them.  There are no other exceptions.
+No commit prefixes. Just say what changed. The first line is a short summary,
+the body explains the why if it's not obvious from the change itself.
 
-[How to Write a Git Commit Message]:https://chris.beams.io/posts/git-commit/
+Never add Co-Authored-By lines to commits.
 
-
-#### Commit prefixes
-
-We use a limited subset of commit prefixes to help separate functional
-code changes from non-functional ones:
-
-- `build:` — Changes to the build scripts.
-- `ci:` — Changes related to the GitHub Actions workflows.
-- `docs:` — Changes to the documentation, including changing config setting
-  descriptions.
-- `style:` — Reformats or style changes with zero functional changes.
-- `website:` — Changes to the MkDocs sources the website is generated from.
-
-The use of the `fix:`, `feat:`/`feature:`, `refactor:`, and `test:` prefixes
-is discouraged as they don't add much value, only noise, and it's often not
-clear-cut whether a change is a fix, a new feature, or a refactoring job.
+[How to Write a Git Commit Message]: https://chris.beams.io/posts/git-commit/
 
 
 #### Commit messages for patches authored by someone else
@@ -396,8 +383,8 @@ clear-cut whether a change is a fix, a new feature, or a refactoring job.
   your first import commit. Style changes and any other code changes should be
   in subsequent commits.
 
-- Record the correct author name, date when the original author wrote the patch
-  (if known), and sign it, e.g:
+- Record the correct author name, date when the original author wrote the
+  patch (if known), and sign it:
 
   ```
   $ git commit --amend --author="Original Author <mail-or-identifier>"
@@ -413,56 +400,124 @@ clear-cut whether a change is a fix, a new feature, or a refactoring job.
   ```
 
 For an example of a commit that followed all of these rules, see commit
-[ffe3c5ab](https://github.com/dosbox-staging/dosbox-staging/commit/ffe3c5ab7fb5e28bae78f07ea987904f391a7cf8):
+[ffe3c5ab](https://github.com/dosbox-automation/dosbox-automation/commit/ffe3c5ab7fb5e28bae78f07ea987904f391a7cf8):
 
     $ git log -1 ffe3c5ab7fb5e28bae78f07ea987904f391a7cf8
+
+
+## Documentation
+
+These rules apply to files under `website/`.
+
+After any docs or website change, run both before submitting:
+
+1. `cd website && mkdocs build` (zero warnings required)
+2. `cd website && ../scripts/linting/verify-markdown.sh` (zero warnings required)
+
+Guidelines:
+
+- Before adding new formatting or markup patterns, find an existing example in
+  the docs and match it.
+- Most manual pages are divided into two parts: a conversational guide, and a
+  reference section (under "Configuration settings").
+- We document configuration sections topically; settings from the same config
+  section may be documented in different chapters.
+- The "Configuration settings" section must copy the setting's description from
+  the code verbatim as a baseline, then add further information as needed.
+- Look for opportunities to create cross-references across chapters.
+- Look for opportunities to include interesting trivia, e.g. games that use a
+  given feature (use web search for research). If you add trivia, fact-check
+  it: at least 2-3 sources must confirm it.
+- All referenced games must be linked to a valid PCGamingWiki page.
+- Target audience is regular users, not developers. Don't write in a
+  condescending or nannying tone. Explain in plain, understandable language
+  without insulting knowledgeable readers.
+
+### SASS
+
+If editing SASS files, regenerate CSS from `extra-scss/extra.scss` and commit
+both `.scss` and `.css`.
+
+### Version bumps in docs
+
+Update all of these together:
+- Rename `website/docs/<old>/` directories
+- `website/docs/versions.json`
+- `mkdocs.yml`: nav paths, redirect targets, exclude globs
+- `hooks/offline.py`: `DUMMY_INDEX_PAGES`
+
+
+## Writing style
+
+All written output: commits, code comments, docs, PR descriptions.
+
+- Be direct and terse. No verbose noun phrases like "Implement filtered tag
+  retrieval with UI integration."
+- No filler words: "enhance", "leverage", "utilize", "streamline", "ensure".
+- Don't use em-dashes or other typographic artifacts. Standard characters
+  only. No emojis.
+- Vary sentence structure, use shorthand where natural, skip artificial polish.
+- Don't group unrelated changes into one kitchen-sink commit.
+
+This isn't about deception (we're open about AI usage). It's about writing
+quality. Good writing doesn't scream "a model wrote this," regardless of
+whether one did.
+
+
+## Versioning
+
+The project name is "dosbox-automation", written exactly in that convention.
+
+Version numbering follows the upstream base version with a "-da" release
+suffix. Example: if the upstream base is 0.83 and the release number is 3,
+the version is `0.83-da3`.
+
+Full product name example: `dosbox-automation 0.83-da3`.
 
 
 ## Tools
 
 ### compile-commits
 
-Make sure that all your commits can be compiled individually. This is very
-important for bisecting, and we strictly enforce it. You can simply just run
-`scripts/tools/compile-commits.sh` to compile all commits of the PR you're
-working on.
+Make sure that all your commits compile individually. This is critical for
+bisecting, and we enforce it. Run `scripts/tools/compile-commits.sh` to
+compile all commits of the PR you're working on.
 
 
 ### clang-format
 
-It's usually distributed with the Clang compiler and can be integrated with
-[many programming
+Distributed with the Clang compiler and integrates with [many programming
 environments](https://releases.llvm.org/10.0.0/tools/clang/docs/ClangFormat.html).
 
-Outside of your editor, code can be formatted by invoking the tool directly:
+Outside of your editor, format code by invoking the tool directly:
 
     $ clang-format -i file.cpp
 
-But it's better not to re-format the whole file at once—you can target
-specific line ranges (run `clang-format --help` to learn how), or use our
-helper script to format C/C++ code touched by your latest commit:
+Better not to reformat entire files at once. Target specific line ranges
+(run `clang-format --help`), or use our helper script to format C/C++ code
+touched by your latest commit:
 
     $ git commit -m "Edit some C++ code"
     $ ./scripts/tools/format-commit.sh
 
-Run `./scripts/tools/format-commit.sh --help` to learn about available options.
+Run `./scripts/tools/format-commit.sh --help` for available options.
 
 
 #### Vim integration
 
-Download `clang-format.py` file somewhere, and make it executable:
+Download `clang-format.py` somewhere and make it executable:
 
     $ curl "https://raw.githubusercontent.com/llvm/llvm-project/main/clang/tools/clang-format/clang-format.py" > ~/.vim/clang-format.py
     $ chmod +x ~/.vim/clang-format.py
 
-Then add the following lines to your `.vimrc` file:
+Add the following lines to your `.vimrc`:
 
     " Integrate clang-format tool
     map <C-K> :py3f ~/.vim/clang-format.py<cr>
     imap <C-K> <c-o>:py3f ~/.vim/clang-format.py<cr>
 
-Read the documentation inside `clang-format.py` file in case your OS is
-missing Python 3 support.
+Read the documentation inside `clang-format.py` if your OS is missing Python 3
+support.
 
 
 #### MSVC integration
@@ -472,11 +527,11 @@ missing Python 3 support.
 
 ### count-warnings
 
-Our quality gating mechanism tracks the number of warnings per OS/compiler. To see a
-summary of warnings in your build, do a clean build and then use the script
+Our quality gating tracks the number of warnings per OS/compiler. To see a
+summary of warnings in your build, do a clean build and use the script
 `./scripts/ci/count-warnings.py`:
 
     make -j "$(nproc)" |& tee build.log
     ./scripts/ci/count-warnings.py build.log
 
-Run `./scripts/ci/count-warnings.py --help` to learn about available options.
+Run `./scripts/ci/count-warnings.py --help` for available options.
