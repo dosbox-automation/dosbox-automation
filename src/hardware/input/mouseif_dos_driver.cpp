@@ -1557,16 +1557,6 @@ void MOUSEDOS_NotifyMoved(const float x_rel, const float y_rel,
 	}
 }
 
-void MOUSEDOS_InjectRelativeMoved(const float x_rel, const float y_rel)
-{
-	pending.x_rel = MOUSE_ClampRelativeMovement(pending.x_rel + x_rel);
-	pending.y_rel = MOUSE_ClampRelativeMovement(pending.y_rel + y_rel);
-
-	force_relative_next = true;
-	pending.has_mouse_moved = true;
-	maybe_trigger_event();
-}
-
 void MOUSEDOS_NotifyButton(const MouseButtons12S new_buttons_12S)
 {
 	// Do not access 'state' here in Windows 386 Enhanced mode,

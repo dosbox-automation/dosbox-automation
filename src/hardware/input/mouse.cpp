@@ -726,47 +726,73 @@ void MOUSE_EventWheel(const int16_t w_rel, const MouseInterfaceId interface_id)
 }
 
 // ***************************************************************************
-// API injection — bypasses capture/focus/drop guards
+// API injection — bypasses capture/focus/drop guards via save/restore
 // ***************************************************************************
 
 void MOUSE_InjectMoved(const float x_rel, const float y_rel)
 {
-	MOUSEDOS_InjectRelativeMoved(x_rel, y_rel);
+	const bool saved_drop          = state.should_drop_events;
+	const bool saved_outside       = state.cursor_is_outside;
+	const bool saved_captured      = state.is_captured;
+	const bool saved_active        = state.is_window_active;
+	const bool saved_capture_click = state.should_capture_on_click;
+	state.should_drop_events       = false;
+	state.cursor_is_outside        = false;
+	state.is_captured              = true;
+	state.is_window_active         = true;
+	state.should_capture_on_click  = false;
+
+	MOUSE_EventMoved(x_rel, y_rel, 0.0f, 0.0f);
+
+	state.should_drop_events       = saved_drop;
+	state.cursor_is_outside        = saved_outside;
+	state.is_captured              = saved_captured;
+	state.is_window_active         = saved_active;
+	state.should_capture_on_click  = saved_capture_click;
 }
 
 void MOUSE_InjectButton(const MouseButtonId button_id, const bool pressed)
 {
-	const bool saved_drop    = state.should_drop_events;
-	const bool saved_outside = state.cursor_is_outside;
-	const bool saved_captured = state.is_captured;
-	const bool saved_active  = state.is_window_active;
+	const bool saved_drop          = state.should_drop_events;
+	const bool saved_outside       = state.cursor_is_outside;
+	const bool saved_captured      = state.is_captured;
+	const bool saved_active        = state.is_window_active;
 	const bool saved_capture_click = state.should_capture_on_click;
-	state.should_drop_events     = false;
-	state.cursor_is_outside      = false;
-	state.is_captured            = true;
-	state.is_window_active       = true;
-	state.should_capture_on_click = false;
+	state.should_drop_events       = false;
+	state.cursor_is_outside        = false;
+	state.is_captured              = true;
+	state.is_window_active         = true;
+	state.should_capture_on_click  = false;
 
 	MOUSE_EventButton(button_id, pressed);
 
-	state.should_drop_events      = saved_drop;
-	state.cursor_is_outside       = saved_outside;
-	state.is_captured             = saved_captured;
-	state.is_window_active        = saved_active;
-	state.should_capture_on_click = saved_capture_click;
+	state.should_drop_events       = saved_drop;
+	state.cursor_is_outside        = saved_outside;
+	state.is_captured              = saved_captured;
+	state.is_window_active         = saved_active;
+	state.should_capture_on_click  = saved_capture_click;
 }
 
 void MOUSE_InjectWheel(const float w_rel)
 {
-	const bool saved_drop    = state.should_drop_events;
-	const bool saved_outside = state.cursor_is_outside;
-	state.should_drop_events = false;
-	state.cursor_is_outside  = false;
+	const bool saved_drop          = state.should_drop_events;
+	const bool saved_outside       = state.cursor_is_outside;
+	const bool saved_captured      = state.is_captured;
+	const bool saved_active        = state.is_window_active;
+	const bool saved_capture_click = state.should_capture_on_click;
+	state.should_drop_events       = false;
+	state.cursor_is_outside        = false;
+	state.is_captured              = true;
+	state.is_window_active         = true;
+	state.should_capture_on_click  = false;
 
 	MOUSE_EventWheel(w_rel);
 
-	state.should_drop_events = saved_drop;
-	state.cursor_is_outside  = saved_outside;
+	state.should_drop_events       = saved_drop;
+	state.cursor_is_outside        = saved_outside;
+	state.is_captured              = saved_captured;
+	state.is_window_active         = saved_active;
+	state.should_capture_on_click  = saved_capture_click;
 }
 
 // ***************************************************************************
