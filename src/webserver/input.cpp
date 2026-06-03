@@ -5,6 +5,7 @@
 #include "bridge.h"
 #include "webserver.h"
 
+#include "gui/titlebar.h"
 #include "hardware/input/keyboard.h" // KBD_KEYS, KEYBOARD_AddKey, keyboard_input_hook
 #include "hardware/input/mouse.h" // MOUSE_Event*, mouse_*_hook
 #include "hardware/pic.h"
@@ -394,6 +395,7 @@ void InputRecording::StartOnEmulationThread()
 	rec_active       = true;
 	rec_paused       = false;
 	rec_start_pic_ms = PIC_FullIndex();
+	TITLEBAR_NotifyApiRecordingStatus(true);
 }
 
 void StartRecordingCommand::Execute()
@@ -419,6 +421,7 @@ bool InputRecording::Stop(std::vector<InputEvent>& out_events)
 	rec_paused = false;
 	out_events = std::move(rec_buffer);
 	rec_buffer.clear();
+	TITLEBAR_NotifyApiRecordingStatus(false);
 	return true;
 }
 

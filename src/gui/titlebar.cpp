@@ -71,6 +71,7 @@ static const std::map<TitlebarConfig::Setting, std::string> settings_strings = {
 static struct {
 	bool is_capturing_audio = false;
 	bool is_capturing_video = false;
+	bool is_api_recording   = false;
 	bool is_audio_muted     = false;
 	bool is_guest_os_booted = false;
 
@@ -131,6 +132,10 @@ static const std::string EndTag    = "] ";
 static const std::string RecordingMarkText = "REC";
 static const std::string RecordingMarkFrame1 = MediumBlackCircle + RecordingMarkText;
 static const std::string RecordingMarkFrame2 = MediumWhiteCircle + RecordingMarkText;
+
+static const std::string ApiRecordingMarkText = "API REC";
+static const std::string ApiRecordingMarkFrame1 = MediumBlackCircle + ApiRecordingMarkText;
+static const std::string ApiRecordingMarkFrame2 = MediumWhiteCircle + ApiRecordingMarkText;
 
 // ***************************************************************************
 // Titlebar rendering
@@ -329,6 +334,26 @@ static void maybe_add_recording_pause_mark(std::string& title_str)
 	title_str = tag + title_str;
 }
 
+static void maybe_add_api_recording_mark(std::string& title_str)
+{
+	if (!state.is_api_recording) {
+		return;
+	}
+
+	std::string tag = {};
+	if (config.animated_record_mark) {
+		if (state.animation_phase_alternate) {
+			tag = BeginTag + ApiRecordingMarkFrame1 + EndTag;
+		} else {
+			tag = BeginTag + ApiRecordingMarkFrame2 + EndTag;
+		}
+	} else {
+		tag = BeginTag + ApiRecordingMarkText + EndTag;
+	}
+
+	title_str = tag + title_str;
+}
+
 static void set_window_title()
 {
 	// The CPU subsystem is initialised before the GUI, so the cycles
@@ -344,6 +369,7 @@ static void set_window_title()
 	auto new_title_str = state.title_no_tags;
 
 	maybe_add_muted_mark(new_title_str);
+	maybe_add_api_recording_mark(new_title_str);
 	maybe_add_recording_pause_mark(new_title_str);
 
 	if (new_title_str != last_title_str) {
@@ -397,7 +423,7 @@ void TITLEBAR_RefreshTitle()
 	}
 
 	// Start/stop animation if needed
-	const bool is_capturing = state.is_capturing_audio || state.is_capturing_video;
+	const bool is_capturing = state.is_capturing_audio || state.is_capturing_video || state.is_api_recording;
 	if (config.animated_record_mark && !GFX_IsPaused() && is_capturing) {
 		maybe_start_animation();
 	} else {
@@ -441,6 +467,14 @@ void TITLEBAR_NotifyAudioMutedStatus(const bool is_muted)
 {
 	if (state.is_audio_muted != is_muted) {
 		state.is_audio_muted = is_muted;
+		TITLEBAR_RefreshTitle();
+	}
+}
+
+void TITLEBAR_NotifyApiRecordingStatus(const bool is_recording)
+{
+	if (state.is_api_recording != is_recording) {
+		state.is_api_recording = is_recording;
 		TITLEBAR_RefreshTitle();
 	}
 }

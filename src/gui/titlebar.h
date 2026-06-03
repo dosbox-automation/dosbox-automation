@@ -18,6 +18,7 @@ void TITLEBAR_NotifyBooting();
 void TITLEBAR_NotifyAudioCaptureStatus(const bool is_capturing);
 void TITLEBAR_NotifyVideoCaptureStatus(const bool is_capturing);
 void TITLEBAR_NotifyAudioMutedStatus(const bool is_muted);
+void TITLEBAR_NotifyApiRecordingStatus(const bool is_recording);
 
 void TITLEBAR_NotifyProgramName(const std::string& segment_name,
                                 const std::string& canonical_name);
