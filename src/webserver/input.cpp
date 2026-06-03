@@ -222,6 +222,7 @@ static void pic_input_handler(uint32_t)
 		const auto delay = std::max(next.t_ms - ev.t_ms, 0.0);
 		PIC_AddEvent(pic_input_handler, delay);
 	} else {
+		TITLEBAR_NotifyApiReplayStatus(false);
 		LOG_DEBUG("REPLAY chain complete: %zu/%zu events dispatched",
 		          pending_dispatched,
 		          pending_total);
@@ -259,6 +260,7 @@ void InputSequenceCommand::Execute()
 	          pending_events.empty() ? 0.0 : pending_events.front().t_ms,
 	          events.empty() ? 0.0 : events.back().t_ms);
 	if (!pending_events.empty()) {
+		TITLEBAR_NotifyApiReplayStatus(true);
 		PIC_AddEvent(pic_input_handler, pending_events.front().t_ms);
 	}
 }
