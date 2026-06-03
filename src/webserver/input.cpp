@@ -139,9 +139,12 @@ static const std::unordered_map<std::string, MouseButtonId> button_name_map = {
 
 static std::mutex pending_mutex;
 static std::queue<InputEvent> pending_events;
+static bool in_replay_dispatch = false;
 
 static void dispatch_input_event(const InputEvent& ev)
 {
+	in_replay_dispatch = true;
+
 	switch (ev.type) {
 	case InputEvent::Type::Key:
 		KEYBOARD_AddKey(static_cast<KBD_KEYS>(ev.key), ev.pressed);
@@ -160,6 +163,8 @@ static void dispatch_input_event(const InputEvent& ev)
 		MOUSE_InjectWheel(ev.wheel_delta);
 		break;
 	}
+
+	in_replay_dispatch = false;
 }
 
 static size_t pending_total      = 0;
@@ -503,16 +508,25 @@ void InputRecording::OnMouseWheel(float delta)
 
 static void hook_keyboard(int key, bool pressed)
 {
+	if (in_replay_dispatch) {
+		return;
+	}
 	InputRecording::OnKeyEvent(key, pressed);
 }
 
 static void hook_mouse_move(float x_rel, float y_rel, float x_abs, float y_abs)
 {
+	if (in_replay_dispatch) {
+		return;
+	}
 	InputRecording::OnMouseMove(x_rel, y_rel, x_abs, y_abs);
 }
 
 static void hook_mouse_button(int button_id, bool pressed)
 {
+	if (in_replay_dispatch) {
+		return;
+	}
 	auto it = button_id_to_name.find(button_id);
 	if (it != button_id_to_name.end()) {
 		InputRecording::OnMouseButton(it->second, pressed);
@@ -521,6 +535,9 @@ static void hook_mouse_button(int button_id, bool pressed)
 
 static void hook_mouse_wheel(float delta)
 {
+	if (in_replay_dispatch) {
+		return;
+	}
 	InputRecording::OnMouseWheel(delta);
 }
 
