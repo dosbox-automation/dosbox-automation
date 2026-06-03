@@ -228,13 +228,19 @@ InputSequenceCommand::InputSequenceCommand(std::vector<InputEvent> events)
 
 void InputSequenceCommand::Execute()
 {
+	std::lock_guard<std::mutex> lock(pending_mutex);
+
+	if (!pending_events.empty()) {
+		error = "Replay already in progress";
+		return;
+	}
+
 	for (auto& ev : events) {
 		if (ev.t_ms <= 0) {
 			dispatch_input_event(ev);
 		}
 	}
 
-	std::lock_guard<std::mutex> lock(pending_mutex);
 	for (auto& ev : events) {
 		if (ev.t_ms > 0) {
 			pending_events.push(ev);
@@ -329,6 +335,14 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 
 	InputSequenceCommand cmd(std::move(events));
 	cmd.WaitForCompletion(5000);
+
+	if (!cmd.error.empty()) {
+		res.status = 409;
+		json err;
+		err["error"] = cmd.error;
+		send_json(res, err);
+		return;
+	}
 
 	json result;
 	result["status"]           = "ok";
