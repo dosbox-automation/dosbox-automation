@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Live demo: install Riptide from White Wolf CD via dosbox-automation API.
 
-Run this directly to watch the installation on the augra pane.
+Run this directly to watch the installation demo.
 """
 
 import os

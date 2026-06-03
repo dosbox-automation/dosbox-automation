@@ -20,7 +20,7 @@ body:
     attributes:
       label: Are you using the latest dosbox-automation version?
       description: |
-        Look up the latest release version [on our website](https://www.github.com/augra-project/dosbox-automation/releases or the [releases page](https://github.com/augra-project/dosbox-automation/releases).
+        Look up the latest release version [on our website](https://www.github.com/dosbox-automation/dosbox-automation/releases or the [releases page](https://github.com/dosbox-automation/dosbox-automation/releases).
         To check your version, run `dosbox --version` or execute the `VER` command inside dosbox-automation. If the version is reported as `git` (meaning you compiled it yourself), put the result of `git describe` in the version field below.
       options:
         - label: I have checked and I'm using the latest release.
@@ -30,7 +30,7 @@ body:
     id: verinfo
     attributes:
       label: Different version than latest?
-      placeholder: "E.g., 0.84.0-alpha, git version, branch testing"
+      placeholder: "E.g., 0.83.0-alpha, git version, branch testing"
     validations:
       required: false
 
@@ -41,41 +41,48 @@ body:
       multiple: false
       options:
         - Please select
+        - Linux x86_64
         - Windows 11
         - Windows 10
         - Windows 8
         - Windows 7
         - macOS (Intel)
         - macOS (Apple Silicon)
-        - Linux x86
-        - Linux x86_64
-        - Linux ARM (Raspberry Pi)
         - Other
     validations:
       required: true
 
-  - type: input
+  - type: textarea
     id: other
     attributes:
-      label: If other OS or Linux, please describe
-      placeholder: "Details about your OS; if Linux, state your desktop environment (KDE, Gnome, XFCE, etc.)"
+      label: OS details
+      description: |
+        Don't worry about getting every detail right. Whatever you can provide helps.
+
+        On Linux, this collects the useful bits:
+        ```
+        cat /etc/os-release | head -4
+        echo "Display: ${XDG_SESSION_TYPE:-unknown}"
+        glxinfo | grep "OpenGL renderer" 2>/dev/null || echo "glxinfo not available"
+        pactl info 2>/dev/null | grep "Server Name" || echo "pactl not available"
+        ```
+
+        On Windows, open a command prompt and run:
+        ```
+        systeminfo | findstr /B /C:"OS Name" /C:"OS Version" /C:"System Type"
+        wmic path win32_videocontroller get name
+        ```
+
+        If you can't run these, just describe what you know. That's fine too.
+      placeholder: "Paste command output or describe your setup"
     validations:
       required: false
-
-  - type: checkboxes
-    id: checked
-    attributes:
-      label: Are you running on a native OS?
-      description: We only support running dosbox-automation on a native operating system; running on a guest OS in a VM or hypervisor is not supported.
-      options:
-        - label: I am running on a native OS
-          required: true
 
   - type: textarea
     id: related
     attributes:
       label: Is your feature request related to a problem? Please describe.
-      placeholder: "E.g., I would love if Staging could do ..."
+      placeholder: "E.g., I would love if dosbox-automation could do ..."
     validations:
       required: true
 
@@ -108,7 +115,7 @@ body:
     id: terms
     attributes:
       label: Code of conduct and contributing guidelines
-      description: By submitting this issue, you agree to follow our [contributing guidelines](https://github.com/augra-project/dosbox-automation/blob/master/docs/CONTRIBUTING.md) and [code of conduct](https://github.com/augra-project/dosbox-automation/blob/master/docs/CODE_OF_CONDUCT.md).
+      description: By submitting this issue, you agree to follow our [contributing guidelines](https://github.com/dosbox-automation/dosbox-automation/blob/master/docs/CONTRIBUTING.md) and [code of conduct](https://github.com/dosbox-automation/dosbox-automation/blob/master/docs/CODE_OF_CONDUCT.md).
       options:
         - label: Yes, I agree.
           required: true

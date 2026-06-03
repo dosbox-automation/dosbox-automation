@@ -20,7 +20,7 @@ body:
     attributes:
       label: Are you using the latest dosbox-automation version?
       description: |
-        Look up the latest release version [on our website](https://www.github.com/augra-project/dosbox-automation/releases or the [releases page](https://github.com/augra-project/dosbox-automation/releases).
+        Look up the latest release version [on our website](https://www.github.com/dosbox-automation/dosbox-automation/releases or the [releases page](https://github.com/dosbox-automation/dosbox-automation/releases).
         To check your version, run `dosbox --version` or execute the `VER` command inside dosbox-automation. If the version is reported as `git` (meaning you compiled it yourself), put the result of `git describe` in the version field below.
       options:
         - label: I have checked and I'm using the latest release.
@@ -30,7 +30,7 @@ body:
     id: verinfo
     attributes:
       label: Different version than latest?
-      placeholder: "E.g., 0.84.0-alpha, git version, branch testing"
+      placeholder: "E.g., 0.83.0-alpha, git version, branch testing"
     validations:
       required: false
 
@@ -41,50 +41,40 @@ body:
       multiple: false
       options:
         - Please select
+        - Linux x86_64
         - Windows 11
         - Windows 10
         - Windows 8
         - Windows 7
         - macOS (Intel)
         - macOS (Apple Silicon)
-        - Linux x86
-        - Linux x86_64
-        - Linux ARM (Raspberry Pi)
         - Other
     validations:
       required: true
 
-  - type: input
+  - type: textarea
     id: other_os
     attributes:
-      label: If other OS or Linux, please describe
-      placeholder: "Details about your OS; if Linux, state your desktop environment (KDE, Gnome, XFCE, etc.)"
-    validations:
-      required: false
+      label: OS details
+      description: |
+        Don't worry about getting every detail right. Whatever you can provide helps.
 
-  - type: checkboxes
-    id: native-os
-    attributes:
-      label: Are you running on a native OS?
-      description: We only support running dosbox-automation on a native operating system; running on a guest OS in a VM or hypervisor is not supported.
-      options:
-        - label: I am running on a native OS
-          required: true
+        On Linux, this collects the useful bits:
+        ```
+        cat /etc/os-release | head -4
+        echo "Display: ${XDG_SESSION_TYPE:-unknown}"
+        glxinfo | grep "OpenGL renderer" 2>/dev/null || echo "glxinfo not available"
+        pactl info 2>/dev/null | grep "Server Name" || echo "pactl not available"
+        ```
 
-  - type: checkboxes
-    id: official-linux-release
-    attributes:
-      label: Are you able to trigger the issue with an official release?
-      description: We only support our official releases downloaded from our [website](https://www.github.com/augra-project/dosbox-automation/releases We do not support repackaged versions of our software; see [this note](https://www.github.com/augra-project/dosbox-automation/releases for further info.
-      options:
-        - label: I am running an official release.
-          required: true
+        On Windows, open a command prompt and run:
+        ```
+        systeminfo | findstr /B /C:"OS Name" /C:"OS Version" /C:"System Type"
+        wmic path win32_videocontroller get name
+        ```
 
-  - type: input
-    id: hardware
-    attributes:
-      label: Relevant hardware info
-      placeholder: "CPU, GPU, device brand/model (e.g., Raspberry Pi3B+, Nvidia RTX 3060, etc.)"
+        If you can't run these, just describe what you know. That's fine too.
+      placeholder: "Paste command output or describe your setup"
     validations:
       required: false
 
@@ -125,7 +115,7 @@ body:
       description: |
         If a single game or program is affected, provide a download link to ensure we're using binary-exact files and version(s).
         This is _required_ unless the issue broadly applies.
-      placeholder: "E.g., https://archive.org/details/StarWarsX-wingDemo"
+      placeholder: "E.g., https://archive.org/details/DungeonHackDemo"
     validations:
       required: false
 
@@ -134,7 +124,7 @@ body:
     attributes:
       label: Your configuration
       description: |
-        Share the config file(s) you are using to run the program. (`dosbox-staging.conf`) 
+        Share the config file(s) you are using to run the program. (`dosbox-automation.conf`) 
         Please avoid pasting the full config; _use attachments or links_ in a [Gist](https://gist.github.com/) instead.
       placeholder: "Your configuration (if short), or provide Gist link"
       render: ini # syntax highlighting
@@ -144,10 +134,9 @@ body:
   - type: textarea
     id: log
     attributes:
-      label: Provide a log
-      description: Please avoid pasting the full log; _use attachments or links_ in a [Gist](https://gist.github.com/) instead.
-      placeholder: "Relevant part of the log (if short), or provide Gist link"
-      render: text
+      label: Provide a log or screenshot of the log window
+      description: A screenshot of the dosbox-automation log window is often enough. For longer logs, use attachments or a [Gist](https://gist.github.com/).
+      placeholder: "Drag a screenshot here, paste a short log, or provide a Gist link"
     validations:
       required: false
 
@@ -155,7 +144,7 @@ body:
     id: terms
     attributes:
       label: Code of conduct and contributing guidelines
-      description: By submitting this issue, you agree to follow our [contributing guidelines](https://github.com/augra-project/dosbox-automation/blob/master/docs/CONTRIBUTING.md) and [code of conduct](https://github.com/augra-project/dosbox-automation/blob/master/docs/CODE_OF_CONDUCT.md).
+      description: By submitting this issue, you agree to follow our [contributing guidelines](https://github.com/dosbox-automation/dosbox-automation/blob/master/docs/CONTRIBUTING.md) and [code of conduct](https://github.com/dosbox-automation/dosbox-automation/blob/master/docs/CODE_OF_CONDUCT.md).
       options:
         - label: Yes, I agree.
           required: true
