@@ -12,10 +12,10 @@
 // must be included after dosbox_config.h
 #include "SDL.h"
 
-constexpr uint8_t GFX_CAN_8      = 1 << 0;
-constexpr uint8_t GFX_CAN_15     = 1 << 1;
-constexpr uint8_t GFX_CAN_16     = 1 << 2;
-constexpr uint8_t GFX_CAN_32     = 1 << 3;
+constexpr uint8_t GFX_CAN_8  = 1 << 0;
+constexpr uint8_t GFX_CAN_15 = 1 << 1;
+constexpr uint8_t GFX_CAN_16 = 1 << 2;
+constexpr uint8_t GFX_CAN_32 = 1 << 3;
 
 typedef enum {
 	GFX_CallbackReset,
@@ -100,6 +100,7 @@ bool GFX_StartUpdate(uint32_t*& pixels, int& pitch);
 // Called at the end of every frame, regardless of whether there have been
 // changes to the framebuffer or not.
 void GFX_EndUpdate();
+uint64_t GFX_GetRenderedFrameCount();
 
 void GFX_CaptureRenderedImage();
 

@@ -47,6 +47,10 @@
 
 CHECK_NARROWING();
 
+namespace Webserver {
+void ReplayDispatchFrame(uint64_t);
+}
+
 // #define DEBUG_WINDOW_EVENTS
 
 template <typename... Args>
@@ -1170,12 +1174,20 @@ bool GFX_StartUpdate(uint32_t*& pixels, int& pitch)
 	return true;
 }
 
+static uint64_t rendered_frame_count = 0;
+
+uint64_t GFX_GetRenderedFrameCount()
+{
+	return rendered_frame_count;
+}
+
 // Called at the end of each frame at the emulated DOS rate, *regardless* of
 // whether contents of the framebuffer have changed or not compared to the
 // prevoius frame.
 void GFX_EndUpdate()
 {
 	assert(sdl.renderer);
+	++rendered_frame_count;
 
 	if (sdl.draw.updating_framebuffer) {
 		// `sdl.draw.updating_framebuffer` is true when the contents of
@@ -1230,6 +1242,8 @@ void GFX_EndUpdate()
 	// a "cooperative-multitasking" fashion at the end of each emulated 1ms
 	// tick.
 	sdl.draw.updating_framebuffer = false;
+
+	Webserver::ReplayDispatchFrame(rendered_frame_count);
 }
 
 uint32_t GFX_MakePixel(const uint8_t red, const uint8_t green, const uint8_t blue)
@@ -2940,4 +2954,3 @@ void GFX_Quit()
 	SDL_Quit();
 #endif
 }
-

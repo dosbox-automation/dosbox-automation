@@ -5,6 +5,7 @@
 #include "bridge.h"
 #include "webserver.h"
 
+#include "gui/private/common.h"
 #include "gui/titlebar.h"
 #include "hardware/input/keyboard.h" // KBD_KEYS, KEYBOARD_AddKey, keyboard_input_hook
 #include "hardware/input/mouse.h" // MOUSE_Event*, mouse_*_hook
@@ -168,10 +169,17 @@ static void dispatch_input_event(const InputEvent& ev)
 	in_replay_dispatch = false;
 }
 
-static size_t pending_total      = 0;
-static size_t pending_dispatched = 0;
+static size_t pending_total       = 0;
+static size_t pending_dispatched  = 0;
 static double replay_start_pic_ms = 0;
 static std::chrono::steady_clock::time_point replay_start_wall;
+
+static std::mutex frame_replay_mutex;
+static std::queue<InputEvent> frame_pending_events;
+static bool frame_replay_active        = false;
+static uint64_t frame_replay_start     = 0;
+static size_t frame_pending_total      = 0;
+static size_t frame_pending_dispatched = 0;
 
 static void pic_input_handler(uint32_t)
 {
@@ -185,7 +193,9 @@ static void pic_input_handler(uint32_t)
 
 	const double pic_ms  = PIC_FullIndex() - replay_start_pic_ms;
 	const double wall_ms = std::chrono::duration<double, std::milli>(
-	        std::chrono::steady_clock::now() - replay_start_wall).count();
+	                               std::chrono::steady_clock::now() -
+	                               replay_start_wall)
+	                               .count();
 	const double pic_drift  = pic_ms - ev.t_ms;
 	const double wall_drift = wall_ms - ev.t_ms;
 
@@ -215,11 +225,22 @@ static void pic_input_handler(uint32_t)
 	}
 }
 
-InputSequenceCommand::InputSequenceCommand(std::vector<InputEvent> events)
-        : events(std::move(events))
+InputSequenceCommand::InputSequenceCommand(std::vector<InputEvent> events,
+                                           bool has_frame_data)
+        : events(std::move(events)),
+          has_frame_data(has_frame_data)
 {}
 
 void InputSequenceCommand::Execute()
+{
+	if (has_frame_data) {
+		ExecuteFrameBased();
+	} else {
+		ExecutePicBased();
+	}
+}
+
+void InputSequenceCommand::ExecutePicBased()
 {
 	std::lock_guard<std::mutex> lock(pending_mutex);
 
@@ -241,15 +262,47 @@ void InputSequenceCommand::Execute()
 	}
 	pending_total      = pending_events.size();
 	pending_dispatched = 0;
-	LOG_DEBUG("REPLAY starting chain: %zu timed events, first at %.1fms, last at %.1fms",
-	          pending_total,
-	          pending_events.empty() ? 0.0 : pending_events.front().t_ms,
-	          events.empty() ? 0.0 : events.back().t_ms);
+	LOG_DEBUG("REPLAY (PIC) starting chain: %zu timed events", pending_total);
 	if (!pending_events.empty()) {
 		replay_start_pic_ms = PIC_FullIndex();
 		replay_start_wall   = std::chrono::steady_clock::now();
 		TITLEBAR_NotifyApiReplayStatus(true);
 		PIC_AddEvent(pic_input_handler, pending_events.front().t_ms);
+	}
+}
+
+void InputSequenceCommand::ExecuteFrameBased()
+{
+	std::lock_guard<std::mutex> lock(frame_replay_mutex);
+
+	if (frame_replay_active) {
+		error = "Replay already in progress";
+		return;
+	}
+
+	for (auto& ev : events) {
+		if (ev.frame == 0) {
+			dispatch_input_event(ev);
+		}
+	}
+
+	for (auto& ev : events) {
+		if (ev.frame > 0) {
+			frame_pending_events.push(ev);
+		}
+	}
+	frame_pending_total      = frame_pending_events.size();
+	frame_pending_dispatched = 0;
+
+	if (!frame_pending_events.empty()) {
+		frame_replay_start  = GFX_GetRenderedFrameCount();
+		frame_replay_active = true;
+		TITLEBAR_NotifyApiReplayStatus(true);
+		LOG_MSG("REPLAY (frame) starting: %zu events, first at frame %llu, last at frame %llu",
+		        frame_pending_total,
+		        static_cast<unsigned long long>(
+		                frame_pending_events.front().frame),
+		        static_cast<unsigned long long>(events.back().frame));
 	}
 }
 
@@ -281,6 +334,9 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 
 		if (jev.contains("t")) {
 			ev.t_ms = jev["t"].get<double>();
+		}
+		if (jev.contains("frame")) {
+			ev.frame = jev["frame"].get<uint64_t>();
 		}
 
 		const auto type_str = jev.value("type", "key");
@@ -329,7 +385,15 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 		events.push_back(std::move(ev));
 	}
 
-	InputSequenceCommand cmd(std::move(events));
+	bool has_frame_data = false;
+	for (const auto& jev : body["events"]) {
+		if (jev.contains("frame")) {
+			has_frame_data = true;
+			break;
+		}
+	}
+
+	InputSequenceCommand cmd(std::move(events), has_frame_data);
 	cmd.WaitForCompletion(5000);
 
 	if (!cmd.error.empty()) {
@@ -353,6 +417,7 @@ static bool rec_active = false;
 static bool rec_paused = false;
 static std::vector<InputEvent> rec_buffer;
 static double rec_start_pic_ms;
+static uint64_t rec_start_frame = 0;
 
 static const std::unordered_map<int, std::string> button_id_to_name = {
         {0,   "left"},
@@ -385,6 +450,7 @@ void InputRecording::StartOnEmulationThread()
 	rec_active       = true;
 	rec_paused       = false;
 	rec_start_pic_ms = PIC_FullIndex();
+	rec_start_frame  = GFX_GetRenderedFrameCount();
 	TITLEBAR_NotifyApiRecordingStatus(true);
 }
 
@@ -450,6 +516,7 @@ void InputRecording::OnKeyEvent(int key, bool pressed)
 	}
 	InputEvent ev;
 	ev.t_ms    = rec_elapsed_ms_precise();
+	ev.frame   = GFX_GetRenderedFrameCount() - rec_start_frame;
 	ev.type    = InputEvent::Type::Key;
 	ev.key     = key;
 	ev.pressed = pressed;
@@ -464,6 +531,7 @@ void InputRecording::OnMouseMove(float x_rel, float y_rel, float x_abs, float y_
 	}
 	InputEvent ev;
 	ev.t_ms  = rec_elapsed_ms_precise();
+	ev.frame = GFX_GetRenderedFrameCount() - rec_start_frame;
 	ev.type  = InputEvent::Type::MouseMove;
 	ev.x_rel = x_rel;
 	ev.y_rel = y_rel;
@@ -480,6 +548,7 @@ void InputRecording::OnMouseButton(const std::string& button, bool pressed)
 	}
 	InputEvent ev;
 	ev.t_ms    = rec_elapsed_ms_precise();
+	ev.frame   = GFX_GetRenderedFrameCount() - rec_start_frame;
 	ev.type    = InputEvent::Type::MouseButton;
 	ev.button  = button;
 	ev.pressed = pressed;
@@ -494,6 +563,7 @@ void InputRecording::OnMouseWheel(float delta)
 	}
 	InputEvent ev;
 	ev.t_ms        = rec_elapsed_ms_precise();
+	ev.frame       = GFX_GetRenderedFrameCount() - rec_start_frame;
 	ev.type        = InputEvent::Type::MouseWheel;
 	ev.wheel_delta = delta;
 	rec_buffer.push_back(std::move(ev));
@@ -545,7 +615,8 @@ void InputRecording::InstallHooks()
 static json event_to_json(const InputEvent& ev)
 {
 	json j;
-	j["t"] = ev.t_ms;
+	j["t"]     = ev.t_ms;
+	j["frame"] = ev.frame;
 
 	switch (ev.type) {
 	case InputEvent::Type::Key: {
@@ -639,6 +710,51 @@ void RecordingHandlers::GetStatus(const httplib::Request&, httplib::Response& re
 	j["event_count"] = InputRecording::EventCount();
 	j["duration_ms"] = InputRecording::DurationMs();
 	send_json(res, j);
+}
+
+void ReplayDispatchFrame(uint64_t current_frame)
+{
+	if (!frame_replay_active) {
+		return;
+	}
+
+	std::lock_guard<std::mutex> lock(frame_replay_mutex);
+
+	const auto relative_frame = current_frame - frame_replay_start;
+	int dispatched_this_frame = 0;
+
+	while (!frame_pending_events.empty() &&
+	       frame_pending_events.front().frame <= relative_frame &&
+	       dispatched_this_frame < 500) {
+		auto ev = frame_pending_events.front();
+		frame_pending_events.pop();
+		++frame_pending_dispatched;
+		++dispatched_this_frame;
+
+		dispatch_input_event(ev);
+	}
+
+	if (dispatched_this_frame > 0) {
+		LOG_MSG("REPLAY frame %llu: dispatched %d events (%zu/%zu total)",
+		        static_cast<unsigned long long>(relative_frame),
+		        dispatched_this_frame,
+		        frame_pending_dispatched,
+		        frame_pending_total);
+	}
+
+	if (dispatched_this_frame >= 500) {
+		LOG_WARNING("WEBSERVER: Replay frame %llu hit 500-event cap",
+		            static_cast<unsigned long long>(relative_frame));
+	}
+
+	if (frame_pending_events.empty()) {
+		frame_replay_active = false;
+		TITLEBAR_NotifyApiReplayStatus(false);
+		LOG_MSG("REPLAY (frame) complete: %zu/%zu events, %llu frames",
+		        frame_pending_dispatched,
+		        frame_pending_total,
+		        static_cast<unsigned long long>(relative_frame));
+	}
 }
 
 } // namespace Webserver

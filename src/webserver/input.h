@@ -13,11 +13,17 @@
 namespace Webserver {
 
 struct InputEvent {
-	double t_ms = 0;
-	enum class Type { Key, MouseMove, MouseButton, MouseWheel } type = Type::Key;
+	double t_ms    = 0;
+	uint64_t frame = 0;
+	enum class Type {
+		Key,
+		MouseMove,
+		MouseButton,
+		MouseWheel
+	} type = Type::Key;
 
 	// Key params
-	int key = 0;
+	int key      = 0;
 	bool pressed = false;
 
 	// Mouse move params
@@ -33,12 +39,16 @@ struct InputEvent {
 
 class InputSequenceCommand : public Command {
 public:
-	InputSequenceCommand(std::vector<InputEvent> events);
+	InputSequenceCommand(std::vector<InputEvent> events, bool has_frame_data);
 	void Execute() override;
 	static void Post(const httplib::Request& req, httplib::Response& res);
 
 private:
+	void ExecuteFrameBased();
+	void ExecutePicBased();
+
 	std::vector<InputEvent> events = {};
+	bool has_frame_data            = false;
 };
 
 class StartRecordingCommand : public Command {
@@ -47,21 +57,21 @@ public:
 };
 
 namespace InputRecording {
-	void StartOnEmulationThread();
-	void Pause();
-	bool Stop(std::vector<InputEvent>& out_events);
-	bool IsRecording();
-	bool IsPaused();
-	size_t EventCount();
-	double DurationMs();
+void StartOnEmulationThread();
+void Pause();
+bool Stop(std::vector<InputEvent>& out_events);
+bool IsRecording();
+bool IsPaused();
+size_t EventCount();
+double DurationMs();
 
-	void OnKeyEvent(int key, bool pressed);
-	void OnMouseMove(float x_rel, float y_rel, float x_abs, float y_abs);
-	void OnMouseButton(const std::string& button, bool pressed);
-	void OnMouseWheel(float delta);
+void OnKeyEvent(int key, bool pressed);
+void OnMouseMove(float x_rel, float y_rel, float x_abs, float y_abs);
+void OnMouseButton(const std::string& button, bool pressed);
+void OnMouseWheel(float delta);
 
-	void InstallHooks();
-}
+void InstallHooks();
+} // namespace InputRecording
 
 struct RecordingHandlers {
 	static void PostStart(const httplib::Request&, httplib::Response& res);
@@ -69,6 +79,8 @@ struct RecordingHandlers {
 	static void PostStop(const httplib::Request&, httplib::Response& res);
 	static void GetStatus(const httplib::Request&, httplib::Response& res);
 };
+
+void ReplayDispatchFrame(uint64_t current_frame);
 
 } // namespace Webserver
 
