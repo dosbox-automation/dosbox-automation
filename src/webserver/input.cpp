@@ -170,6 +170,8 @@ static void dispatch_input_event(const InputEvent& ev)
 
 static size_t pending_total      = 0;
 static size_t pending_dispatched = 0;
+static double replay_start_pic_ms = 0;
+static std::chrono::steady_clock::time_point replay_start_wall;
 
 static void pic_input_handler(uint32_t)
 {
@@ -181,38 +183,20 @@ static void pic_input_handler(uint32_t)
 	pending_events.pop();
 	++pending_dispatched;
 
-	switch (ev.type) {
-	case InputEvent::Type::Key:
-		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms key %d %s",
-		          pending_dispatched,
-		          pending_total,
-		          ev.t_ms,
-		          ev.key,
-		          ev.pressed ? "DOWN" : "UP");
-		break;
-	case InputEvent::Type::MouseMove:
-		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms mouse_move rel=(%.1f,%.1f)",
-		          pending_dispatched,
-		          pending_total,
-		          ev.t_ms,
-		          ev.x_rel,
-		          ev.y_rel);
-		break;
-	case InputEvent::Type::MouseButton:
-		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms mouse_button %s %s",
-		          pending_dispatched,
-		          pending_total,
-		          ev.t_ms,
-		          ev.button.c_str(),
-		          ev.pressed ? "DOWN" : "UP");
-		break;
-	case InputEvent::Type::MouseWheel:
-		LOG_DEBUG("REPLAY [%zu/%zu] t=%.1fms mouse_wheel delta=%.1f",
-		          pending_dispatched,
-		          pending_total,
-		          ev.t_ms,
-		          ev.wheel_delta);
-		break;
+	const double pic_ms  = PIC_FullIndex() - replay_start_pic_ms;
+	const double wall_ms = std::chrono::duration<double, std::milli>(
+	        std::chrono::steady_clock::now() - replay_start_wall).count();
+	const double pic_drift  = pic_ms - ev.t_ms;
+	const double wall_drift = wall_ms - ev.t_ms;
+
+	if (pending_dispatched % 100 == 0 || pending_dispatched == pending_total) {
+		LOG_MSG("REPLAY [%zu/%zu] t=%.1fms pic=%+.2fms wall=%+.2fms (pic-wall=%+.2fms)",
+		        pending_dispatched,
+		        pending_total,
+		        ev.t_ms,
+		        pic_drift,
+		        wall_drift,
+		        pic_ms - wall_ms);
 	}
 
 	dispatch_input_event(ev);
@@ -223,9 +207,11 @@ static void pic_input_handler(uint32_t)
 		PIC_AddEvent(pic_input_handler, delay);
 	} else {
 		TITLEBAR_NotifyApiReplayStatus(false);
-		LOG_DEBUG("REPLAY chain complete: %zu/%zu events dispatched",
-		          pending_dispatched,
-		          pending_total);
+		LOG_MSG("REPLAY chain complete: %zu/%zu events dispatched, pic=%+.2fms wall=%+.2fms",
+		        pending_dispatched,
+		        pending_total,
+		        pic_drift,
+		        wall_drift);
 	}
 }
 
@@ -260,6 +246,8 @@ void InputSequenceCommand::Execute()
 	          pending_events.empty() ? 0.0 : pending_events.front().t_ms,
 	          events.empty() ? 0.0 : events.back().t_ms);
 	if (!pending_events.empty()) {
+		replay_start_pic_ms = PIC_FullIndex();
+		replay_start_wall   = std::chrono::steady_clock::now();
 		TITLEBAR_NotifyApiReplayStatus(true);
 		PIC_AddEvent(pic_input_handler, pending_events.front().t_ms);
 	}
