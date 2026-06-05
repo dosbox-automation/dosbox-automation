@@ -24,13 +24,13 @@
 
 CHECK_NARROWING();
 
-MouseMoveHookFn mouse_move_hook = nullptr;
+MouseMoveHookFn mouse_move_hook     = nullptr;
 MouseButtonHookFn mouse_button_hook = nullptr;
-MouseWheelHookFn mouse_wheel_hook = nullptr;
+MouseWheelHookFn mouse_wheel_hook   = nullptr;
 
 static callback_number_t int74_ret_callback = 0;
 
-static ManyMouseGlue &manymouse = ManyMouseGlue::GetInstance();
+static ManyMouseGlue& manymouse = ManyMouseGlue::GetInstance();
 
 // ***************************************************************************
 // GFX-related decision making
@@ -53,28 +53,35 @@ static struct {
 	// If mouse cursor is outside of drawing area
 	bool cursor_is_outside = false;
 
-	bool is_window_active       = false; // if our window is active (has focus)
-	bool gui_has_taken_over     = false; // if a GUI requested to take over the mouse
+	bool is_window_active   = false; // if our window is active (has focus)
+	bool gui_has_taken_over = false; // if a GUI requested to take over the
+	                                 // mouse
 	bool is_mapping_in_progress = false; // if interactive mapping is running
-	bool capture_was_requested  = false; // if user requested mouse to be captured
-	bool vmm_wants_pointer      = false; // if virtual machine guest addons wants us
-	                                     // to show the host pointer
+	bool capture_was_requested = false;  // if user requested mouse to be
+	                                     // captured
+	bool vmm_wants_pointer = false; // if virtual machine guest addons wants
+	                                // us to show the host pointer
 
-	// if we have a desktop environment, then we can support uncaptured and seamless modes
+	// if we have a desktop environment, then we can support uncaptured and
+	// seamless modes
 	const bool have_desktop_environment = GFX_HaveDesktopEnvironment();
 
-	bool is_captured  = false; // if GFX was requested to capture mouse
-	bool is_visible   = false; // if GFX was requested to make cursor visible
+	bool is_captured = false; // if GFX was requested to capture mouse
+	bool is_visible  = false; // if GFX was requested to make cursor visible
 	bool is_raw_input = false; // if GFX was requested to provide raw movements
-	bool is_seamless  = false; // if seamless mouse integration is in effect
+	bool is_seamless = false; // if seamless mouse integration is in effect
 
 	// If mouse events should be ignored, except button release
 	bool should_drop_events = true;
 
-	bool should_capture_on_click  = false; // if any button click should capture the mouse
-	bool should_capture_on_middle = false; // if middle button press should capture the mouse
-	bool should_release_on_middle = false; // if middle button press should release the mouse
-	bool should_toggle_on_hotkey  = false; // if hotkey should toggle mouse capture
+	bool should_capture_on_click = false;  // if any button click should
+	                                       // capture the mouse
+	bool should_capture_on_middle = false; // if middle button press should
+	                                       // capture the mouse
+	bool should_release_on_middle = false; // if middle button press should
+	                                       // release the mouse
+	bool should_toggle_on_hotkey = false;  // if hotkey should toggle mouse
+	                                       // capture
 
 	MouseHint hint_id = MouseHint::None; // hint to be displayed on title bar
 
@@ -158,7 +165,8 @@ static void update_cursor_visibility()
 	first_time = false;
 }
 
-static void update_state() // updates whole 'state' structure, except cursor visibility
+static void update_state() // updates whole 'state' structure, except cursor
+                           // visibility
 {
 	// If mouse subsystem not started yet, do nothing
 	if (!mouse_shared.started) {
@@ -171,7 +179,8 @@ static void update_state() // updates whole 'state' structure, except cursor vis
 
 	// Only consider multi-display mode if enabled in the configuration!
 	const bool is_window_or_multi_display = !state.is_fullscreen ||
-		(state.is_multi_display && mouse_config.multi_display_aware);
+	                                        (state.is_multi_display &&
+	                                         mouse_config.multi_display_aware);
 
 	// If running for the first time, capture the mouse if this was configured
 	static bool first_time = true;
@@ -197,7 +206,8 @@ static void update_state() // updates whole 'state' structure, except cursor vis
 	//   if virtual machine guest addons wants us to show the pointer, and
 	// - NoMouse is not configured, and
 	// - seamless driver is running or Seamless capture is configured
-	const bool is_seamless_config = (mouse_config.capture == MouseCapture::Seamless);
+	const bool is_seamless_config = (mouse_config.capture ==
+	                                 MouseCapture::Seamless);
 	const bool is_seamless_driver = mouse_shared.active_vmm;
 
 	state.is_seamless = state.have_desktop_environment &&
@@ -210,7 +220,7 @@ static void update_state() // updates whole 'state' structure, except cursor vis
 	const bool is_mapping = state.is_mapping_in_progress ||
 	                        manymouse.IsMappingInEffect();
 	if (state.is_seamless && is_mapping) {
-		state.is_seamless = false;
+		state.is_seamless          = false;
 		static bool already_warned = false;
 		if (!already_warned) {
 			LOG_WARNING("MOUSE: Mapping disables seamless pointer integration");
@@ -253,7 +263,8 @@ static void update_state() // updates whole 'state' structure, except cursor vis
 		//   the mouse cursor, and
 		// - user asked to capture the mouse
 		state.is_captured = !state.have_desktop_environment ||
-		                    (!is_window_or_multi_display && !state.vmm_wants_pointer) ||
+		                    (!is_window_or_multi_display &&
+		                     !state.vmm_wants_pointer) ||
 		                    state.capture_was_requested;
 	}
 
@@ -273,8 +284,7 @@ static void update_state() // updates whole 'state' structure, except cursor vis
 	// Drop mouse events (except for button release) if any of:
 	// - GUI has taken over the mouse
 	// - capture type is NoMouse
-	state.should_drop_events = state.gui_has_taken_over ||
-	                           is_config_no_mouse;
+	state.should_drop_events = state.gui_has_taken_over || is_config_no_mouse;
 	if (!state.is_seamless) {
 
 		// If not Seamless mode, also drop events if any of:
@@ -306,11 +316,11 @@ static void update_state() // updates whole 'state' structure, except cursor vis
 	state.should_capture_on_click = state.have_desktop_environment &&
 	                                is_window_or_multi_display &&
 	                                !state.vmm_wants_pointer &&
-	                                !state.is_captured &&
-	                                !state.is_seamless &&
+	                                !state.is_captured && !state.is_seamless &&
 	                                !state.gui_has_taken_over &&
 	                                !is_config_no_mouse &&
-	                                (is_config_on_start || is_config_on_click || is_mapping);
+	                                (is_config_on_start ||
+	                                 is_config_on_click || is_mapping);
 
 	// Use a middle click to capture the mouse if:
 	// - we have a desktop environment, and
@@ -327,8 +337,7 @@ static void update_state() // updates whole 'state' structure, except cursor vis
 	                                 !state.vmm_wants_pointer &&
 	                                 !state.is_captured &&
 	                                 !state.gui_has_taken_over &&
-	                                 !is_config_no_mouse &&
-	                                 state.is_seamless &&
+	                                 !is_config_no_mouse && state.is_seamless &&
 	                                 mouse_config.middle_release;
 
 	// Use a middle click to release the mouse if:
@@ -363,17 +372,16 @@ static void update_state() // updates whole 'state' structure, except cursor vis
 		                      ? MouseHint::SeamlessHotkeyMiddle
 		                      : MouseHint::ReleasedHotkeyMiddle;
 	} else {
-		state.hint_id = state.is_seamless
-	                    ? MouseHint::SeamlessHotkey
-	                    : MouseHint::ReleasedHotkey;
+		state.hint_id = state.is_seamless ? MouseHint::SeamlessHotkey
+		                                  : MouseHint::ReleasedHotkey;
 	}
 
 	// Center the mouse cursor if:
 	// - this is not the first run, and
 	// - seamless mode is not in effect, and
 	// - we are going to release the captured mouse
-	if (!first_time && !state.is_seamless &&
-	    !state.is_captured && old_is_captured) {
+	if (!first_time && !state.is_seamless && !state.is_captured &&
+	    old_is_captured) {
 		GFX_CenterMouse();
 	}
 
@@ -405,8 +413,7 @@ static bool should_drop_move()
 
 static bool should_drop_press_or_wheel()
 {
-	return state.should_drop_events ||
-	       state.cursor_is_outside;
+	return state.should_drop_events || state.cursor_is_outside;
 }
 
 void MOUSE_UpdateGFX()
@@ -487,7 +494,7 @@ Bitu int74_ret_handler()
 // External notifications
 // ***************************************************************************
 
-void MOUSE_NewScreenParams(const MouseScreenParams &params)
+void MOUSE_NewScreenParams(const MouseScreenParams& params)
 {
 	state.draw_rect = params.draw_rect;
 
@@ -552,8 +559,8 @@ void MOUSE_NotifyBooting()
 	}
 }
 
-void MOUSE_EventMoved(const float x_rel, const float y_rel,
-                      const float x_abs, const float y_abs)
+void MOUSE_EventMoved(const float x_rel, const float y_rel, const float x_abs,
+                      const float y_abs)
 {
 	// Event from GFX
 
@@ -731,24 +738,32 @@ void MOUSE_EventWheel(const int16_t w_rel, const MouseInterfaceId interface_id)
 
 void MOUSE_InjectMoved(const float x_rel, const float y_rel)
 {
-	const bool saved_drop          = state.should_drop_events;
-	const bool saved_outside       = state.cursor_is_outside;
-	const bool saved_captured      = state.is_captured;
-	const bool saved_active        = state.is_window_active;
-	const bool saved_capture_click = state.should_capture_on_click;
-	state.should_drop_events       = false;
-	state.cursor_is_outside        = false;
-	state.is_captured              = true;
-	state.is_window_active         = true;
-	state.should_capture_on_click  = false;
+	// Injection bypasses MOUSE_EventMoved entirely because that
+	// path calls update_cursor_absolute_position (we have no host
+	// cursor data) and routes through MOUSEDOS_NotifyMoved which
+	// silently drops events when use_relative is false and the
+	// dummy absolute position (0,0) doesn't change between calls.
+	//
+	// Instead, iterate interfaces directly and let each handle
+	// injection through InjectMoved. The DOS driver uses
+	// MOUSEDOS_InjectRelativeMoved which forces relative mode
+	// and unconditionally triggers the event. PS/2 and serial
+	// interfaces delegate to NotifyMoved which works fine with
+	// relative-only data.
 
-	MOUSE_EventMoved(x_rel, y_rel, 0.0f, 0.0f);
+	const float x_scaled = x_rel * mouse_config.sensitivity_coeff_x;
+	const float y_scaled = y_rel * mouse_config.sensitivity_coeff_y;
 
-	state.should_drop_events       = saved_drop;
-	state.cursor_is_outside        = saved_outside;
-	state.is_captured              = saved_captured;
-	state.is_window_active         = saved_active;
-	state.should_capture_on_click  = saved_capture_click;
+	for (const auto interface_id : AllMouseInterfaceIds) {
+		auto& interface = MouseInterface::GetInstance(interface_id);
+		if (interface.IsUsingEvents()) {
+			interface.InjectMoved(x_scaled, y_scaled);
+		}
+	}
+
+	if (mouse_move_hook) {
+		mouse_move_hook(x_rel, y_rel, 0.0f, 0.0f);
+	}
 }
 
 void MOUSE_InjectButton(const MouseButtonId button_id, const bool pressed)
@@ -766,11 +781,11 @@ void MOUSE_InjectButton(const MouseButtonId button_id, const bool pressed)
 
 	MOUSE_EventButton(button_id, pressed);
 
-	state.should_drop_events       = saved_drop;
-	state.cursor_is_outside        = saved_outside;
-	state.is_captured              = saved_captured;
-	state.is_window_active         = saved_active;
-	state.should_capture_on_click  = saved_capture_click;
+	state.should_drop_events      = saved_drop;
+	state.cursor_is_outside       = saved_outside;
+	state.is_captured             = saved_captured;
+	state.is_window_active        = saved_active;
+	state.should_capture_on_click = saved_capture_click;
 }
 
 void MOUSE_InjectWheel(const float w_rel)
@@ -788,21 +803,21 @@ void MOUSE_InjectWheel(const float w_rel)
 
 	MOUSE_EventWheel(w_rel);
 
-	state.should_drop_events       = saved_drop;
-	state.cursor_is_outside        = saved_outside;
-	state.is_captured              = saved_captured;
-	state.is_window_active         = saved_active;
-	state.should_capture_on_click  = saved_capture_click;
+	state.should_drop_events      = saved_drop;
+	state.cursor_is_outside       = saved_outside;
+	state.is_captured             = saved_captured;
+	state.is_window_active        = saved_active;
+	state.should_capture_on_click = saved_capture_click;
 }
 
 // ***************************************************************************
 // MOUSECTL.COM / GUI configurator interface
 // ***************************************************************************
 
-static std::vector<MouseInterface *> get_relevant_interfaces(
-        const std::vector<MouseInterfaceId> &list_ids)
+static std::vector<MouseInterface*> get_relevant_interfaces(
+        const std::vector<MouseInterfaceId>& list_ids)
 {
-	std::vector<MouseInterface *> list_tmp = {};
+	std::vector<MouseInterface*> list_tmp = {};
 
 	if (list_ids.empty()) {
 		// If command does not specify interfaces,
@@ -819,8 +834,8 @@ static std::vector<MouseInterface *> get_relevant_interfaces(
 	}
 
 	// Filter out not emulated ones
-	std::vector<MouseInterface *> list_out = {};
-	for (const auto &interface : list_tmp) {
+	std::vector<MouseInterface*> list_out = {};
+	for (const auto& interface : list_tmp) {
 		if (interface->IsEmulated()) {
 			list_out.push_back(interface);
 		}
@@ -837,8 +852,9 @@ MouseControlAPI::MouseControlAPI()
 MouseControlAPI::~MouseControlAPI()
 {
 	manymouse.StopConfigAPI();
-	if (was_interactive_mapping_started)
+	if (was_interactive_mapping_started) {
 		state.is_mapping_in_progress = false;
+	}
 	MOUSE_UpdateGFX();
 }
 
@@ -871,27 +887,30 @@ const std::vector<MouseInterfaceInfoEntry>& MouseControlAPI::GetInfoInterfaces()
 	return mouse_info.interfaces;
 }
 
-const std::vector<MousePhysicalInfoEntry> &MouseControlAPI::GetInfoPhysical()
+const std::vector<MousePhysicalInfoEntry>& MouseControlAPI::GetInfoPhysical()
 {
 	manymouse.RescanIfSafe();
 	return mouse_info.physical;
 }
 
-bool MouseControlAPI::CheckInterfaces(const MouseControlAPI::ListIDs &list_ids)
+bool MouseControlAPI::CheckInterfaces(const MouseControlAPI::ListIDs& list_ids)
 {
 	const auto list = get_relevant_interfaces(list_ids);
 
-	if (list_ids.empty() && list.empty())
+	if (list_ids.empty() && list.empty()) {
 		return false; // no emulated mouse interfaces
-	if (list_ids.empty())
+	}
+	if (list_ids.empty()) {
 		return true; // OK, requested all emulated interfaces
-	if (list_ids.size() != list.size())
+	}
+	if (list_ids.size() != list.size()) {
 		return false; // at least one requested interface is not emulated
+	}
 
 	return true;
 }
 
-bool MouseControlAPI::PatternToRegex(const std::string &pattern, std::regex &regex)
+bool MouseControlAPI::PatternToRegex(const std::string& pattern, std::regex& regex)
 {
 	// Convert DOS wildcard pattern to a regular expression
 	std::stringstream pattern_regex;
@@ -900,14 +919,15 @@ bool MouseControlAPI::PatternToRegex(const std::string &pattern, std::regex &reg
 		if (character < 0x20 || character > 0x7E) {
 			return false;
 		}
-		if (character == '?')
+		if (character == '?') {
 			pattern_regex << ".";
-		else if (character == '*')
+		} else if (character == '*') {
 			pattern_regex << ".*";
-		else if (std::isalnum(character))
+		} else if (std::isalnum(character)) {
 			pattern_regex << character;
-		else
+		} else {
 			pattern_regex << "\\x" << static_cast<int>(character);
+		}
 	}
 
 	// Return a case-insensitive regular expression
@@ -916,7 +936,7 @@ bool MouseControlAPI::PatternToRegex(const std::string &pattern, std::regex &reg
 }
 
 bool MouseControlAPI::MapInteractively(const MouseInterfaceId interface_id,
-                                       uint8_t &physical_device_idx)
+                                       uint8_t& physical_device_idx)
 {
 	if (MappingSupport::Supported != IsMappingSupported() ||
 	    IsNoMouseMode() || IsMappingBlockedByDriver()) {
@@ -929,7 +949,7 @@ bool MouseControlAPI::MapInteractively(const MouseInterfaceId interface_id,
 		// Capture the mouse, otherwise it might be confusing
 		// for the user when it gets captured after he clicks
 		// simply to select the mouse
-		state.capture_was_requested     = true;
+		state.capture_was_requested = true;
 		// Tell the other code that mapping is in progress,
 		// so that it can disable seamless mouse integration,
 		// and possibly apply other changes to mouse behavior
@@ -946,7 +966,7 @@ bool MouseControlAPI::MapInteractively(const MouseInterfaceId interface_id,
 	return Map(interface_id, physical_device_idx);
 }
 
-bool MouseControlAPI::Map(const MouseInterfaceId interface_id,\
+bool MouseControlAPI::Map(const MouseInterfaceId interface_id,
                           const uint8_t physical_device_idx)
 {
 	if (MappingSupport::Supported != IsMappingSupported() ||
@@ -958,7 +978,7 @@ bool MouseControlAPI::Map(const MouseInterfaceId interface_id,\
 	return interface.ConfigMap(physical_device_idx);
 }
 
-bool MouseControlAPI::Map(const MouseInterfaceId interface_id, const std::regex &regex)
+bool MouseControlAPI::Map(const MouseInterfaceId interface_id, const std::regex& regex)
 {
 	if (MappingSupport::Supported != IsMappingSupported() ||
 	    IsNoMouseMode() || IsMappingBlockedByDriver()) {
@@ -976,36 +996,39 @@ bool MouseControlAPI::Map(const MouseInterfaceId interface_id, const std::regex 
 	return result;
 }
 
-bool MouseControlAPI::UnMap(const MouseControlAPI::ListIDs &list_ids)
+bool MouseControlAPI::UnMap(const MouseControlAPI::ListIDs& list_ids)
 {
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigUnMap();
+	}
 
 	MOUSE_UpdateGFX();
 	return !list.empty();
 }
 
-bool MouseControlAPI::OnOff(const MouseControlAPI::ListIDs &list_ids, const bool enable)
+bool MouseControlAPI::OnOff(const MouseControlAPI::ListIDs& list_ids, const bool enable)
 {
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigOnOff(enable);
+	}
 
 	return !list.empty();
 }
 
-bool MouseControlAPI::Reset(const MouseControlAPI::ListIDs &list_ids)
+bool MouseControlAPI::Reset(const MouseControlAPI::ListIDs& list_ids)
 {
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigReset();
+	}
 
 	MOUSE_UpdateGFX();
 	return !list.empty();
 }
 
-bool MouseControlAPI::SetSensitivity(const MouseControlAPI::ListIDs &list_ids,
+bool MouseControlAPI::SetSensitivity(const MouseControlAPI::ListIDs& list_ids,
                                      const int16_t sensitivity_x,
                                      const int16_t sensitivity_y)
 {
@@ -1018,13 +1041,14 @@ bool MouseControlAPI::SetSensitivity(const MouseControlAPI::ListIDs &list_ids,
 	}
 
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigSetSensitivity(sensitivity_x, sensitivity_y);
+	}
 
 	return !list.empty();
 }
 
-bool MouseControlAPI::SetSensitivityX(const MouseControlAPI::ListIDs &list_ids,
+bool MouseControlAPI::SetSensitivityX(const MouseControlAPI::ListIDs& list_ids,
                                       const int16_t sensitivity_x)
 {
 	if (sensitivity_x < Mouse::MinSensitivity ||
@@ -1033,13 +1057,14 @@ bool MouseControlAPI::SetSensitivityX(const MouseControlAPI::ListIDs &list_ids,
 	}
 
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigSetSensitivityX(sensitivity_x);
+	}
 
 	return !list.empty();
 }
 
-bool MouseControlAPI::SetSensitivityY(const MouseControlAPI::ListIDs &list_ids,
+bool MouseControlAPI::SetSensitivityY(const MouseControlAPI::ListIDs& list_ids,
                                       const int16_t sensitivity_y)
 {
 	if (sensitivity_y < Mouse::MinSensitivity ||
@@ -1048,57 +1073,62 @@ bool MouseControlAPI::SetSensitivityY(const MouseControlAPI::ListIDs &list_ids,
 	}
 
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigSetSensitivityY(sensitivity_y);
+	}
 
 	return !list.empty();
 }
 
-bool MouseControlAPI::ResetSensitivity(const MouseControlAPI::ListIDs &list_ids)
+bool MouseControlAPI::ResetSensitivity(const MouseControlAPI::ListIDs& list_ids)
 {
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigResetSensitivity();
+	}
 
 	return !list.empty();
 }
 
-bool MouseControlAPI::ResetSensitivityX(const MouseControlAPI::ListIDs &list_ids)
+bool MouseControlAPI::ResetSensitivityX(const MouseControlAPI::ListIDs& list_ids)
 {
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigResetSensitivityX();
+	}
 
 	return !list.empty();
 }
 
-bool MouseControlAPI::ResetSensitivityY(const MouseControlAPI::ListIDs &list_ids)
+bool MouseControlAPI::ResetSensitivityY(const MouseControlAPI::ListIDs& list_ids)
 {
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigResetSensitivityY();
+	}
 
 	return !list.empty();
 }
 
-const std::vector<uint16_t> &MouseControlAPI::GetValidMinRateList()
+const std::vector<uint16_t>& MouseControlAPI::GetValidMinRateList()
 {
 	return MouseConfig::GetValidMinRateList();
 }
 
-const std::string &MouseControlAPI::GetValidMinRateStr()
+const std::string& MouseControlAPI::GetValidMinRateStr()
 {
 	static std::string out_str = "";
 
 	if (out_str.empty()) {
-		const auto &valid_list = GetValidMinRateList();
+		const auto& valid_list = GetValidMinRateList();
 
 		bool first = true;
-		for (const auto &rate : valid_list) {
-			if (first)
+		for (const auto& rate : valid_list) {
+			if (first) {
 				first = false;
-			else
+			} else {
 				out_str += std::string(", ");
+			}
 			out_str += std::to_string(rate);
 		}
 	}
@@ -1109,8 +1139,8 @@ const std::string &MouseControlAPI::GetValidMinRateStr()
 std::string MouseControlAPI::GetInterfaceNameStr(const MouseInterfaceId interface_id)
 {
 	switch (interface_id) {
-	case MouseInterfaceId::DOS:  return "DOS";
-	case MouseInterfaceId::PS2:  return "PS/2";
+	case MouseInterfaceId::DOS: return "DOS";
+	case MouseInterfaceId::PS2: return "PS/2";
 	case MouseInterfaceId::COM1: return "COM1";
 	case MouseInterfaceId::COM2: return "COM2";
 	case MouseInterfaceId::COM3: return "COM3";
@@ -1121,25 +1151,28 @@ std::string MouseControlAPI::GetInterfaceNameStr(const MouseInterfaceId interfac
 	}
 }
 
-bool MouseControlAPI::SetMinRate(const MouseControlAPI::ListIDs &list_ids,
+bool MouseControlAPI::SetMinRate(const MouseControlAPI::ListIDs& list_ids,
                                  const uint16_t value_hz)
 {
-	const auto &valid_list = GetValidMinRateList();
-	if (!contains(valid_list, value_hz))
+	const auto& valid_list = GetValidMinRateList();
+	if (!contains(valid_list, value_hz)) {
 		return false; // invalid value
+	}
 
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigSetMinRate(value_hz);
+	}
 
 	return !list.empty();
 }
 
-bool MouseControlAPI::ResetMinRate(const MouseControlAPI::ListIDs &list_ids)
+bool MouseControlAPI::ResetMinRate(const MouseControlAPI::ListIDs& list_ids)
 {
 	auto list = get_relevant_interfaces(list_ids);
-	for (auto &interface : list)
+	for (auto& interface : list) {
 		interface->ConfigResetMinRate();
+	}
 
 	return !list.empty();
 }
@@ -1150,11 +1183,10 @@ bool MouseControlAPI::ResetMinRate(const MouseControlAPI::ListIDs &list_ids)
 
 void MOUSE_StartupIfReady()
 {
-	if (mouse_shared.started ||
-	    !mouse_shared.ready_init ||
-	    !mouse_shared.ready_config ||
-	    !mouse_shared.ready_gfx)
+	if (mouse_shared.started || !mouse_shared.ready_init ||
+	    !mouse_shared.ready_config || !mouse_shared.ready_gfx) {
 		return;
+	}
 
 	switch (mouse_config.capture) {
 	case MouseCapture::Seamless:

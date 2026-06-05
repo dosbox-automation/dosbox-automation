@@ -14,7 +14,7 @@
 CHECK_NARROWING();
 
 constexpr auto NumInterfaces = AllMouseInterfaceIds.size();
-static std::array<MouseInterface*, NumInterfaces> mouse_interfaces = { nullptr };
+static std::array<MouseInterface*, NumInterfaces> mouse_interfaces = {nullptr};
 
 // ***************************************************************************
 // Mouse interface information facade
@@ -136,6 +136,7 @@ public:
 
 	void NotifyMoved(const float x_rel, const float y_rel,
 	                 const float x_abs, const float y_abs) override;
+	void InjectMoved(const float x_rel, const float y_rel) override;
 	void NotifyButton(const MouseButtonId id, const bool pressed) override;
 	void NotifyWheel(const float w_rel) override;
 	void NotifyBooting() override;
@@ -340,7 +341,13 @@ void MouseInterface::NotifyInterfaceRate(const uint16_t new_rate_hz)
 	UpdateRate();
 }
 
-void MouseInterface::NotifyMoved(const float, const float, const float, const float) {}
+void MouseInterface::NotifyMoved(const float, const float, const float, const float)
+{}
+
+void MouseInterface::InjectMoved(const float x_rel, const float y_rel)
+{
+	NotifyMoved(x_rel, y_rel, 0, 0);
+}
 
 void MouseInterface::NotifyButton(const MouseButtonId, const bool) {}
 
@@ -609,6 +616,12 @@ void InterfaceDos::NotifyMoved(const float x_rel, const float y_rel,
 	                     y_rel * sensitivity_coeff_y,
 	                     x_abs,
 	                     y_abs);
+}
+
+void InterfaceDos::InjectMoved(const float x_rel, const float y_rel)
+{
+	MOUSEDOS_InjectRelativeMoved(x_rel * sensitivity_coeff_x,
+	                             y_rel * sensitivity_coeff_y);
 }
 
 void InterfaceDos::NotifyButton(const MouseButtonId button_id, const bool pressed)

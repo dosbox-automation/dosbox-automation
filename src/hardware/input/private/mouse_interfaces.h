@@ -41,6 +41,7 @@ void MOUSEDOS_FinalizeInterrupt();
 
 void MOUSEDOS_NotifyMoved(const float x_rel, const float y_rel,
                           const float x_abs, const float y_abs);
+void MOUSEDOS_InjectRelativeMoved(const float x_rel, const float y_rel);
 void MOUSEDOS_NotifyButton(const MouseButtons12S buttons_12S);
 void MOUSEDOS_NotifyWheel(const float w_rel);
 
@@ -117,9 +118,13 @@ public:
 
 	virtual void NotifyMoved(const float x_rel, const float y_rel,
 	                         const float x_abs, const float y_abs);
-	virtual void NotifyButton(const MouseButtonId id,
-		                  const bool pressed);
+	virtual void NotifyButton(const MouseButtonId id, const bool pressed);
 	virtual void NotifyWheel(const float w_rel);
+
+	// Inject movement from API replay. Unlike NotifyMoved, this
+	// bypasses absolute position checks and forces relative mode
+	// in the DOS driver. Default delegates to NotifyMoved.
+	virtual void InjectMoved(const float x_rel, const float y_rel);
 
 	void NotifyInterfaceRate(const uint16_t rate_hz);
 	virtual void NotifyBooting();
@@ -133,9 +138,9 @@ public:
 
 	MouseInterfaceId GetInterfaceId() const;
 	MouseMapStatus GetMapStatus() const;
-	uint8_t  GetMappedDeviceIdx() const;
-	int16_t  GetSensitivityX() const;
-	int16_t  GetSensitivityY() const;
+	uint8_t GetMappedDeviceIdx() const;
+	int16_t GetSensitivityX() const;
+	int16_t GetSensitivityY() const;
 	uint16_t GetMinRate() const;
 	uint16_t GetRate() const;
 
@@ -204,7 +209,7 @@ private:
 	MouseMapStatus map_status   = MouseMapStatus::HostPointer;
 	uint8_t mapped_physical_idx = idx_host_pointer;
 
-	MouseButtons12 buttons_12   = 0; // host side buttons 1 (left), 2 (right)
+	MouseButtons12 buttons_12 = 0; // host side buttons 1 (left), 2 (right)
 	MouseButtons345 buttons_345 = 0; // host side buttons 3 (middle), 4, and 5
 
 	MouseButtons12 old_buttons_12   = 0; // pre-update values
