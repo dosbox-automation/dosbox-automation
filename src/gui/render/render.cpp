@@ -390,9 +390,15 @@ void RENDER_EndUpdate([[maybe_unused]] bool abort)
 	{
 		RenderedImage image = {};
 		image.params     = render.src;
-		image.pitch      = render.scale.cache_pitch;
 		image.image_data = reinterpret_cast<uint8_t*>(render.scale.cache.data());
 		image.palette    = render.palette.rgb;
+		image.pitch      = render.scale.cache_pitch;
+
+		if (render.src.rendered_double_scan) {
+			image.params.height = render.src.video_mode.height;
+			image.pitch         = render.scale.cache_pitch * 2;
+		}
+
 		RENDER_UpdateSharedFrame(image);
 	}
 
