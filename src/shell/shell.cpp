@@ -710,7 +710,7 @@ void SHELL_InitAndRun()
 
 	MSG_Add("SHELL_STARTUP_BEGIN",
 	        "[bgcolor=blue][color=white]╔═══════════════════════════════════════════════════════════════════════╗\n"
-	        "║ [color=light-green]Welcome to DOSBox Staging %-40s[color=white]    ║\n"
+	        "║ [color=light-green]Welcome to dosbox-automation %-37s[color=white]    ║\n"
 	        "║                                                                       ║\n"
 	        "║ For the [color=yellow]Getting Started guide[color=white] for new users, run the [color=light-green]GUIDE[color=white] command.   ║\n"
 	        "║ For the [color=yellow]User Manual[color=white], run the [color=light-green]MANUAL[color=white] command.                          ║\n"
@@ -738,7 +738,7 @@ void SHELL_InitAndRun()
 	        "║                                                                       ║\n");
 
 	MSG_Add("SHELL_STARTUP_END",
-	        "║ [color=yellow]https://www.dosbox-staging.org[color=white]                                        ║\n"
+	        "║ [color=yellow]https://dosbox-automation.org[color=white]                                         ║\n"
 	        "╚═══════════════════════════════════════════════════════════════════════╝[reset]\n"
 	        "\n");
 

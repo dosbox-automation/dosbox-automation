@@ -823,10 +823,10 @@ void TITLEBAR_AddConfigSettings()
 
 	prop_str = section->AddString("window_titlebar",
 	                              always,
-	                              "program=name dosbox=auto cycles=on mouse=full");
+	                              "program=name dosbox=always version=simple cycles=on mouse=full");
 	prop_str->SetHelp(
 	        "Space separated list of information to be displayed in the window's titlebar\n"
-	        "('program=name dosbox=auto cycles=on mouse=full' by default). If a parameter\n"
+	        "('program=name dosbox=always version=simple cycles=on mouse=full' by default). If a parameter\n"
 	        "is not specified, its default value is used. Possible information to display:\n"
 	        "\n"
 	        "  animation=<value>:  If set to 'on' (default), animate the audio/video\n"

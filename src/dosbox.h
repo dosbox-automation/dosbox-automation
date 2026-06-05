@@ -14,10 +14,10 @@
 #include <memory>
 
 // Project name, lower-case and without spaces
-#define DOSBOX_PROJECT_NAME "dosbox-staging"
+#define DOSBOX_PROJECT_NAME "dosbox-automation"
 
 // Name of the emulator
-#define DOSBOX_NAME "DOSBox Staging"
+#define DOSBOX_NAME "dosbox-automation"
 
 // Development team name
 #define DOSBOX_TEAM "The " DOSBOX_NAME " Team"

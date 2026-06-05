@@ -20,12 +20,12 @@ set(VCPKG_USE_HOST_TOOLS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL
     "Generate compile_commands.json for use with LSPs")
 
-project(dosbox-staging
+project(dosbox-automation
   LANGUAGES C CXX
   VERSION 0.84.0
 )
 
-set(DOSBOX_VERSION ${PROJECT_VERSION}-alpha)
+set(DOSBOX_VERSION ${PROJECT_VERSION}-da1)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_EXTENSIONS OFF)
