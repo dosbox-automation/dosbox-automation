@@ -191,7 +191,7 @@ static void setup_security(const std::string& addr, int port,
 		res.status = httplib::StatusCode::Forbidden_403;
 	});
 
-	server.set_payload_max_length(1 * 1024 * 1024);
+	server.set_payload_max_length(10 * 1024 * 1024);
 }
 
 static void run(const std::string addr, const int port, const std::string resource_home)

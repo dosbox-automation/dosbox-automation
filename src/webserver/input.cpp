@@ -338,7 +338,7 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 		return;
 	}
 
-	constexpr size_t max_events = 10000;
+	constexpr size_t max_events = 32000;
 	if (body["events"].size() > max_events) {
 		res.status = 400;
 		json err;
