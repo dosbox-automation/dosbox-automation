@@ -6,6 +6,7 @@
 #include "control.h"
 #include "drive.h"
 #include "input.h"
+#include "private/auth.h"
 #include "private/cpu.h"
 #include "private/dos.h"
 #include "private/dosbox.h"
@@ -173,7 +174,7 @@ static void setup_security(const std::string& addr, int port,
 		const auto token = extract_bearer_token(
 		        req.get_header_value("Authorization"));
 
-		if (token != api_token) {
+		if (!ConstantTimeEquals(token, api_token)) {
 			res.status = httplib::StatusCode::Unauthorized_401;
 			res.set_content("Unauthorized", "text/plain");
 			return httplib::Server::HandlerResponse::Handled;

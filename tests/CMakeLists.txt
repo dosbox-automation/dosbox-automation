@@ -31,6 +31,7 @@ add_executable(dosbox_tests
     # stubs.cpp
     support_tests.cpp
     unicode_tests.cpp
+    webserver_auth_tests.cpp
     multi_prefix_tests.cpp
 )
 
