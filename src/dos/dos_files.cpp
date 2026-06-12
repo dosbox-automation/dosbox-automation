@@ -251,6 +251,8 @@ bool DOS_MakeName(const char* const name, char* const fullname, uint8_t* drive)
 	}
 	while (r>0 && name_int[r-1]==' ') r--;
 	if (r>=DOS_PATHLENGTH) { DOS_SetError(DOSERR_PATH_NOT_FOUND);return false; }
+	// Strip optional trailing colon on device names (LPT1:, CON:, etc.)
+	if (w > 1 && upname[w-1] == ':') w--;
 	upname[w]=0;
 	/* Now parse the new file name to make the final filename */
 	if (upname[0]!='\\') strcpy(fullname,Drives[*drive]->curdir);

@@ -954,7 +954,7 @@ static Bitu DOS_21Handler(void) {
 		case 1:
 			 reg_al=0;break;
 		case 2:
-			 reg_al=0;reg_dl=0x2f;break;
+			 reg_al=0;reg_dl=0xff;break;  /* AVAILDEV: devices available without \DEV\ prefix */
 		case 3:
 			 reg_al=0;break;
 		};
