@@ -4,13 +4,13 @@ globs: "**/*"
 ---
 
 # Commits
+- do not add co-authored-by or similar in the commits
+- group related changes into one commit. a fix that touches formatting or documentation around it,
+  that is one commit, not multiple.
+- no commit prefixes.
+- commit messages are short and terse. 
+- commit messages are written in natural language, plain direct.
+- do not include typographical characters, that look good on layouts but are a pain otherwise.
+- verify all commits compile: `scripts/tools/compile-commits.sh`.
+- vou are not allowed to do commits at will, they have to be accept by a human.
 
-- All commits must compile individually
-- Group related changes into one commit. A fix that touches formatting or
-  docs around it is one commit, not three.
-- No commit prefixes. Just say what changed.
-- Write commit messages like the docs-style rules say: plain, direct, no
-  AI patterns. First line is a short summary, body explains the why if
-  it's not obvious.
-- Never add Co-Authored-By lines to commits
-- Verify all commits compile: `scripts/tools/compile-commits.sh`

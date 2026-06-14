@@ -440,32 +440,13 @@ set(CUSTOM_DATADIR "${CMAKE_INSTALL_FULL_DATADIR}")
 set(project_name "${PROJECT_NAME}")
 set(version      "${PROJECT_VERSION}")
 
-# PkgConfig is needed for speexdsp (no cmake config in vcpkg) and
-# for zlib-ng detection on system-libs builds.
+# PkgConfig is needed for speexdsp (no cmake config in vcpkg).
 find_package(PkgConfig REQUIRED)
 
-# Detect zlib-ng (preferred) or plain zlib for the ZMBV video codec.
-#
-# On vcpkg builds, zlib-ng is always available (listed in vcpkg.json).
-# On system-libs builds (Linux), try zlib-ng first, fall back to plain zlib.
-# C_ZLIB_NG controls whether the native zlib-ng API (zlib-ng.h, zng_*)
-# or the standard zlib API (zlib.h) is used in the ZMBV codec.
-if (USE_SYSTEM_LIBS)
-  pkg_check_modules(ZLIB_NG IMPORTED_TARGET zlib-ng)
-
-  if (ZLIB_NG_FOUND)
-    set(C_ZLIB_NG ON)
-    set(ZMBV_ZLIB_TARGET PkgConfig::ZLIB_NG)
-  else()
-    find_package(ZLIB REQUIRED)
-    set(ZMBV_ZLIB_TARGET ZLIB::ZLIB)
-  endif()
-
-else() # vcpkg path
-  find_package(zlib-ng CONFIG REQUIRED)
-  set(C_ZLIB_NG ON)
-  set(ZMBV_ZLIB_TARGET zlib-ng::zlib)
-endif()
+# Plain zlib for the ZMBV video codec. zlib-ng is not worth the extra
+# dependency here; ZMBV compression is not a bottleneck.
+find_package(ZLIB REQUIRED)
+set(ZMBV_ZLIB_TARGET ZLIB::ZLIB)
 
 configure_file(
   src/dosbox_config.h.in.cmake

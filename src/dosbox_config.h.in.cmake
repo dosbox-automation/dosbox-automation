@@ -98,9 +98,6 @@
 // Sometimes available functions, structs, or struct fields differ slightly
 // between operating systems.
 
-// Define to 1 when using the native zlib-ng API
-#cmakedefine01 C_ZLIB_NG
-
 // Defined if synchronous I/O multiplexing is available
 #cmakedefine HAVE_FD_ZERO
 

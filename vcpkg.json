@@ -21,7 +21,7 @@
     },
     "sdl2-image",
     "speexdsp",
-    "zlib-ng",
+    "zlib",
     {
       "name": "pkgconf",
       "host": true

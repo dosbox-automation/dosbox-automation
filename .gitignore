@@ -1,3 +1,6 @@
+# override global gitignore: .claude/ is part of this project
+!.claude/
+
 # Precompiled Headers
 *.gch
 *.pch
