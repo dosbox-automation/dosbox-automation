@@ -556,4 +556,27 @@ TEST_F(MountPolicyTest, TraversalEscapeFromConfAnchor)
 	EXPECT_FALSE(verdict.allowed);
 }
 
+// -- Lock --
+
+TEST(MountPolicyLock, InitiallyUnlocked)
+{
+	// Lock is a global one-way latch. If a prior test already locked
+	// it, this test is not meaningful - but we cannot unlatch.
+	// In a fresh run it starts unlocked.
+	if (MountPolicy::IsLocked()) {
+		GTEST_SKIP() << "Lock already set by a prior test";
+	}
+	EXPECT_FALSE(MountPolicy::IsLocked());
+}
+
+TEST(MountPolicyLock, LockIsOneWay)
+{
+	MountPolicy::Lock();
+	EXPECT_TRUE(MountPolicy::IsLocked());
+
+	// Locking again doesn't crash or toggle
+	MountPolicy::Lock();
+	EXPECT_TRUE(MountPolicy::IsLocked());
+}
+
 } // namespace

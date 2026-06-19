@@ -11,6 +11,7 @@
 #endif
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -21,6 +22,20 @@
 CHECK_NARROWING();
 
 namespace MountPolicy {
+
+// One-way latch, set from the emulator thread via the Bridge.
+// std::atomic because the webserver handler reads it from another thread.
+static std::atomic<bool> mount_locked{false};
+
+void Lock()
+{
+	mount_locked.store(true, std::memory_order_release);
+}
+
+bool IsLocked()
+{
+	return mount_locked.load(std::memory_order_acquire);
+}
 
 std::optional<std::filesystem::path> CanonicalizeExisting(const std::filesystem::path& host_path)
 {

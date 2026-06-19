@@ -1057,6 +1057,15 @@ bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_con
 		return false;
 	}
 
+	if (MountPolicy::IsLocked()) {
+		LOG_WARNING("MOUNT: Blocked directory mount '%s' - locked",
+		            path_arg_1.c_str());
+		NOTIFY_DisplayWarning(Notification::Source::Console,
+		                      "MOUNT",
+		                      "PROGRAM_CONFIG_SECURE_DISALLOW");
+		return false;
+	}
+
 	const auto dir_verdict = MountPolicy::ValidateDirectoryMount(
 	        std_fs::path(path_arg_1), GetConfAnchor(), {}, GetCurrentDirPolicy());
 	if (!dir_verdict.allowed) {

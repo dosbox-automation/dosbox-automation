@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText:  2026-2026 The DOSBox Staging Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "webserver.h"
@@ -12,6 +13,8 @@
 #include "private/dosbox.h"
 #include "private/memory.h"
 #include "video.h"
+
+#include "dos/programs/mount_policy.h"
 
 #include <random>
 #include <set>
@@ -85,6 +88,20 @@ static void setup_api_handlers()
 	server.Post("/api/v1/control/shutdown", ShutdownCommand::Post);
 
 	server.Post("/api/v1/drive/swap", DriveSwapCommand::Post);
+
+	server.Post("/api/v1/mount/lock",
+	            [](const httplib::Request&, httplib::Response& res) {
+		            MountPolicy::Lock();
+		            json j;
+		            j["status"] = "locked";
+		            send_json(res, j);
+	            });
+	server.Get("/api/v1/mount/lock",
+	           [](const httplib::Request&, httplib::Response& res) {
+		           json j;
+		           j["locked"] = MountPolicy::IsLocked();
+		           send_json(res, j);
+	           });
 
 	server.Post("/api/v1/input/record/start", RecordingHandlers::PostStart);
 	server.Post("/api/v1/input/record/pause", RecordingHandlers::PostPause);

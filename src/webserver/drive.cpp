@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: 2026 The DOSBox Staging Team
+// SPDX-FileCopyrightText: 2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "drive.h"
@@ -7,11 +8,13 @@
 
 #include "dos/dos.h"
 #include "dos/drives.h"
+#include "dos/programs/mount_policy.h"
 #include "ints/bios_disk.h"
 
 #include "libs/json/json.h"
 
 #include <cctype>
+#include <filesystem>
 #include <sys/stat.h>
 
 using json = nlohmann::json;
@@ -25,6 +28,21 @@ DriveSwapCommand::DriveSwapCommand(char drive_letter, std::string image_path)
 
 void DriveSwapCommand::Execute()
 {
+	// API origin: full policy validation with allowed_image_roots.
+	// Config plumbing for allowed_image_roots is not wired yet;
+	// with an empty list the Api whitelist gate is open while
+	// floor checks (canonical, symlink, system path, structural)
+	// still run.
+	const auto allowed_roots = std::vector<std::filesystem::path>{};
+	const auto verdict       = MountPolicy::ValidateImagePath(
+                std::filesystem::path(image_path), MountOrigin::Api, allowed_roots);
+	if (!verdict.allowed) {
+		error = "Blocked by mount policy: " + image_path;
+		LOG_WARNING("DRIVE-SWAP: Blocked '%s' - policy violation",
+		            image_path.c_str());
+		return;
+	}
+
 	struct stat st = {};
 	if (stat(image_path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
 		error = "File not found: " + image_path;
@@ -49,8 +67,9 @@ void DriveSwapCommand::Execute()
 
 	Drives[drv_idx].reset();
 
+	// API mounts are read-only by default
 	auto new_drive = std::make_shared<fatDrive>(
-	        image_path.c_str(), 512, 0, 0, 0, is_floppy ? 0xF0 : 0xF8, false);
+	        image_path.c_str(), 512, 0, 0, 0, is_floppy ? 0xF0 : 0xF8, true);
 
 	if (!new_drive->created_successfully) {
 		error = "Failed to mount image: " + image_path;

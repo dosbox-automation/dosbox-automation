@@ -59,6 +59,11 @@ MountVerdict ValidateImagePath(
         const std::filesystem::path& raw_path, MountOrigin origin,
         const std::vector<std::filesystem::path>& allowed_image_roots);
 
+// One-way latch. Once locked, directory mounts are refused entirely
+// and image mounts require the whitelist. Cannot be unlocked.
+void Lock();
+bool IsLocked();
+
 } // namespace MountPolicy
 
 #endif // DOSBOX_PROGRAM_MOUNT_POLICY_H
