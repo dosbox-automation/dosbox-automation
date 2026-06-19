@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2021-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "boot.h"
@@ -19,8 +20,10 @@
 #include "hardware/virtualbox.h"
 #include "hardware/vmware.h"
 #include "ints/bios_disk.h"
+#include "misc/cross.h"
 #include "misc/video.h"
 #include "more_output.h"
+#include "mount_policy.h"
 #include "utils/fs_utils.h"
 #include "utils/string_utils.h"
 
@@ -30,13 +33,14 @@ FILE* BOOT::getFSFile_mounted(const char* filename, uint32_t* ksize,
 	// if return NULL then put in error the errormessage code if an error
 	// was requested
 	bool tryload = (*error) ? true : false;
-	*error = 0;
+	*error       = 0;
 	uint8_t drive;
-	FILE *tmpfile;
+	FILE* tmpfile;
 	char fullname[DOS_PATHLENGTH];
 
-	if (!DOS_MakeName(filename, fullname, &drive))
+	if (!DOS_MakeName(filename, fullname, &drive)) {
 		return nullptr;
+	}
 
 	try {
 		const auto ldp = std::dynamic_pointer_cast<localDrive>(
@@ -47,8 +51,9 @@ FILE* BOOT::getFSFile_mounted(const char* filename, uint32_t* ksize,
 
 		tmpfile = ldp->GetHostFilePtr(fullname, "rb");
 		if (tmpfile == nullptr) {
-			if (!tryload)
+			if (!tryload) {
 				*error = 1;
+			}
 			return nullptr;
 		}
 
@@ -68,8 +73,9 @@ FILE* BOOT::getFSFile_mounted(const char* filename, uint32_t* ksize,
 			WriteOut(MSG_Get("PROGRAM_BOOT_WRITE_PROTECTED"));
 			tmpfile = ldp->GetHostFilePtr(fullname, "rb");
 			if (tmpfile == nullptr) {
-				if (!tryload)
+				if (!tryload) {
 					*error = 1;
+				}
 				return nullptr;
 			}
 		}
@@ -84,15 +90,16 @@ FILE* BOOT::getFSFile(const char* filename, uint32_t* ksize, uint32_t* bsize,
                       bool tryload)
 {
 	uint8_t error = tryload ? 1 : 0;
-	FILE *tmpfile = getFSFile_mounted(filename, ksize, bsize, &error);
-	if (tmpfile)
+	FILE* tmpfile = getFSFile_mounted(filename, ksize, bsize, &error);
+	if (tmpfile) {
 		return tmpfile;
+	}
 	// File not found on mounted filesystem. Try regular filesystem
 	const auto filename_s = resolve_home(filename).string();
-	tmpfile = fopen(filename_s.c_str(), "rb+");
+	tmpfile               = fopen(filename_s.c_str(), "rb+");
 
 	// Used for logging in check_fseek()
-	constexpr auto ModuleName = "BOOT";
+	constexpr auto ModuleName      = "BOOT";
 	constexpr auto FileDescription = "image";
 
 	if (!tmpfile) {
@@ -102,7 +109,12 @@ FILE* BOOT::getFSFile(const char* filename, uint32_t* ksize, uint32_t* bsize,
 			//				fclose(tmpfile);
 			//				if (tryload) error = 2;
 			WriteOut(MSG_Get("PROGRAM_BOOT_WRITE_PROTECTED"));
-			if (!check_fseek(ModuleName, FileDescription, filename, tmpfile, 0L, SEEK_END)) {
+			if (!check_fseek(ModuleName,
+			                 FileDescription,
+			                 filename,
+			                 tmpfile,
+			                 0L,
+			                 SEEK_END)) {
 				return nullptr;
 			}
 			*ksize = (ftell(tmpfile) / 1024);
@@ -111,10 +123,12 @@ FILE* BOOT::getFSFile(const char* filename, uint32_t* ksize, uint32_t* bsize,
 		}
 		// Give the delayed errormessages from the mounted variant (or
 		// from above)
-		if (error == 1)
+		if (error == 1) {
 			WriteOut(MSG_Get("PROGRAM_BOOT_NOT_EXIST"));
-		if (error == 2)
+		}
+		if (error == 2) {
 			WriteOut(MSG_Get("PROGRAM_BOOT_NOT_OPEN"));
+		}
 		return nullptr;
 	}
 	if (!check_fseek(ModuleName, FileDescription, filename, tmpfile, 0L, SEEK_END)) {
@@ -152,14 +166,14 @@ void BOOT::Run(void)
 		return;
 	}
 
-	FILE *usefile_1 = nullptr;
-	FILE *usefile_2 = nullptr;
-	Bitu i = 0;
-	uint32_t floppysize = 0;
+	FILE* usefile_1        = nullptr;
+	FILE* usefile_2        = nullptr;
+	Bitu i                 = 0;
+	uint32_t floppysize    = 0;
 	uint32_t rombytesize_1 = 0;
 	uint32_t rombytesize_2 = 0;
-	char drive = 'A';
-	std::string cart_cmd = "";
+	char drive             = 'A';
+	std::string cart_cmd   = "";
 
 	if (!cmd->GetCount()) {
 		printError();
@@ -219,10 +233,11 @@ void BOOT::Run(void)
 				/* Command mode for PCJr cartridges */
 				i++;
 				if (cmd->FindCommand(i + 1, temp_line)) {
-					for (size_t ct = 0;
-					     ct < temp_line.size(); ct++)
+					for (size_t ct = 0; ct < temp_line.size();
+					     ct++) {
 						temp_line[ct] = toupper(
 						        temp_line[ct]);
+					}
 					cart_cmd = temp_line;
 				} else {
 					printError();
@@ -242,17 +257,32 @@ void BOOT::Run(void)
 			}
 			WriteOut(MSG_Get("PROGRAM_BOOT_IMAGE_OPEN"),
 			         temp_line.c_str());
+
+			const auto boot_path = resolve_home(temp_line).string();
+			const auto boot_verdict = MountPolicy::ValidateImagePath(
+			        std::filesystem::path(boot_path),
+			        MountOrigin::Interactive,
+			        {});
+			if (!boot_verdict.allowed) {
+				LOG_WARNING("BOOT: Blocked '%s' - policy violation",
+				            boot_path.c_str());
+				WriteOut(MSG_Get("PROGRAM_BOOT_IMAGE_NOT_OPEN"),
+				         temp_line.c_str());
+				return;
+			}
+
 			uint32_t rombytesize;
-			FILE *usefile = getFSFile(temp_line.c_str(),
-			                          &floppysize, &rombytesize);
+			FILE* usefile = getFSFile(temp_line.c_str(),
+			                          &floppysize,
+			                          &rombytesize);
 			if (usefile != nullptr) {
 				diskSwap[i] = std::make_shared<imageDisk>(
 				        usefile, temp_line.c_str(), floppysize, false);
 				if (usefile_1 == nullptr) {
-					usefile_1 = usefile;
+					usefile_1     = usefile;
 					rombytesize_1 = rombytesize;
 				} else {
-					usefile_2 = usefile;
+					usefile_2     = usefile;
 					rombytesize_2 = rombytesize;
 				}
 			} else {
@@ -283,17 +313,23 @@ void BOOT::Run(void)
 			Bits cfound_at = -1;
 
 			// Used for logging in check_fseek()
-			constexpr auto ModuleName = "BOOT";
+			constexpr auto ModuleName      = "BOOT";
 			constexpr auto FileDescription = "cartridge";
 
 			if (!cart_cmd.empty()) {
 				if (!usefile_1) {
-					WriteOut(MSG_Get("PROGRAM_BOOT_IMAGE_NOT_OPEN"), temp_line.c_str());
+					WriteOut(MSG_Get("PROGRAM_BOOT_IMAGE_NOT_OPEN"),
+					         temp_line.c_str());
 					return;
 				}
 				/* read cartridge data into buffer */
 				constexpr auto seek_pos = 0x200;
-				if (!check_fseek(ModuleName, FileDescription, temp_line.c_str(), usefile_1, seek_pos, SEEK_SET)) {
+				if (!check_fseek(ModuleName,
+				                 FileDescription,
+				                 temp_line.c_str(),
+				                 usefile_1,
+				                 seek_pos,
+				                 SEEK_SET)) {
 					return;
 				}
 				const auto rom_bytes_expected = rombytesize_1 - 0x200;
@@ -309,7 +345,7 @@ void BOOT::Run(void)
 
 				char cmdlist[1024];
 				cmdlist[0] = 0;
-				Bitu ct = 6;
+				Bitu ct    = 6;
 
 				auto clen = rombuf[ct];
 				static constexpr auto max_clen =
@@ -319,15 +355,16 @@ void BOOT::Run(void)
 				if (cart_cmd == "?") {
 					while (clen != 0) {
 						strncpy(buf.data(),
-						        (char *)&rombuf[ct + 1],
+						        (char*)&rombuf[ct + 1],
 						        clen);
 						buf[clen] = 0;
 						upcase(buf.data());
 						safe_strcat(cmdlist, " ");
 						safe_strcat(cmdlist, buf.data());
 						ct += 1 + clen + 3;
-						if (ct > sizeof(cmdlist))
+						if (ct > sizeof(cmdlist)) {
 							break;
+						}
 						clen = rombuf[ct];
 					}
 					if (ct > 6) {
@@ -343,7 +380,7 @@ void BOOT::Run(void)
 				} else {
 					while (clen != 0) {
 						strncpy(buf.data(),
-						        (char *)&rombuf[ct + 1],
+						        (char*)&rombuf[ct + 1],
 						        clen);
 						buf[clen] = 0;
 						upcase(buf.data());
@@ -357,8 +394,9 @@ void BOOT::Run(void)
 						}
 
 						ct += 3;
-						if (ct > sizeof(cmdlist))
+						if (ct > sizeof(cmdlist)) {
 							break;
+						}
 						clen = rombuf[ct];
 					}
 					if (cfound_at <= 0) {
@@ -378,26 +416,38 @@ void BOOT::Run(void)
 			DisableUmbXmsEms();
 			MEM_PreparePCJRCartRom();
 
-			if (usefile_1 == nullptr)
+			if (usefile_1 == nullptr) {
 				return;
+			}
 
 			uint32_t sz1, sz2;
 			constexpr auto rom_filename = "system.rom";
 			FILE* tfile = getFSFile(rom_filename, &sz1, &sz2, true);
 			if (tfile != nullptr) {
-				if (!check_fseek("BOOT", "system ROM", rom_filename, tfile, 0x3000L, SEEK_SET)) {
+				if (!check_fseek("BOOT",
+				                 "system ROM",
+				                 rom_filename,
+				                 tfile,
+				                 0x3000L,
+				                 SEEK_SET)) {
 					return;
 				}
 				auto drd = (uint32_t)fread(rombuf, 1, 0xb000, tfile);
 				if (drd == 0xb000) {
-					for (i = 0; i < 0xb000; i++)
+					for (i = 0; i < 0xb000; i++) {
 						phys_writeb(0xf3000 + i, rombuf[i]);
+					}
 				}
 				fclose(tfile);
 			}
 
 			if (usefile_2 != nullptr) {
-				if (!check_fseek(ModuleName, FileDescription, temp_line.c_str(), usefile_2, 0x0L, SEEK_SET)) {
+				if (!check_fseek(ModuleName,
+				                 FileDescription,
+				                 temp_line.c_str(),
+				                 usefile_2,
+				                 0x0L,
+				                 SEEK_SET)) {
 					return;
 				}
 				if (fread(rombuf, 1, 0x200, usefile_2) < 0x200) {
@@ -409,7 +459,12 @@ void BOOT::Run(void)
 				PhysPt romseg_pt = host_readw(&rombuf[0x1ce]) << 4;
 
 				/* read cartridge data into buffer */
-				if (!check_fseek(ModuleName, FileDescription, temp_line.c_str(), usefile_2, 0x200L, SEEK_SET)) {
+				if (!check_fseek(ModuleName,
+				                 FileDescription,
+				                 temp_line.c_str(),
+				                 usefile_2,
+				                 0x200L,
+				                 SEEK_SET)) {
 					return;
 				}
 				if (fread(rombuf, 1, rombytesize_2 - 0x200, usefile_2) <
@@ -424,11 +479,17 @@ void BOOT::Run(void)
 				// the file
 
 				/* write cartridge data into ROM */
-				for (i = 0; i < rombytesize_2 - 0x200; i++)
+				for (i = 0; i < rombytesize_2 - 0x200; i++) {
 					phys_writeb(romseg_pt + i, rombuf[i]);
+				}
 			}
 
-			if (!check_fseek(ModuleName, FileDescription, temp_line.c_str(), usefile_1, 0x0L, SEEK_SET)) {
+			if (!check_fseek(ModuleName,
+			                 FileDescription,
+			                 temp_line.c_str(),
+			                 usefile_1,
+			                 0x0L,
+			                 SEEK_SET)) {
 				return;
 			}
 			if (fread(rombuf, 1, 0x200, usefile_1) < 0x200) {
@@ -440,7 +501,12 @@ void BOOT::Run(void)
 			uint16_t romseg = host_readw(&rombuf[0x1ce]);
 
 			/* read cartridge data into buffer */
-			if (!check_fseek(ModuleName, FileDescription, temp_line.c_str(), usefile_1, 0x200L, SEEK_SET)) {
+			if (!check_fseek(ModuleName,
+			                 FileDescription,
+			                 temp_line.c_str(),
+			                 usefile_1,
+			                 0x200L,
+			                 SEEK_SET)) {
 				return;
 			}
 			if (fread(rombuf, 1, rombytesize_1 - 0x200, usefile_1) <
@@ -453,8 +519,9 @@ void BOOT::Run(void)
 			// structure which should be deleted to close the file
 
 			/* write cartridge data into ROM */
-			for (i = 0; i < rombytesize_1 - 0x200; i++)
+			for (i = 0; i < rombytesize_1 - 0x200; i++) {
 				phys_writeb((romseg << 4) + i, rombuf[i]);
+			}
 
 			// Close cardridges
 			diskSwap.fill(nullptr);
@@ -492,12 +559,14 @@ void BOOT::Run(void)
 		NotifyBooting();
 		WriteOut(MSG_Get("PROGRAM_BOOT_BOOT"), drive);
 
-		for (i = 0; i < 512; i++)
+		for (i = 0; i < 512; i++) {
 			real_writeb(0, 0x7c00 + i, bootarea.rawdata[i]);
+		}
 
 		/* create appearance of floppy drive DMA usage (Demon's Forge) */
-		if (!is_machine_pcjr_or_tandy() && floppysize != 0)
+		if (!is_machine_pcjr_or_tandy() && floppysize != 0) {
 			DMA_GetChannel(2)->has_reached_terminal_count = true;
+		}
 
 		/* revector some dos-allocated interrupts */
 		real_writed(0, 0x01 * 4, 0xf000ff53);
@@ -550,9 +619,10 @@ void BOOT::AddMessages()
 	        "Examples:\n"
 	        "  [color=light-green]boot[reset] [color=white]c:[reset]\n"
 	        "  [color=light-green]boot[reset] [color=light-cyan]disk1.ima disk2.ima[reset]\n");
-	MSG_Add("PROGRAM_BOOT_NOT_EXIST","Bootdisk file does not exist. Failing.\n");
-	MSG_Add("PROGRAM_BOOT_NOT_OPEN","Cannot open bootdisk file. Failing.\n");
-	MSG_Add("PROGRAM_BOOT_WRITE_PROTECTED","Image file is read-only! Might create problems.\n");
+	MSG_Add("PROGRAM_BOOT_NOT_EXIST", "Bootdisk file does not exist. Failing.\n");
+	MSG_Add("PROGRAM_BOOT_NOT_OPEN", "Cannot open bootdisk file. Failing.\n");
+	MSG_Add("PROGRAM_BOOT_WRITE_PROTECTED",
+	        "Image file is read-only! Might create problems.\n");
 	MSG_Add("PROGRAM_BOOT_PRINT_ERROR",
 	        "This command boots DOSBox Staging from either a floppy or hard disk image.\n\n"
 	        "For this command, one can specify a succession of floppy disks swappable by\n"
@@ -561,12 +631,14 @@ void BOOT::AddMessages()
 	        "bootable drive letters are A, C, and D. For booting from a hard drive (C or D),\n"
 	        "the image should have already been mounted using the [color=light-blue]MOUNT[reset] command.\n\n"
 	        "Type [color=light-blue]BOOT /?[reset] for the syntax of this command.\n");
-	MSG_Add("PROGRAM_BOOT_UNABLE","Unable to boot off of drive %c.\n");
-	MSG_Add("PROGRAM_BOOT_IMAGE_OPEN","Opening image file: %s\n");
-	MSG_Add("PROGRAM_BOOT_IMAGE_MOUNTED","Floppy image(s) already mounted.\n");
-	MSG_Add("PROGRAM_BOOT_IMAGE_NOT_OPEN","Cannot open %s\n");
-	MSG_Add("PROGRAM_BOOT_BOOT","Booting from drive %c...\n");
-	MSG_Add("PROGRAM_BOOT_CART_WO_PCJR","PCjr cartridge found, but machine is not PCjr.\n");
-	MSG_Add("PROGRAM_BOOT_CART_LIST_CMDS", "Available PCjr cartridge commands: %s\n");
+	MSG_Add("PROGRAM_BOOT_UNABLE", "Unable to boot off of drive %c.\n");
+	MSG_Add("PROGRAM_BOOT_IMAGE_OPEN", "Opening image file: %s\n");
+	MSG_Add("PROGRAM_BOOT_IMAGE_MOUNTED", "Floppy image(s) already mounted.\n");
+	MSG_Add("PROGRAM_BOOT_IMAGE_NOT_OPEN", "Cannot open %s\n");
+	MSG_Add("PROGRAM_BOOT_BOOT", "Booting from drive %c...\n");
+	MSG_Add("PROGRAM_BOOT_CART_WO_PCJR",
+	        "PCjr cartridge found, but machine is not PCjr.\n");
+	MSG_Add("PROGRAM_BOOT_CART_LIST_CMDS",
+	        "Available PCjr cartridge commands: %s\n");
 	MSG_Add("PROGRAM_BOOT_CART_NO_CMDS", "No PCjr cartridge commands found.\n");
 }

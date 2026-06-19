@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText:  2021-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "mount.h"
 #include "mount_common.h"
+#include "mount_policy.h"
 
 #include "dosbox.h"
 
@@ -23,6 +25,7 @@
 #include "shell/shell.h"
 #include "utils/fs_utils.h"
 #include "utils/string_utils.h"
+#include "webserver/webserver.h"
 #include <sys/stat.h>
 
 #ifndef S_ISREG
@@ -180,7 +183,7 @@ void MOUNT::WriteMountStatus(const std::string& image_type,
 {
 	const size_t term_width = INT10_GetTextColumns();
 	constexpr auto Indent   = "  ";
-	const auto indent_size = strlen(Indent);
+	const auto indent_size  = strlen(Indent);
 	std::string images_str  = {};
 
 	if (images.size() == 1) {
@@ -810,6 +813,49 @@ std::string MOUNT::GetDosMappedHostPath(const std::string& dos_path) const
 	return "";
 }
 
+// Parent directory of the last loaded config file, used as the
+// trusted anchor for mount path validation.
+static std_fs::path GetConfAnchor()
+{
+	if (control->config_files.empty()) {
+		return {};
+	}
+	return std_fs::path(control->config_files.back()).parent_path();
+}
+
+static DirMountPolicy GetCurrentDirPolicy()
+{
+	if (WEBSERVER_IsEnabled()) {
+		return DirMountPolicy::WhitelistEnforced;
+	}
+	return DirMountPolicy::OwnerTrusted;
+}
+
+static void LogMountDenied(const std::string& path, const MountVerdict& verdict)
+{
+	const char* reason_text = "blocked by policy";
+	switch (verdict.reason) {
+	case DenyReason::DoesNotResolve:
+		reason_text = "path does not resolve";
+		break;
+	case DenyReason::NotRegularFile:
+		reason_text = "not a regular file";
+		break;
+	case DenyReason::SymlinkComponent:
+		reason_text = "symlink in path";
+		break;
+	case DenyReason::SystemPath: reason_text = "system path"; break;
+	case DenyReason::OutsideWhitelist:
+		reason_text = "outside allowed directories";
+		break;
+	case DenyReason::NotADiskImage:
+		reason_text = "not a recognized disk image";
+		break;
+	case DenyReason::None: return;
+	}
+	LOG_WARNING("MOUNT: Blocked '%s' - %s", path.c_str(), reason_text);
+}
+
 // Returns true if processed successfully (even if it means it found an image
 // and decided to mount it) Returns false on failure.
 bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_config)
@@ -835,7 +881,7 @@ bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_con
 
 	// Check first path on the host OS
 	struct stat test = {};
-	auto stat_ok = (stat(path_arg_1.c_str(), &test) == 0);
+	auto stat_ok     = (stat(path_arg_1.c_str(), &test) == 0);
 
 	// If not found on the host, check if it is a mounted DOS path
 	if (!stat_ok) {
@@ -869,7 +915,7 @@ bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_con
 
 	if (is_image_mode) {
 		// Loop through all remaining arguments
-		auto arg_idx = 2;
+		auto arg_idx        = 2;
 		std::string cur_arg = "";
 
 		while (cmd->FindCommand(arg_idx++, cur_arg)) {
@@ -975,6 +1021,20 @@ bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_con
 			return false;
 		}
 
+		// Validate every image path before any construction
+		for (const auto& img_path : params.paths) {
+			const auto img_verdict = MountPolicy::ValidateImagePath(
+			        std_fs::path(img_path), MountOrigin::Interactive, {});
+			if (!img_verdict.allowed) {
+				LogMountDenied(img_path, img_verdict);
+				NOTIFY_DisplayWarning(Notification::Source::Console,
+				                      "MOUNT",
+				                      "PROGRAM_MOUNT_ERROR_2",
+				                      img_path.c_str());
+				return false;
+			}
+		}
+
 		// Ensure consistency between type and fstype if user didn't
 		// override -fs
 		if (params.type == "floppy" && params.fstype == "fat") {
@@ -990,6 +1050,17 @@ bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_con
 
 	// Standard directory or overlay mount
 	if (!S_ISDIR(test.st_mode)) {
+		NOTIFY_DisplayWarning(Notification::Source::Console,
+		                      "MOUNT",
+		                      "PROGRAM_MOUNT_ERROR_2",
+		                      path_arg_1.c_str());
+		return false;
+	}
+
+	const auto dir_verdict = MountPolicy::ValidateDirectoryMount(
+	        std_fs::path(path_arg_1), GetConfAnchor(), {}, GetCurrentDirPolicy());
+	if (!dir_verdict.allowed) {
+		LogMountDenied(path_arg_1, dir_verdict);
 		NOTIFY_DisplayWarning(Notification::Source::Console,
 		                      "MOUNT",
 		                      "PROGRAM_MOUNT_ERROR_2",
@@ -1074,13 +1145,13 @@ void MOUNT::MountLocal(MountParameters& params, const std::string& local_path)
 		// Mount a host directory as a CD-ROM drive.
 		int error = 0;
 		newdrive  = std::make_shared<cdromDrive>(params.drive,
-		                                         final_path.c_str(),
-		                                         params.sizes[0],
-		                                         int8_tize,
-		                                         params.sizes[2],
-		                                         0,
-		                                         params.mediaid,
-		                                         error);
+                                                        final_path.c_str(),
+                                                        params.sizes[0],
+                                                        int8_tize,
+                                                        params.sizes[2],
+                                                        0,
+                                                        params.mediaid,
+                                                        error);
 
 		const char* msg_id = mscdex_error_to_message_id(error, false);
 		if (error == 0) { //-V457 //-V547

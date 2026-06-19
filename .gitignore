@@ -19,6 +19,9 @@ missed.txt
 # Default CMake build dir
 /build
 
+# Meson subprojects (build-time deps)
+/subprojects
+
 # VCPKG
 vcpkg_installed
 
