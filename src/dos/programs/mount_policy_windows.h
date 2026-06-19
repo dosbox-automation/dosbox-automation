@@ -11,26 +11,43 @@
 #include <string>
 #include <vector>
 
+#include "utils/env_utils.h"
+
 namespace MountPolicy {
 
-// Paths that must never be mountable as DOS drives regardless of
-// configuration. Each entry blocks the directory itself and everything
-// below it. Checked after canonicalization, so symlinks into these
-// trees are caught.
-//
-// Drive-letter roots (C:\, D:\, ...) are rejected separately by the
-// bare-root check in IsUnderSystemPath, not listed here.
+// Built from environment variables so the correct paths are blocked
+// regardless of which drive Windows is installed on.
 inline const std::vector<std::filesystem::path>& SystemPaths()
 {
-	static const std::vector<std::filesystem::path> paths = {
-	        "C:\\Windows",
-	        "C:\\Windows\\System32",
-	        "C:\\Windows\\SysWOW64",
-	        "C:\\Program Files",
-	        "C:\\Program Files (x86)",
-	        "C:\\ProgramData",
-	        "C:\\Recovery",
-	};
+	static const auto paths = []() {
+		auto result = std::vector<std::filesystem::path>{};
+
+		auto add = [&](const std::string& p) {
+			if (!p.empty()) {
+				result.push_back(p);
+			}
+		};
+
+		// %SYSTEMROOT% is the Windows directory (e.g. D:\Windows)
+		const auto sysroot = get_env_var("SYSTEMROOT");
+		add(sysroot);
+		if (!sysroot.empty()) {
+			add(sysroot + "\\System32");
+			add(sysroot + "\\SysWOW64");
+		}
+
+		add(get_env_var("ProgramFiles"));
+		add(get_env_var("ProgramFiles(x86)"));
+		add(get_env_var("ProgramData"));
+
+		// Recovery partition on the system drive
+		const auto sysdrive = get_env_var("SYSTEMDRIVE");
+		if (!sysdrive.empty()) {
+			add(sysdrive + "\\Recovery");
+		}
+
+		return result;
+	}();
 	return paths;
 }
 
