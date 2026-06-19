@@ -28,14 +28,10 @@ DriveSwapCommand::DriveSwapCommand(char drive_letter, std::string image_path)
 
 void DriveSwapCommand::Execute()
 {
-	// API origin: full policy validation with allowed_image_roots.
-	// Config plumbing for allowed_image_roots is not wired yet;
-	// with an empty list the Api whitelist gate is open while
-	// floor checks (canonical, symlink, system path, structural)
-	// still run.
-	const auto allowed_roots = std::vector<std::filesystem::path>{};
-	const auto verdict       = MountPolicy::ValidateImagePath(
-                std::filesystem::path(image_path), MountOrigin::Api, allowed_roots);
+	const auto verdict =
+	        MountPolicy::ValidateImagePath(std::filesystem::path(image_path),
+	                                       MountOrigin::Api,
+	                                       MountPolicy::AllowedImageRoots());
 	if (!verdict.allowed) {
 		error = "Blocked by mount policy: " + image_path;
 		LOG_WARNING("DRIVE-SWAP: Blocked '%s' - policy violation",

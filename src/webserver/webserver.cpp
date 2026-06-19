@@ -286,6 +286,8 @@ static bool is_remote_address(const std::string& addr)
 
 void WEBSERVER_Init()
 {
+	MountPolicy::InitPolicyConfig(get_primary_config_path());
+
 	auto section = get_section("webserver");
 
 	if (section->GetBool("webserver_enabled")) {

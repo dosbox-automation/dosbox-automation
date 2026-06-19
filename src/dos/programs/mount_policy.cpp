@@ -10,14 +10,19 @@
 #include "mount_policy_linux.h"
 #endif
 
+#include "dosbox.h"
+
 #include <array>
 #include <atomic>
+#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <sstream>
 #include <sys/stat.h>
 
 #include "utils/checks.h"
+#include "utils/env_utils.h"
 
 CHECK_NARROWING();
 
@@ -346,6 +351,157 @@ MountVerdict ValidateImagePath(const std::filesystem::path& raw_path,
 	verdict.allowed = true;
 	verdict.reason  = DenyReason::None;
 	return verdict;
+}
+
+// -- Config plumbing: primary-config-only reader --
+
+static PolicyPaths policy_paths = {};
+static bool policy_initialized  = false;
+
+// Only these env vars are expanded in policy paths
+static std::string ExpandPolicyEnvVars(const std::string& input)
+{
+	auto result = input;
+	struct EnvMapping {
+		const char* token;
+		const char* var;
+	};
+	// Longest token first so $XDG_DATA_HOME matches before $HOME
+	constexpr EnvMapping mappings[] = {
+	        {"$XDG_DATA_HOME", "XDG_DATA_HOME"},
+	        { "%USERPROFILE%",   "USERPROFILE"},
+	        {         "$HOME",          "HOME"},
+	};
+	for (const auto& m : mappings) {
+		auto pos = result.find(m.token);
+		if (pos != std::string::npos) {
+			const auto val = get_env_var(m.var);
+			if (val.empty()) {
+				return {};
+			}
+			result.replace(pos, std::strlen(m.token), val);
+		}
+	}
+	return result;
+}
+
+static std::string TrimWhitespace(const std::string& s)
+{
+	auto start = s.find_first_not_of(" \t");
+	if (start == std::string::npos) {
+		return {};
+	}
+	auto end = s.find_last_not_of(" \t");
+	return s.substr(start, end - start + 1);
+}
+
+static void ParsePathList(const std::string& val,
+                          std::vector<std::filesystem::path>& out, int max_entries)
+{
+	auto stream = std::istringstream(val);
+	auto entry  = std::string();
+	while (std::getline(stream, entry, ';')) {
+		entry = TrimWhitespace(entry);
+		if (entry.empty()) {
+			continue;
+		}
+
+		auto expanded = ExpandPolicyEnvVars(entry);
+		if (expanded.empty()) {
+			LOG_WARNING("MOUNT_POLICY: Dropped '%s' - env var unset",
+			            entry.c_str());
+			continue;
+		}
+
+		auto ec        = std::error_code();
+		auto canonical = std::filesystem::canonical(expanded, ec);
+		if (ec) {
+			LOG_WARNING("MOUNT_POLICY: Dropped '%s' - does not resolve",
+			            expanded.c_str());
+			continue;
+		}
+
+		if (static_cast<int>(out.size()) >= max_entries) {
+			LOG_WARNING("MOUNT_POLICY: Ignoring '%s' - max %d entries",
+			            expanded.c_str(),
+			            max_entries);
+			continue;
+		}
+		out.push_back(canonical);
+	}
+}
+
+PolicyPaths ParsePolicyConfig(const std::filesystem::path& config_path)
+{
+	constexpr int max_entries = 3;
+	auto result               = PolicyPaths{};
+
+	auto file = std::ifstream(config_path);
+	if (!file.is_open()) {
+		return result;
+	}
+
+	auto in_webserver_section = false;
+	auto line                 = std::string();
+
+	while (std::getline(file, line)) {
+		line = TrimWhitespace(line);
+		if (line.empty() || line[0] == '#') {
+			continue;
+		}
+
+		if (line[0] == '[') {
+			in_webserver_section = (line.find("[webserver]") == 0);
+			continue;
+		}
+
+		if (!in_webserver_section) {
+			continue;
+		}
+
+		auto eq = line.find('=');
+		if (eq == std::string::npos) {
+			continue;
+		}
+
+		auto key = TrimWhitespace(line.substr(0, eq));
+		auto val = TrimWhitespace(line.substr(eq + 1));
+		if (val.empty()) {
+			continue;
+		}
+
+		if (key == "mount_allowed_bases") {
+			ParsePathList(val, result.allowed_bases, max_entries);
+		} else if (key == "mount_allowed_image_roots") {
+			ParsePathList(val, result.allowed_image_roots, max_entries);
+		}
+	}
+	return result;
+}
+
+void InitPolicyConfig(const std::filesystem::path& primary_config_path)
+{
+	policy_paths       = ParsePolicyConfig(primary_config_path);
+	policy_initialized = true;
+
+	for (const auto& p : policy_paths.allowed_bases) {
+		LOG_MSG("MOUNT_POLICY: Allowed base: %s", p.string().c_str());
+	}
+	for (const auto& p : policy_paths.allowed_image_roots) {
+		LOG_MSG("MOUNT_POLICY: Allowed image root: %s", p.string().c_str());
+	}
+}
+
+const std::vector<std::filesystem::path>& AllowedBases()
+{
+	assert(policy_initialized);
+	return policy_paths.allowed_bases;
+}
+
+const std::vector<std::filesystem::path>& AllowedImageRoots()
+{
+	assert(policy_initialized);
+	return policy_paths.allowed_image_roots;
 }
 
 } // namespace MountPolicy

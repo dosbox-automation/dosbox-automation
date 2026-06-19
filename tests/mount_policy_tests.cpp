@@ -579,4 +579,115 @@ TEST(MountPolicyLock, LockIsOneWay)
 	EXPECT_TRUE(MountPolicy::IsLocked());
 }
 
+// -- Config parsing --
+
+TEST_F(MountPolicyTest, ParseValidConfig)
+{
+	const auto dir1 = CreateDir("games");
+	const auto dir2 = CreateDir("images");
+
+	const auto cfg = CreateFile("test.conf",
+	                            "[webserver]\n"
+	                            "mount_allowed_bases = " +
+	                                    dir1.string() + ";" + dir2.string() +
+	                                    "\n"
+	                                    "mount_allowed_image_roots = " +
+	                                    dir1.string() + "\n");
+
+	const auto paths = MountPolicy::ParsePolicyConfig(cfg);
+	EXPECT_EQ(paths.allowed_bases.size(), 2u);
+	EXPECT_EQ(paths.allowed_image_roots.size(), 1u);
+}
+
+TEST_F(MountPolicyTest, ParseIgnoresOtherSections)
+{
+	const auto dir = CreateDir("games");
+
+	const auto cfg = CreateFile("test.conf",
+	                            "[dosbox]\n"
+	                            "mount_allowed_bases = " +
+	                                    dir.string() + "\n");
+
+	const auto paths = MountPolicy::ParsePolicyConfig(cfg);
+	EXPECT_TRUE(paths.allowed_bases.empty());
+}
+
+TEST_F(MountPolicyTest, ParseCapAt3)
+{
+	const auto d1 = CreateDir("a");
+	const auto d2 = CreateDir("b");
+	const auto d3 = CreateDir("c");
+	const auto d4 = CreateDir("d");
+	const auto d5 = CreateDir("e");
+
+	const auto cfg = CreateFile("test.conf",
+	                            "[webserver]\n"
+	                            "mount_allowed_bases = " +
+	                                    d1.string() + ";" + d2.string() +
+	                                    ";" + d3.string() + ";" + d4.string() +
+	                                    ";" + d5.string() + "\n");
+
+	const auto paths = MountPolicy::ParsePolicyConfig(cfg);
+	EXPECT_EQ(paths.allowed_bases.size(), 3u);
+}
+
+TEST_F(MountPolicyTest, ParseNonexistentPathDropped)
+{
+	const auto cfg = CreateFile("test.conf",
+	                            "[webserver]\n"
+	                            "mount_allowed_bases = "
+	                            "/nonexistent/path/xyz123\n");
+
+	const auto paths = MountPolicy::ParsePolicyConfig(cfg);
+	EXPECT_TRUE(paths.allowed_bases.empty());
+}
+
+TEST_F(MountPolicyTest, ParseEmptyFileGivesEmpty)
+{
+	const auto cfg = CreateFile("empty.conf");
+
+	const auto paths = MountPolicy::ParsePolicyConfig(cfg);
+	EXPECT_TRUE(paths.allowed_bases.empty());
+	EXPECT_TRUE(paths.allowed_image_roots.empty());
+}
+
+TEST_F(MountPolicyTest, ParseMissingFileGivesEmpty)
+{
+	const auto paths = MountPolicy::ParsePolicyConfig(tmp_dir /
+	                                                  "does_not_exist.conf");
+	EXPECT_TRUE(paths.allowed_bases.empty());
+	EXPECT_TRUE(paths.allowed_image_roots.empty());
+}
+
+TEST_F(MountPolicyTest, ParseIgnoresComments)
+{
+	const auto dir = CreateDir("games");
+
+	const auto cfg = CreateFile("test.conf",
+	                            "[webserver]\n"
+	                            "# mount_allowed_bases = " +
+	                                    dir.string() + "\n");
+
+	const auto paths = MountPolicy::ParsePolicyConfig(cfg);
+	EXPECT_TRUE(paths.allowed_bases.empty());
+}
+
+TEST_F(MountPolicyTest, ParseEnvExpansion)
+{
+	// $HOME is always set on Linux
+	const auto home = std::string(std::getenv("HOME"));
+	if (home.empty()) {
+		GTEST_SKIP() << "HOME not set";
+	}
+
+	// Use a path that actually exists under HOME
+	const auto cfg = CreateFile("test.conf",
+	                            "[webserver]\n"
+	                            "mount_allowed_bases = $HOME\n");
+
+	const auto paths = MountPolicy::ParsePolicyConfig(cfg);
+	ASSERT_EQ(paths.allowed_bases.size(), 1u);
+	EXPECT_EQ(paths.allowed_bases[0], fs::canonical(home));
+}
+
 } // namespace

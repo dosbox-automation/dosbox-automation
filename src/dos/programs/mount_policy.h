@@ -64,6 +64,18 @@ MountVerdict ValidateImagePath(
 void Lock();
 bool IsLocked();
 
+// Read allowed_bases and allowed_image_roots from the primary config
+// file. Called once at startup. Values are read-only after init.
+void InitPolicyConfig(const std::filesystem::path& primary_config_path);
+const std::vector<std::filesystem::path>& AllowedBases();
+const std::vector<std::filesystem::path>& AllowedImageRoots();
+
+struct PolicyPaths {
+	std::vector<std::filesystem::path> allowed_bases       = {};
+	std::vector<std::filesystem::path> allowed_image_roots = {};
+};
+PolicyPaths ParsePolicyConfig(const std::filesystem::path& config_path);
+
 } // namespace MountPolicy
 
 #endif // DOSBOX_PROGRAM_MOUNT_POLICY_H

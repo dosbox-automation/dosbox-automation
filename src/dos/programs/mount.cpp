@@ -1066,8 +1066,11 @@ bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_con
 		return false;
 	}
 
-	const auto dir_verdict = MountPolicy::ValidateDirectoryMount(
-	        std_fs::path(path_arg_1), GetConfAnchor(), {}, GetCurrentDirPolicy());
+	const auto dir_verdict =
+	        MountPolicy::ValidateDirectoryMount(std_fs::path(path_arg_1),
+	                                            GetConfAnchor(),
+	                                            MountPolicy::AllowedBases(),
+	                                            GetCurrentDirPolicy());
 	if (!dir_verdict.allowed) {
 		LogMountDenied(path_arg_1, dir_verdict);
 		NOTIFY_DisplayWarning(Notification::Source::Console,
