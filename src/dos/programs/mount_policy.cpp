@@ -129,14 +129,10 @@ bool IsUnderAnyRoot(const std::filesystem::path& canonical_path,
 {
 	const auto canonical_str = canonical_path.string();
 
+	// Roots are expected to be canonical already (from ParsePathList
+	// or from CanonicalizeExisting at the call site).
 	for (const auto& root : roots) {
-		auto ec = std::error_code();
-		const auto canonical_root = std::filesystem::canonical(root, ec);
-		if (ec) {
-			continue;
-		}
-
-		const auto root_str = canonical_root.string();
+		const auto root_str = root.string();
 
 		if (canonical_str == root_str) {
 			return true;
@@ -208,10 +204,11 @@ static bool CheckCueSheet(const std::filesystem::path& host_path)
 		return false;
 	}
 
-	// A CUE sheet must reference at least one FILE
+	// A CUE sheet must have a FILE directive at the start of a line
 	std::string line;
 	while (std::getline(file, line)) {
-		if (line.find("FILE") != std::string::npos) {
+		auto pos = line.find_first_not_of(" \t");
+		if (pos != std::string::npos && line.compare(pos, 4, "FILE") == 0) {
 			return true;
 		}
 	}
@@ -271,6 +268,8 @@ MountVerdict ValidateDirectoryMount(const std::filesystem::path& raw_path,
 	}
 	verdict.resolved = *canonical;
 
+	// Check the original path, not the canonical result: canonical
+	// already resolved through any symlinks, so it would miss them.
 	if (HasSymlinkComponent(raw_path)) {
 		verdict.reason = DenyReason::SymlinkComponent;
 		return verdict;
@@ -325,6 +324,7 @@ MountVerdict ValidateImagePath(const std::filesystem::path& raw_path,
 		return verdict;
 	}
 
+	// Check the original path, not the canonical result
 	if (HasSymlinkComponent(raw_path)) {
 		verdict.reason = DenyReason::SymlinkComponent;
 		return verdict;
@@ -335,9 +335,11 @@ MountVerdict ValidateImagePath(const std::filesystem::path& raw_path,
 		return verdict;
 	}
 
-	// API origin requires the path to be under an allowed root
-	if (origin == MountOrigin::Api && !allowed_image_roots.empty()) {
-		if (!IsUnderAnyRoot(*canonical, allowed_image_roots)) {
+	// API origin requires the path to be under an allowed root.
+	// Empty list = no roots configured = deny all API image mounts.
+	if (origin == MountOrigin::Api) {
+		if (allowed_image_roots.empty() ||
+		    !IsUnderAnyRoot(*canonical, allowed_image_roots)) {
 			verdict.reason = DenyReason::OutsideWhitelist;
 			return verdict;
 		}

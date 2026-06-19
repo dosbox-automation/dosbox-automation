@@ -690,4 +690,34 @@ TEST_F(MountPolicyTest, ParseEnvExpansion)
 	EXPECT_EQ(paths.allowed_bases[0], fs::canonical(home));
 }
 
+// -- Review fixes: additional coverage --
+
+TEST_F(MountPolicyTest, ApiEmptyRootsDeniesAll)
+{
+	const auto img = CreateFatImage("any_image.img");
+
+	const auto verdict = MountPolicy::ValidateImagePath(img, MountOrigin::Api, {});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::OutsideWhitelist);
+}
+
+TEST_F(MountPolicyTest, CueCommentNotMatchedAsFile)
+{
+	// REM line containing FILE should not trigger a false positive
+	const auto bad_cue = CreateFile("comment.cue",
+	                                "REM this FILE is just a comment\n"
+	                                "TRACK 01 AUDIO\n");
+	EXPECT_FALSE(MountPolicy::ValidateDiskImageStructure(bad_cue));
+}
+
+TEST_F(MountPolicyTest, CueWithIndentedFileDirective)
+{
+	const auto cue = CreateFile("indented.cue",
+	                            "  FILE \"game.bin\" BINARY\n"
+	                            "    TRACK 01 MODE1/2352\n"
+	                            "      INDEX 01 00:00:00\n");
+	EXPECT_TRUE(MountPolicy::ValidateDiskImageStructure(cue));
+}
+
 } // namespace
