@@ -271,20 +271,23 @@ void BOOT::Run(void)
 			        MountOrigin::Interactive,
 			        {});
 			if (!boot_verdict.allowed) {
-				LOG_WARNING("BOOT: Blocked '%s' - policy violation",
-				            boot_path.c_str());
+				LOG_WARNING("BOOT: Blocked - policy violation");
 				WriteOut(MSG_Get("PROGRAM_BOOT_IMAGE_NOT_OPEN"),
 				         temp_line.c_str());
 				return;
 			}
 
+			// Use the validated canonical path, not the raw
+			// user string. Same principle as drive.cpp.
+			const auto& resolved = boot_verdict.resolved.string();
+
 			uint32_t rombytesize;
-			FILE* usefile = getFSFile(temp_line.c_str(),
+			FILE* usefile = getFSFile(resolved.c_str(),
 			                          &floppysize,
 			                          &rombytesize);
 			if (usefile != nullptr) {
 				diskSwap[i] = std::make_shared<imageDisk>(
-				        usefile, temp_line.c_str(), floppysize, false);
+				        usefile, resolved.c_str(), floppysize, false);
 				if (usefile_1 == nullptr) {
 					usefile_1     = usefile;
 					rombytesize_1 = rombytesize;

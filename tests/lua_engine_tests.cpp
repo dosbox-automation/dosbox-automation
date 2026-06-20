@@ -246,6 +246,61 @@ TEST(LuaEngine, ResetPreservesInstructionLimit)
 	EXPECT_NE(result.error.find("instruction"), std::string::npos);
 }
 
+// -- Pattern function length guard --
+
+TEST(LuaEngine, PatternFindAllowsShortStrings)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local pos = string.find('hello world', 'world')\n"
+	        "assert(pos == 7)\n",
+	        "find-short");
+	EXPECT_TRUE(result.ok) << result.error;
+}
+
+TEST(LuaEngine, PatternFindRejectsOversizedSubject)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local s = string.rep('a', 65 * 1024)\n"
+	        "string.find(s, 'b')\n",
+	        "find-oversize");
+	EXPECT_FALSE(result.ok);
+	EXPECT_NE(result.error.find("too long"), std::string::npos);
+}
+
+TEST(LuaEngine, PatternMatchRejectsOversizedSubject)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local s = string.rep('a', 65 * 1024)\n"
+	        "string.match(s, 'b')\n",
+	        "match-oversize");
+	EXPECT_FALSE(result.ok);
+	EXPECT_NE(result.error.find("too long"), std::string::npos);
+}
+
+TEST(LuaEngine, PatternGsubRejectsOversizedSubject)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local s = string.rep('a', 65 * 1024)\n"
+	        "string.gsub(s, 'a', 'b')\n",
+	        "gsub-oversize");
+	EXPECT_FALSE(result.ok);
+	EXPECT_NE(result.error.find("too long"), std::string::npos);
+}
+
+TEST(LuaEngine, PatternFindAllowsAtLimit)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local s = string.rep('a', 64 * 1024)\n"
+	        "string.find(s, 'b')\n",
+	        "find-at-limit");
+	EXPECT_TRUE(result.ok) << result.error;
+}
+
 // -- Metatable escape --
 
 TEST(LuaEngine, SandboxBlocksGetmetatable)

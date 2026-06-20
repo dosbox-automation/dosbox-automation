@@ -50,6 +50,7 @@ static void error_handler(const httplib::Request&, httplib::Response& res,
 {
 	json j;
 	std::string msg;
+	res.status = httplib::StatusCode::InternalServerError_500;
 
 	try {
 		if (ep) {
@@ -68,8 +69,6 @@ static void error_handler(const httplib::Request&, httplib::Response& res,
 	}
 
 	j["error"] = msg;
-	res.status = httplib::StatusCode::InternalServerError_500;
-
 	send_json(res, j);
 }
 
@@ -234,8 +233,7 @@ static void setup_security(const std::string& addr, int port,
 	});
 
 	server.set_default_headers({
-	        {"Access-Control-Allow-Origin",    "null"},
-	        {     "X-Content-Type-Options", "nosniff"},
+	        {"X-Content-Type-Options", "nosniff"},
 	});
 
 	server.Options(".*", [](const httplib::Request&, httplib::Response& res) {

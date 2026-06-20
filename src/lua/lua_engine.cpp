@@ -17,6 +17,38 @@ namespace {
 constexpr int HookInterval        = 1000;
 constexpr const char* RegistryKey = "LuaEngine";
 
+// Cap on subject string length for pattern-matching functions.
+// Prevents pathological backtracking in the C pattern matcher
+// from stalling the emulation thread. The instruction hook and
+// wall-clock watchdog can't preempt a single C library call.
+constexpr size_t MaxPatternSubjectLen = 64 * 1024;
+
+// Checks that argument 1 (the subject string) does not exceed the
+// cap. Called from the guarded wrappers below.
+static void CheckSubjectLength(lua_State* L)
+{
+	size_t len = 0;
+	luaL_checklstring(L, 1, &len);
+	if (len > MaxPatternSubjectLen) {
+		luaL_error(L,
+		           "string too long for pattern operation (%d bytes, limit %d)",
+		           static_cast<int>(len),
+		           static_cast<int>(MaxPatternSubjectLen));
+	}
+}
+
+// Wraps a string library function with a length check on argument 1.
+// Stores the original function as an upvalue, checks length, then
+// tail-calls the original.
+static int GuardedPatternFunc(lua_State* L)
+{
+	CheckSubjectLength(L);
+	lua_pushvalue(L, lua_upvalueindex(1));
+	lua_insert(L, 1);
+	lua_call(L, lua_gettop(L) - 1, LUA_MULTRET);
+	return lua_gettop(L);
+}
+
 } // namespace
 
 namespace Lua {
@@ -51,6 +83,20 @@ void LuaEngine::CreateState()
 	luaL_requiref(state, LUA_TABLIBNAME, luaopen_table, 1);
 	lua_pop(state, 1);
 	luaL_requiref(state, LUA_STRLIBNAME, luaopen_string, 1);
+
+	// Wrap pattern-matching functions with a length guard on the
+	// subject string. The Lua pattern matcher runs entirely in C,
+	// invisible to both the instruction hook and the wall-clock
+	// watchdog, so pathological patterns on large strings stall
+	// the emulation thread without any limit firing. Capping the
+	// subject length is the only in-process defense.
+	const char* pattern_funcs[] = {"find", "match", "gmatch", "gsub", nullptr};
+	for (const char** fn = pattern_funcs; *fn; ++fn) {
+		lua_getfield(state, -1, *fn);
+		lua_pushcclosure(state, GuardedPatternFunc, 1);
+		lua_setfield(state, -2, *fn);
+	}
+
 	lua_pop(state, 1);
 	luaL_requiref(state, LUA_MATHLIBNAME, luaopen_math, 1);
 	lua_pop(state, 1);
