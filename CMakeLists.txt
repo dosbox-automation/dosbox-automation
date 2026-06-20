@@ -478,6 +478,10 @@ endif()
 # SpeexDSP: vcpkg has no cmake config, only a .pc file
 pkg_check_modules(SPEEXDSP REQUIRED IMPORTED_TARGET speexdsp)
 
+# Lua 5.5 scripting engine and sol2 C++ bindings
+find_package(Lua REQUIRED)
+find_package(sol2 CONFIG REQUIRED)
+
 add_executable(dosbox src/main.cpp src/dosbox.cpp)
 if (OPT_DEBUGGER)
   set_target_properties(dosbox PROPERTIES OUTPUT_NAME dosbox_with_debugger)

@@ -33,6 +33,8 @@ add_executable(dosbox_tests
     unicode_tests.cpp
     webserver_auth_tests.cpp
     mount_policy_tests.cpp
+    lua_engine_tests.cpp
+    script_validator_tests.cpp
     multi_prefix_tests.cpp
 )
 

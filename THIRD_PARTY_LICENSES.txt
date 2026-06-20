@@ -229,6 +229,16 @@ source tree.
   Opusfile       Opus audio file decoder
                  License: BSD-3-Clause
 
+  Lua            Scripting language for automation engine
+                 Copyright (c) 1994-2025 Lua.org, PUC-Rio
+                 https://www.lua.org/
+                 License: MIT
+
+  sol2           C++ binding library for Lua
+                 Copyright (c) 2013-2024 Rapptz, ThePhD
+                 https://github.com/ThePhD/sol2
+                 License: MIT
+
 
 ================================================================================
 BUNDLED DOS PROGRAMS (extras/dos-programs/, resources/)
