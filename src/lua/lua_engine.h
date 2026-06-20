@@ -51,6 +51,20 @@ public:
 		return instruction_limit;
 	}
 
+	lua_State* GetState() const
+	{
+		return state;
+	}
+
+	bool HasLoadedScript() const
+	{
+		return has_loaded_script;
+	}
+
+	// Load and immediately execute a script. Used by tests and
+	// non-coroutine callers.
+	ScriptResult RunScript(const std::string& source, const std::string& name);
+
 	// Used by the instruction count hook callback (free function in
 	// the .cpp file, not a member). Returns nullptr if ok, or an
 	// error message if a limit was exceeded.
@@ -73,6 +87,7 @@ private:
 	int64_t instructions_executed = 0;
 	int64_t wall_clock_limit_ms   = DefaultWallClockLimitMs;
 	Clock::time_point exec_start  = {};
+	bool has_loaded_script        = false;
 
 	void CreateState();
 	void DestroyState();

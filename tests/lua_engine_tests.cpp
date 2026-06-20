@@ -20,7 +20,7 @@ TEST(LuaEngine, MemoryCapEnforced)
 	auto engine = Lua::LuaEngine();
 
 	// A script that tries to allocate more than the 16 MB cap.
-	const auto result = engine.LoadScript("local s = string.rep('x', 32 * 1024 * 1024)",
+	const auto result = engine.RunScript("local s = string.rep('x', 32 * 1024 * 1024)",
 	                                      "oom-test");
 	EXPECT_FALSE(result.ok);
 	EXPECT_NE(result.error.find("memory"), std::string::npos);
@@ -33,7 +33,7 @@ TEST(LuaEngine, MemoryUsageTracked)
 	const auto baseline = engine.MemoryUsage();
 	EXPECT_GT(baseline, 0u);
 
-	auto result = engine.LoadScript("local t = {} for i=1,10000 do t[i] = i end",
+	auto result = engine.RunScript("local t = {} for i=1,10000 do t[i] = i end",
 	                                "alloc-test");
 	EXPECT_TRUE(result.ok);
 	EXPECT_GT(engine.MemoryUsage(), baseline);
@@ -44,14 +44,14 @@ TEST(LuaEngine, MemoryUsageTracked)
 TEST(LuaEngine, SandboxBlocksOsModule)
 {
 	auto engine = Lua::LuaEngine();
-	const auto result = engine.LoadScript("os.execute('echo pwned')", "os-escape");
+	const auto result = engine.RunScript("os.execute('echo pwned')", "os-escape");
 	EXPECT_FALSE(result.ok);
 }
 
 TEST(LuaEngine, SandboxBlocksIoModule)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript("io.open('/etc/passwd', 'r')",
+	const auto result = engine.RunScript("io.open('/etc/passwd', 'r')",
 	                                      "io-escape");
 	EXPECT_FALSE(result.ok);
 }
@@ -59,28 +59,28 @@ TEST(LuaEngine, SandboxBlocksIoModule)
 TEST(LuaEngine, SandboxBlocksDebugModule)
 {
 	auto engine = Lua::LuaEngine();
-	const auto result = engine.LoadScript("debug.getinfo(1)", "debug-escape");
+	const auto result = engine.RunScript("debug.getinfo(1)", "debug-escape");
 	EXPECT_FALSE(result.ok);
 }
 
 TEST(LuaEngine, SandboxBlocksPackageModule)
 {
 	auto engine = Lua::LuaEngine();
-	const auto result = engine.LoadScript("package.path = '.'", "package-escape");
+	const auto result = engine.RunScript("package.path = '.'", "package-escape");
 	EXPECT_FALSE(result.ok);
 }
 
 TEST(LuaEngine, SandboxBlocksRequire)
 {
 	auto engine = Lua::LuaEngine();
-	const auto result = engine.LoadScript("require('os')", "require-escape");
+	const auto result = engine.RunScript("require('os')", "require-escape");
 	EXPECT_FALSE(result.ok);
 }
 
 TEST(LuaEngine, SandboxBlocksDofile)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript("dofile('/etc/passwd')",
+	const auto result = engine.RunScript("dofile('/etc/passwd')",
 	                                      "dofile-escape");
 	EXPECT_FALSE(result.ok);
 }
@@ -88,7 +88,7 @@ TEST(LuaEngine, SandboxBlocksDofile)
 TEST(LuaEngine, SandboxBlocksLoadfile)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript("loadfile('/etc/passwd')()",
+	const auto result = engine.RunScript("loadfile('/etc/passwd')()",
 	                                      "loadfile-escape");
 	EXPECT_FALSE(result.ok);
 }
@@ -96,7 +96,7 @@ TEST(LuaEngine, SandboxBlocksLoadfile)
 TEST(LuaEngine, SandboxBlocksLoad)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript("load('os.execute(\"echo\")')",
+	const auto result = engine.RunScript("load('os.execute(\"echo\")')",
 	                                      "load-escape");
 	EXPECT_FALSE(result.ok);
 }
@@ -106,7 +106,7 @@ TEST(LuaEngine, SandboxBlocksLoad)
 TEST(LuaEngine, SandboxAllowsStringLib)
 {
 	auto engine = Lua::LuaEngine();
-	const auto result = engine.LoadScript("local s = string.format('%d', 42)",
+	const auto result = engine.RunScript("local s = string.format('%d', 42)",
 	                                      "string-ok");
 	EXPECT_TRUE(result.ok);
 }
@@ -114,7 +114,7 @@ TEST(LuaEngine, SandboxAllowsStringLib)
 TEST(LuaEngine, SandboxAllowsTableLib)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript("local t = {3,1,2} table.sort(t)",
+	const auto result = engine.RunScript("local t = {3,1,2} table.sort(t)",
 	                                      "table-ok");
 	EXPECT_TRUE(result.ok);
 }
@@ -122,14 +122,14 @@ TEST(LuaEngine, SandboxAllowsTableLib)
 TEST(LuaEngine, SandboxAllowsMathLib)
 {
 	auto engine = Lua::LuaEngine();
-	const auto result = engine.LoadScript("local x = math.floor(3.14)", "math-ok");
+	const auto result = engine.RunScript("local x = math.floor(3.14)", "math-ok");
 	EXPECT_TRUE(result.ok);
 }
 
 TEST(LuaEngine, SandboxAllowsCoroutineLib)
 {
 	auto engine = Lua::LuaEngine();
-	const auto result = engine.LoadScript("local co = coroutine.create(function() end)",
+	const auto result = engine.RunScript("local co = coroutine.create(function() end)",
 	                                      "coroutine-ok");
 	EXPECT_TRUE(result.ok);
 }
@@ -137,7 +137,7 @@ TEST(LuaEngine, SandboxAllowsCoroutineLib)
 TEST(LuaEngine, SandboxAllowsBaseFunctions)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local n = tonumber('42')\n"
 	        "local s = tostring(42)\n"
 	        "local t = type(42)\n"
@@ -155,7 +155,7 @@ TEST(LuaEngine, RejectsBytecode)
 
 	// Lua bytecode header starts with \x1bLua
 	const std::string bytecode = "\x1b\x4c\x75\x61\x54\x00\x00\x00";
-	const auto result = engine.LoadScript(bytecode, "bytecode-attack");
+	const auto result = engine.RunScript(bytecode, "bytecode-attack");
 	EXPECT_FALSE(result.ok);
 }
 
@@ -166,7 +166,7 @@ TEST(LuaEngine, DefaultInstructionLimitStopsInfiniteLoop)
 	auto engine = Lua::LuaEngine();
 
 	// No explicit SetInstructionLimit - the default must stop this.
-	const auto result = engine.LoadScript("while true do end",
+	const auto result = engine.RunScript("while true do end",
 	                                      "default-limit-loop");
 	EXPECT_FALSE(result.ok);
 	EXPECT_NE(result.error.find("instruction"), std::string::npos);
@@ -177,7 +177,7 @@ TEST(LuaEngine, InstructionLimitStopsInfiniteLoop)
 	auto engine = Lua::LuaEngine();
 	engine.SetInstructionLimit(10000);
 
-	const auto result = engine.LoadScript("while true do end", "infinite-loop");
+	const auto result = engine.RunScript("while true do end", "infinite-loop");
 	EXPECT_FALSE(result.ok);
 	EXPECT_NE(result.error.find("instruction"), std::string::npos);
 }
@@ -187,7 +187,7 @@ TEST(LuaEngine, InstructionLimitAllowsShortScripts)
 	auto engine = Lua::LuaEngine();
 	engine.SetInstructionLimit(100000);
 
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local sum = 0\n"
 	        "for i = 1, 1000 do sum = sum + i end\n",
 	        "short-script");
@@ -200,12 +200,12 @@ TEST(LuaEngine, ResetClearsScriptState)
 {
 	auto engine = Lua::LuaEngine();
 
-	auto result = engine.LoadScript("my_global = 42", "set-global");
+	auto result = engine.RunScript("my_global = 42", "set-global");
 	EXPECT_TRUE(result.ok);
 
 	engine.Reset();
 
-	result = engine.LoadScript("assert(my_global == nil, 'leaked: ' .. tostring(my_global))",
+	result = engine.RunScript("assert(my_global == nil, 'leaked: ' .. tostring(my_global))",
 	                           "check-leak");
 	EXPECT_TRUE(result.ok) << result.error;
 }
@@ -215,7 +215,7 @@ TEST(LuaEngine, ResetKeepsSandbox)
 	auto engine = Lua::LuaEngine();
 	engine.Reset();
 
-	auto result = engine.LoadScript("os.execute('echo pwned')",
+	auto result = engine.RunScript("os.execute('echo pwned')",
 	                                "post-reset-escape");
 	EXPECT_FALSE(result.ok);
 }
@@ -224,12 +224,12 @@ TEST(LuaEngine, SequentialScriptsIsolated)
 {
 	auto engine = Lua::LuaEngine();
 
-	auto r1 = engine.LoadScript("shared = 'first'", "script-1");
+	auto r1 = engine.RunScript("shared = 'first'", "script-1");
 	EXPECT_TRUE(r1.ok);
 
 	engine.Reset();
 
-	auto r2 = engine.LoadScript("assert(shared == nil, 'leaked from script-1')",
+	auto r2 = engine.RunScript("assert(shared == nil, 'leaked from script-1')",
 	                            "script-2");
 	EXPECT_TRUE(r2.ok) << r2.error;
 }
@@ -241,7 +241,7 @@ TEST(LuaEngine, ResetPreservesInstructionLimit)
 
 	engine.Reset();
 
-	const auto result = engine.LoadScript("while true do end", "post-reset-loop");
+	const auto result = engine.RunScript("while true do end", "post-reset-loop");
 	EXPECT_FALSE(result.ok);
 	EXPECT_NE(result.error.find("instruction"), std::string::npos);
 }
@@ -251,7 +251,7 @@ TEST(LuaEngine, ResetPreservesInstructionLimit)
 TEST(LuaEngine, PatternFindAllowsShortStrings)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local pos = string.find('hello world', 'world')\n"
 	        "assert(pos == 7)\n",
 	        "find-short");
@@ -261,7 +261,7 @@ TEST(LuaEngine, PatternFindAllowsShortStrings)
 TEST(LuaEngine, PatternFindRejectsOversizedSubject)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local s = string.rep('a', 65 * 1024)\n"
 	        "string.find(s, 'b')\n",
 	        "find-oversize");
@@ -272,7 +272,7 @@ TEST(LuaEngine, PatternFindRejectsOversizedSubject)
 TEST(LuaEngine, PatternMatchRejectsOversizedSubject)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local s = string.rep('a', 65 * 1024)\n"
 	        "string.match(s, 'b')\n",
 	        "match-oversize");
@@ -283,7 +283,7 @@ TEST(LuaEngine, PatternMatchRejectsOversizedSubject)
 TEST(LuaEngine, PatternGsubRejectsOversizedSubject)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local s = string.rep('a', 65 * 1024)\n"
 	        "string.gsub(s, 'a', 'b')\n",
 	        "gsub-oversize");
@@ -294,7 +294,7 @@ TEST(LuaEngine, PatternGsubRejectsOversizedSubject)
 TEST(LuaEngine, PatternFindAllowsAtLimit)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local s = string.rep('a', 64 * 1024)\n"
 	        "string.find(s, 'b')\n",
 	        "find-at-limit");
@@ -306,7 +306,7 @@ TEST(LuaEngine, PatternFindAllowsAtLimit)
 TEST(LuaEngine, PatternRejectsCatastrophicPattern)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local s = string.rep('a', 40)\n"
 	        "local p = string.rep('.-', 8) .. 'z'\n"
 	        "return string.find(s, p)\n",
@@ -318,7 +318,7 @@ TEST(LuaEngine, PatternRejectsCatastrophicPattern)
 TEST(LuaEngine, PatternRejectsRuntimeBuiltComplexPattern)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local s = string.rep('a', 200)\n"
 	        "local p = string.rep('.-', 12) .. 'z'\n"
 	        "return string.match(s, p)\n",
@@ -330,7 +330,7 @@ TEST(LuaEngine, PatternRejectsRuntimeBuiltComplexPattern)
 TEST(LuaEngine, PatternAllowsSimpleOnLargeSubject)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local s = string.rep('a', 60 * 1024) .. 'b'\n"
 	        "return (string.find(s, 'b') ~= nil)\n",
 	        "simple-large");
@@ -340,7 +340,7 @@ TEST(LuaEngine, PatternAllowsSimpleOnLargeSubject)
 TEST(LuaEngine, PatternAllowsComplexOnSmallSubject)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local s = 'Drive C: ready  Insert disk 2'\n"
 	        "return string.match(s, 'disk%%s*(%%d+)')\n",
 	        "screen-text");
@@ -350,7 +350,7 @@ TEST(LuaEngine, PatternAllowsComplexOnSmallSubject)
 TEST(LuaEngine, PatternQuantifierInsideSetIsLiteral)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local s = string.rep('x', 60 * 1024)\n"
 	        "return (string.find(s, '[*+-]') == nil)\n",
 	        "set-literal");
@@ -360,7 +360,7 @@ TEST(LuaEngine, PatternQuantifierInsideSetIsLiteral)
 TEST(LuaEngine, PatternEscapedQuantifierIsLiteral)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript(
+	const auto result = engine.RunScript(
 	        "local s = string.rep('a', 60 * 1024) .. '*'\n"
 	        "return (string.find(s, '%%*') ~= nil)\n",
 	        "escaped-literal");
@@ -372,7 +372,7 @@ TEST(LuaEngine, PatternEscapedQuantifierIsLiteral)
 TEST(LuaEngine, SandboxBlocksGetmetatable)
 {
 	auto engine       = Lua::LuaEngine();
-	const auto result = engine.LoadScript("local mt = getmetatable('')\n",
+	const auto result = engine.RunScript("local mt = getmetatable('')\n",
 	                                      "metatable-escape");
 	EXPECT_FALSE(result.ok);
 }

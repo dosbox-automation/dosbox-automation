@@ -14,6 +14,8 @@
 #include "private/memory.h"
 #include "video.h"
 
+#include "lua/lua_bridge_commands.h"
+
 #include "dos/programs/mount_policy.h"
 
 #include <cstdint>
@@ -118,6 +120,11 @@ static void setup_api_handlers()
 	server.Post("/api/v1/input/record/pause", RecordingHandlers::PostPause);
 	server.Post("/api/v1/input/record/stop", RecordingHandlers::PostStop);
 	server.Get("/api/v1/input/record/status", RecordingHandlers::GetStatus);
+
+	server.Post("/api/v1/script/load", Lua::LuaLoadCommand::Post);
+	server.Post("/api/v1/script/start", Lua::LuaStartCommand::Post);
+	server.Post("/api/v1/script/stop", Lua::LuaStopCommand::Post);
+	server.Get("/api/v1/script/status", Lua::LuaStatusCommand::Get);
 }
 
 static std::string strip_port(const std::string& host)

@@ -268,6 +268,7 @@ void LuaEngine::Reset()
 	alloc_state.current   = 0;
 	alloc_state.peak      = 0;
 	instructions_executed = 0;
+	has_loaded_script     = false;
 
 	CreateState();
 
@@ -334,6 +335,28 @@ ScriptResult LuaEngine::LoadScript(const std::string& source, const std::string&
 		lua_pop(state, 1);
 		return result;
 	}
+
+	// Store the compiled chunk in the registry for coroutine use.
+	lua_setfield(state, LUA_REGISTRYINDEX, "LoadedChunk");
+	has_loaded_script = true;
+	return {true, {}};
+}
+
+ScriptResult LuaEngine::RunScript(const std::string& source, const std::string& name)
+{
+	auto load_result = LoadScript(source, name);
+	if (!load_result.ok) {
+		return load_result;
+	}
+
+	lua_getfield(state, LUA_REGISTRYINDEX, "LoadedChunk");
+	if (lua_isnil(state, -1)) {
+		lua_pop(state, 1);
+		return {false, "no script loaded"};
+	}
+
+	exec_start            = Clock::now();
+	instructions_executed = 0;
 
 	const auto exec_status = lua_pcall(state, 0, 0, 0);
 	if (exec_status != LUA_OK) {
