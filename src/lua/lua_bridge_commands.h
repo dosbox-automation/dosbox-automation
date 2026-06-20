@@ -13,6 +13,8 @@
 
 #include "libs/http/http.h"
 
+#include "libs/json/json.h"
+
 #include <chrono>
 #include <mutex>
 #include <string>
@@ -90,10 +92,11 @@ public:
 };
 
 struct LuaStatusResult {
-	ScriptState state = ScriptState::Idle;
-	std::string error = {};
-	uint64_t frame    = 0;
-	std::string name  = {};
+	ScriptState state     = ScriptState::Idle;
+	std::string error     = {};
+	uint64_t frame        = 0;
+	std::string name      = {};
+	nlohmann::json output = {};
 };
 
 class LuaStatusCommand : public Webserver::Command {

@@ -3,6 +3,7 @@
 //
 
 #include "lua/lua_coroutine.h"
+#include "lua/lua_api.h"
 
 extern "C" {
 #include <lauxlib.h>
@@ -42,7 +43,29 @@ void LuaCoroutine::Cleanup()
 	}
 	coroutine        = nullptr;
 	wait_until_frame = 0;
+	waiting_for_text = false;
+	wait_text_pattern.clear();
 	error_msg.clear();
+}
+
+bool LuaCoroutine::CheckWaitForText()
+{
+	const auto text = ReadScreenText();
+	if (MatchSubstring(text, wait_text_pattern, wait_text_ignorecase)) {
+		waiting_for_text = false;
+		// Push true onto coroutine stack so the resumed wait_for_text
+		// call returns true to the script.
+		lua_pushboolean(coroutine, true);
+		return true;
+	}
+
+	if (current_frame >= wait_text_deadline) {
+		waiting_for_text = false;
+		lua_pushboolean(coroutine, false);
+		return true;
+	}
+
+	return false;
 }
 
 void LuaCoroutine::RegisterApi()
@@ -70,15 +93,18 @@ void LuaCoroutine::RegisterApi()
 	lua_setfield(L, -2, "frame");
 
 	lua_pop(L, 1);
+
+	RegisterDosboxApi(L, this, debug_log);
 }
 
-bool LuaCoroutine::Start()
+bool LuaCoroutine::Start(DebugLog* log)
 {
 	auto* L = engine.GetState();
 	if (!L || !engine.HasLoadedScript()) {
 		return false;
 	}
 
+	debug_log = log;
 	Cleanup();
 	RegisterApi();
 
@@ -104,6 +130,31 @@ ScriptState LuaCoroutine::DispatchFrame(const uint64_t frame_number)
 	current_frame = frame_number;
 
 	if (state == ScriptState::Yielded) {
+		if (waiting_for_text) {
+			if (!CheckWaitForText()) {
+				return state;
+			}
+			// CheckWaitForText pushed a boolean onto the coroutine
+			// stack. Resume with 1 result so wait_for_text returns it.
+			state = ScriptState::Running;
+
+			int nresults = 0;
+			const auto status = lua_resume(coroutine, nullptr, 1, &nresults);
+
+			if (status == LUA_YIELD) {
+				state = ScriptState::Yielded;
+				lua_pop(coroutine, nresults);
+			} else if (status == LUA_OK) {
+				state = ScriptState::Completed;
+				lua_pop(coroutine, nresults);
+			} else {
+				state     = ScriptState::Error;
+				error_msg = lua_tostring(coroutine, -1);
+				lua_pop(coroutine, 1);
+			}
+			return state;
+		}
+
 		if (current_frame < wait_until_frame) {
 			return state;
 		}

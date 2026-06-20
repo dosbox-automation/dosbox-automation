@@ -14,6 +14,8 @@ struct lua_State;
 
 namespace Lua {
 
+class DebugLog;
+
 enum class ScriptState { Idle, Loaded, Running, Yielded, Completed, Error };
 
 const char* ScriptStateName(ScriptState s);
@@ -26,7 +28,7 @@ public:
 	LuaCoroutine(const LuaCoroutine&)            = delete;
 	LuaCoroutine& operator=(const LuaCoroutine&) = delete;
 
-	bool Start();
+	bool Start(DebugLog* debug_log = nullptr);
 	ScriptState DispatchFrame(uint64_t frame_number);
 	void Stop();
 
@@ -43,8 +45,18 @@ public:
 		return error_msg;
 	}
 
+	void SetWaitForText(const std::string& pattern, bool ignorecase,
+	                    uint64_t deadline)
+	{
+		waiting_for_text     = true;
+		wait_text_pattern    = pattern;
+		wait_text_ignorecase = ignorecase;
+		wait_text_deadline   = deadline;
+	}
+
 private:
 	LuaEngine& engine;
+	DebugLog* debug_log       = nullptr;
 	lua_State* coroutine      = nullptr;
 	int coroutine_ref         = 0;
 	ScriptState state         = ScriptState::Idle;
@@ -52,8 +64,15 @@ private:
 	uint64_t wait_until_frame = 0;
 	std::string error_msg     = {};
 
+	// wait_for_text polling state
+	bool waiting_for_text         = false;
+	std::string wait_text_pattern = {};
+	bool wait_text_ignorecase     = false;
+	uint64_t wait_text_deadline   = 0;
+
 	void RegisterApi();
 	void Cleanup();
+	bool CheckWaitForText();
 
 	static int LuaWaitFrames(lua_State* L);
 	static int LuaFrame(lua_State* L);

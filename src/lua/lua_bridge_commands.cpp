@@ -12,6 +12,10 @@
 #include "misc/cross.h"
 #include "misc/logging.h"
 
+extern "C" {
+#include <lua.h>
+}
+
 using json = nlohmann::json;
 
 namespace Lua {
@@ -190,7 +194,7 @@ void LuaStartCommand::Execute()
 		return;
 	}
 
-	if (!mgr.Coroutine().Start()) {
+	if (!mgr.Coroutine().Start(&mgr.Log())) {
 		error = "failed to create coroutine";
 		return;
 	}
@@ -251,6 +255,45 @@ void LuaStopCommand::Post(const httplib::Request&, httplib::Response& res)
 
 // -- LuaStatusCommand --
 
+// Recursively convert a Lua table to JSON.
+static json LuaTableToJson(lua_State* L, int idx, int depth = 0)
+{
+	if (depth > 10) {
+		return "...";
+	}
+
+	json j;
+
+	lua_pushnil(L);
+	while (lua_next(L, idx) != 0) {
+		std::string key;
+		if (lua_isstring(L, -2)) {
+			key = lua_tostring(L, -2);
+		} else if (lua_isinteger(L, -2)) {
+			key = std::to_string(lua_tointeger(L, -2));
+		} else {
+			lua_pop(L, 1);
+			continue;
+		}
+
+		if (lua_isstring(L, -1)) {
+			j[key] = lua_tostring(L, -1);
+		} else if (lua_isinteger(L, -1)) {
+			j[key] = lua_tointeger(L, -1);
+		} else if (lua_isnumber(L, -1)) {
+			j[key] = lua_tonumber(L, -1);
+		} else if (lua_isboolean(L, -1)) {
+			j[key] = static_cast<bool>(lua_toboolean(L, -1));
+		} else if (lua_istable(L, -1)) {
+			j[key] = LuaTableToJson(L, lua_absindex(L, -1), depth + 1);
+		}
+
+		lua_pop(L, 1);
+	}
+
+	return j;
+}
+
 void LuaStatusCommand::Execute()
 {
 	auto& mgr    = ScriptManager::Instance();
@@ -258,6 +301,20 @@ void LuaStatusCommand::Execute()
 	result.error = mgr.Coroutine().ErrorMessage();
 	result.frame = mgr.Coroutine().CurrentFrame();
 	result.name  = mgr.Params().name;
+
+	// Serialize the dosbox.output table.
+	auto* L = mgr.Engine().GetState();
+	if (L) {
+		lua_getglobal(L, "dosbox");
+		if (lua_istable(L, -1)) {
+			lua_getfield(L, -1, "output");
+			if (lua_istable(L, -1)) {
+				result.output = LuaTableToJson(L, lua_absindex(L, -1));
+			}
+			lua_pop(L, 1);
+		}
+		lua_pop(L, 1);
+	}
 }
 
 void LuaStatusCommand::Get(const httplib::Request&, httplib::Response& res)
@@ -272,6 +329,10 @@ void LuaStatusCommand::Get(const httplib::Request&, httplib::Response& res)
 
 	if (!cmd.result.error.empty()) {
 		j["error"] = cmd.result.error;
+	}
+
+	if (!cmd.result.output.empty()) {
+		j["output"] = cmd.result.output;
 	}
 
 	Webserver::send_json(res, j);
