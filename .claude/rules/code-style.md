@@ -100,5 +100,13 @@ conventions — do not reformat it.
 # Comments
 
 - Use `//` for block comments
+- No comments that restate what the code does. The code says what.
+  Comments say why.
+- Comment: format quirks, platform workarounds, non-obvious design
+  decisions, deviations from spec.
+- Reference the format specification (document name + section) when
+  implementing a specific format feature.
+  Example: -- MFM encoding per SA-400 spec, section 4.3.2
+
 - End-of-line comments only for tabular data
 - Debug logging: wrap with `#if 0` / `#endif` or per-topic define switches
