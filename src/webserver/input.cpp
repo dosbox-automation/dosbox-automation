@@ -6,6 +6,7 @@
 #include "bridge.h"
 #include "webserver.h"
 
+#include "gui/osd/osd.h"
 #include "gui/private/common.h"
 #include "gui/titlebar.h"
 #include "hardware/input/keyboard.h" // KBD_KEYS, KEYBOARD_AddKey, keyboard_input_hook
@@ -182,7 +183,7 @@ static uint64_t frame_replay_start     = 0;
 static size_t frame_pending_total      = 0;
 static size_t frame_pending_dispatched = 0;
 static std::chrono::steady_clock::time_point frame_replay_start_wall;
-static double frame_replay_first_t_ms  = 0;
+static double frame_replay_first_t_ms = 0;
 
 static void pic_input_handler(uint32_t)
 {
@@ -283,11 +284,11 @@ void InputSequenceCommand::ExecuteFrameBased()
 		return;
 	}
 
-	/* Normalize frames and timestamps so the first event is at frame 0, t=0.
-	   The recording stores values relative to recording start, but there's
-	   dead time between "start recording" and the first actual input. Stripping
-	   that offset makes replay independent of when the API call lands relative
-	   to the game boot sequence. */
+	/* Normalize frames and timestamps so the first event is at frame 0,
+	   t=0. The recording stores values relative to recording start, but
+	   there's dead time between "start recording" and the first actual
+	   input. Stripping that offset makes replay independent of when the API
+	   call lands relative to the game boot sequence. */
 	uint64_t frame_base = 0;
 	double t_base       = 0;
 	for (const auto& ev : events) {
@@ -320,6 +321,7 @@ void InputSequenceCommand::ExecuteFrameBased()
 		frame_replay_first_t_ms = 0;
 		frame_replay_active     = true;
 		TITLEBAR_NotifyApiReplayStatus(true);
+		OSD::OsdManager::Instance().SetIcon(OSD::IconId::ReplayActive, true);
 		LOG_MSG("REPLAY (frame) starting: %zu events, normalized from frame %llu (%.1fms offset removed)",
 		        frame_pending_total,
 		        static_cast<unsigned long long>(frame_base),
@@ -473,6 +475,7 @@ void InputRecording::StartOnEmulationThread()
 	rec_start_pic_ms = PIC_FullIndex();
 	rec_start_frame  = GFX_GetRenderedFrameCount();
 	TITLEBAR_NotifyApiRecordingStatus(true);
+	OSD::OsdManager::Instance().SetIcon(OSD::IconId::RecordingActive, true);
 }
 
 void StartRecordingCommand::Execute()
@@ -499,6 +502,7 @@ bool InputRecording::Stop(std::vector<InputEvent>& out_events)
 	out_events = std::move(rec_buffer);
 	rec_buffer.clear();
 	TITLEBAR_NotifyApiRecordingStatus(false);
+	OSD::OsdManager::Instance().SetIcon(OSD::IconId::RecordingActive, false);
 	return true;
 }
 
@@ -741,8 +745,8 @@ void ReplayDispatchFrame(uint64_t current_frame)
 
 	std::lock_guard<std::mutex> lock(frame_replay_mutex);
 
-	const auto relative_frame = current_frame - frame_replay_start;
-	int dispatched_this_frame = 0;
+	const auto relative_frame   = current_frame - frame_replay_start;
+	int dispatched_this_frame   = 0;
 	double last_dispatched_t_ms = 0;
 
 	while (!frame_pending_events.empty() &&
@@ -762,10 +766,12 @@ void ReplayDispatchFrame(uint64_t current_frame)
 		                               std::chrono::steady_clock::now() -
 		                               frame_replay_start_wall)
 		                               .count();
-		const double expected_ms = last_dispatched_t_ms - frame_replay_first_t_ms;
-		const double wall_drift  = wall_ms - expected_ms;
+		const double expected_ms = last_dispatched_t_ms -
+		                           frame_replay_first_t_ms;
+		const double wall_drift = wall_ms - expected_ms;
 
-		if (frame_pending_dispatched % 100 == 0 || dispatched_this_frame >= 10) {
+		if (frame_pending_dispatched % 100 == 0 ||
+		    dispatched_this_frame >= 10) {
 			LOG_MSG("REPLAY frame %llu: %d events (%zu/%zu), "
 			        "wall=%.1fms expected=%.1fms drift=%+.1fms",
 			        static_cast<unsigned long long>(relative_frame),
@@ -786,12 +792,14 @@ void ReplayDispatchFrame(uint64_t current_frame)
 	if (frame_pending_events.empty()) {
 		frame_replay_active = false;
 		TITLEBAR_NotifyApiReplayStatus(false);
+		OSD::OsdManager::Instance().SetIcon(OSD::IconId::ReplayActive, false);
 		const double wall_ms = std::chrono::duration<double, std::milli>(
 		                               std::chrono::steady_clock::now() -
 		                               frame_replay_start_wall)
 		                               .count();
-		const double expected_ms = last_dispatched_t_ms - frame_replay_first_t_ms;
-		const double wall_drift  = wall_ms - expected_ms;
+		const double expected_ms = last_dispatched_t_ms -
+		                           frame_replay_first_t_ms;
+		const double wall_drift = wall_ms - expected_ms;
 		LOG_MSG("REPLAY (frame) complete: %zu/%zu events, %llu frames, "
 		        "wall=%.1fms expected=%.1fms drift=%+.1fms",
 		        frame_pending_dispatched,

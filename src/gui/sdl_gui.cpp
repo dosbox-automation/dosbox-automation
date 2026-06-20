@@ -52,6 +52,9 @@ namespace Webserver {
 void ReplayDispatchFrame(uint64_t);
 }
 
+void LuaDispatchFrame(uint64_t);
+void OSD_Render(uint64_t);
+
 // #define DEBUG_WINDOW_EVENTS
 
 template <typename... Args>
@@ -1245,6 +1248,7 @@ void GFX_EndUpdate()
 	sdl.draw.updating_framebuffer = false;
 
 	Webserver::ReplayDispatchFrame(rendered_frame_count);
+	LuaDispatchFrame(rendered_frame_count);
 }
 
 uint32_t GFX_MakePixel(const uint8_t red, const uint8_t green, const uint8_t blue)
@@ -2543,6 +2547,7 @@ void GFX_MaybePresentFrame()
 
 		if (sdl.draw.active) {
 			sdl.renderer->PrepareFrame();
+			OSD_Render(GFX_GetRenderedFrameCount());
 			sdl.renderer->PresentFrame();
 		}
 

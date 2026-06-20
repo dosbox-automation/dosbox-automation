@@ -4,6 +4,9 @@ target_sources(dosboxcommon PRIVATE
   sdl_gui.cpp
   titlebar.cpp
 
+  osd/osd.cpp
+  osd/sdl_shim.cpp
+
   render/auto_image_adjustments.cpp
   render/auto_shader_switcher.cpp
   render/deinterlacer.cpp
