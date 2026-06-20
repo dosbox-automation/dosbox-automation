@@ -720,4 +720,48 @@ TEST_F(MountPolicyTest, CueWithIndentedFileDirective)
 	EXPECT_TRUE(MountPolicy::ValidateDiskImageStructure(cue));
 }
 
+// -- Windows-specific tests --
+
+#if defined(WIN32)
+
+TEST(MountPolicyWindows, CaseInsensitiveSystemPathMatch)
+{
+	// On Windows, C:\Windows and c:\windows must both be blocked.
+	// This test uses the actual system paths, so it only runs on Windows.
+	const auto lower = std::filesystem::path("c:\\windows\\system32");
+	const auto upper = std::filesystem::path("C:\\Windows\\System32");
+
+	// Both casings should be recognized as system paths (assuming
+	// the system drive has a Windows directory).
+	if (std::filesystem::exists(lower)) {
+		EXPECT_TRUE(MountPolicy::IsUnderSystemPath(lower));
+		EXPECT_TRUE(MountPolicy::IsUnderSystemPath(upper));
+	} else {
+		GTEST_SKIP() << "C:\\Windows not found on this system";
+	}
+}
+
+TEST(MountPolicyWindows, CaseInsensitiveRootMatch)
+{
+	const auto root = std::filesystem::path("C:\\AllowedRoot");
+	const auto file_match = std::filesystem::path("c:\\allowedroot\\game.img");
+	const auto file_nomatch = std::filesystem::path("C:\\OtherRoot\\game.img");
+
+	const std::vector<std::filesystem::path> roots = {root};
+
+	EXPECT_TRUE(MountPolicy::IsUnderAnyRoot(file_match, roots));
+	EXPECT_FALSE(MountPolicy::IsUnderAnyRoot(file_nomatch, roots));
+}
+
+TEST(MountPolicyWindows, DeviceNamespacePathRejected)
+{
+	// Device namespace paths must never reach the filesystem layer.
+	EXPECT_TRUE(MountPolicy::IsDeviceNamespacePath("\\\\.\\PhysicalDrive0"));
+	EXPECT_TRUE(MountPolicy::IsDeviceNamespacePath("\\\\?\\C:\\file.img"));
+	EXPECT_FALSE(MountPolicy::IsDeviceNamespacePath("C:\\normal\\path"));
+	EXPECT_FALSE(MountPolicy::IsDeviceNamespacePath("\\\\server\\share"));
+}
+
+#endif // WIN32
+
 } // namespace

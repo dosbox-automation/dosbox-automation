@@ -5,6 +5,7 @@
 #ifndef DOSBOX_LUA_ENGINE_H
 #define DOSBOX_LUA_ENGINE_H
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -20,7 +21,9 @@ struct ScriptResult {
 
 class LuaEngine {
 public:
-	static constexpr size_t DefaultMemoryCapBytes = 16 * 1024 * 1024;
+	static constexpr size_t DefaultMemoryCapBytes    = 16 * 1024 * 1024;
+	static constexpr int64_t DefaultInstructionLimit = 1000000;
+	static constexpr int64_t DefaultWallClockLimitMs = 5000;
 
 	explicit LuaEngine(size_t memory_cap = DefaultMemoryCapBytes);
 	~LuaEngine();
@@ -41,6 +44,7 @@ public:
 
 	void Reset();
 	void SetInstructionLimit(int64_t max_instructions);
+	void SetWallClockLimit(int64_t max_ms);
 
 	int64_t InstructionLimit() const
 	{
@@ -48,9 +52,9 @@ public:
 	}
 
 	// Used by the instruction count hook callback (free function in
-	// the .cpp file, not a member). Returns true if the limit was
-	// exceeded and the script should be aborted.
-	bool AddInstructions(int count);
+	// the .cpp file, not a member). Returns nullptr if ok, or an
+	// error message if a limit was exceeded.
+	const char* CheckLimits(int instruction_count);
 
 private:
 	struct AllocState {
@@ -61,10 +65,14 @@ private:
 
 	static void* LuaAllocator(void* ud, void* ptr, size_t osize, size_t nsize);
 
+	using Clock = std::chrono::steady_clock;
+
 	AllocState alloc_state        = {};
 	lua_State* state              = nullptr;
 	int64_t instruction_limit     = 0;
 	int64_t instructions_executed = 0;
+	int64_t wall_clock_limit_ms   = DefaultWallClockLimitMs;
+	Clock::time_point exec_start  = {};
 
 	void CreateState();
 	void DestroyState();

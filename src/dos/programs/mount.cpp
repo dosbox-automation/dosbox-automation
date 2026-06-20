@@ -1021,6 +1021,14 @@ bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_con
 			return false;
 		}
 
+		if (MountPolicy::IsLocked()) {
+			LOG_WARNING("MOUNT: Blocked image mount - locked");
+			NOTIFY_DisplayWarning(Notification::Source::Console,
+			                      "MOUNT",
+			                      "PROGRAM_CONFIG_SECURE_DISALLOW");
+			return false;
+		}
+
 		// Validate every image path before any construction
 		for (const auto& img_path : params.paths) {
 			const auto img_verdict = MountPolicy::ValidateImagePath(

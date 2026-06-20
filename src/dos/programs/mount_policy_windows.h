@@ -51,17 +51,7 @@ inline const std::vector<std::filesystem::path>& SystemPaths()
 	return paths;
 }
 
-// WinObj device-namespace prefixes that must be rejected outright.
-// These never represent real filesystem paths.
-inline bool IsDeviceNamespacePath(const std::string& path)
-{
-	if (path.size() < 4) {
-		return false;
-	}
-	// \\.\  and \\?\
-	return (path[0] == '\\' && path[1] == '\\' &&
-	        (path[2] == '.' || path[2] == '?') && path[3] == '\\');
-}
+// IsDeviceNamespacePath declared in mount_policy.h, defined in mount_policy.cpp
 
 } // namespace MountPolicy
 

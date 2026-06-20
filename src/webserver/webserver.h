@@ -48,7 +48,8 @@ static T num_param(const httplib::Request& req, Source src, const std::string& n
 	int base          = 10;
 	const char* first = str.data();
 	const char* last  = str.data() + str.size();
-	if (str.size() >= 2 && str[0] == '0' && std::tolower(str[1]) == 'x') {
+	if (str.size() >= 2 && str[0] == '0' &&
+	    std::tolower(static_cast<unsigned char>(str[1])) == 'x') {
 		first += 2;
 		base = 16;
 	}

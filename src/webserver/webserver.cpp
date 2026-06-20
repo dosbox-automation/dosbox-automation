@@ -16,10 +16,16 @@
 
 #include "dos/programs/mount_policy.h"
 
-#include <random>
+#include <cstdint>
+#include <cstdio>
 #include <set>
 #include <string>
 #include <thread>
+
+#if defined(WIN32)
+#include <bcrypt.h>
+#include <windows.h>
+#endif
 
 #include "http/http.h"
 #include "json/json.h"
@@ -49,10 +55,16 @@ static void error_handler(const httplib::Request&, httplib::Response& res,
 		if (ep) {
 			std::rethrow_exception(ep);
 		}
-	} catch (const std::exception& e) {
-		msg = e.what();
+	} catch (const std::invalid_argument&) {
+		msg        = "Invalid request parameter";
+		res.status = httplib::StatusCode::BadRequest_400;
+	} catch (const nlohmann::json::exception&) {
+		msg        = "Malformed request body";
+		res.status = httplib::StatusCode::BadRequest_400;
+	} catch (const std::exception&) {
+		msg = "Internal server error";
 	} catch (...) {
-		msg = "Unknown error";
+		msg = "Internal server error";
 	}
 
 	j["error"] = msg;
@@ -130,13 +142,34 @@ static std::string strip_port(const std::string& host)
 
 static std::string generate_api_token()
 {
-	std::random_device rd;
-	std::uniform_int_distribution<int> dist(0, 255);
+	uint8_t buf[32] = {};
+
+#if defined(WIN32)
+	// BCryptGenRandom is the Windows CSPRNG. std::random_device on
+	// MinGW has been deterministic on some toolchains.
+	const auto status = BCryptGenRandom(nullptr,
+	                                    buf,
+	                                    sizeof(buf),
+	                                    BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+	if (!BCRYPT_SUCCESS(status)) {
+		E_Exit("WEBSERVER: BCryptGenRandom failed (0x%08lx)", status);
+	}
+#else
+	// On Linux/macOS, /dev/urandom is the standard CSPRNG source.
+	auto* f = fopen("/dev/urandom", "rb");
+	if (!f || fread(buf, 1, sizeof(buf), f) != sizeof(buf)) {
+		if (f) {
+			fclose(f);
+		}
+		E_Exit("WEBSERVER: Failed to read /dev/urandom");
+	}
+	fclose(f);
+#endif
+
 	constexpr char hex[] = "0123456789abcdef";
 	std::string token;
 	token.reserve(64);
-	for (int i = 0; i < 32; ++i) {
-		const auto byte = dist(rd);
+	for (const auto byte : buf) {
 		token += hex[(byte >> 4) & 0xF];
 		token += hex[byte & 0xF];
 	}
@@ -236,7 +269,9 @@ static void run(const std::string addr, const int port, const std::string resour
 	         addr.c_str(),
 	         port);
 
-	LOG_MSG("WEBSERVER: API token: %s", api_token.c_str());
+	// Show only the first 8 characters so the operator can identify
+	// the token without exposing it fully in captured logs.
+	LOG_MSG("WEBSERVER: API token: %.8s...", api_token.c_str());
 
 	auto ok = server.listen(addr, port);
 	if (!ok) {

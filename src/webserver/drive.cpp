@@ -33,15 +33,18 @@ void DriveSwapCommand::Execute()
 	                                       MountOrigin::Api,
 	                                       MountPolicy::AllowedImageRoots());
 	if (!verdict.allowed) {
-		error = "Blocked by mount policy: " + image_path;
-		LOG_WARNING("DRIVE-SWAP: Blocked '%s' - policy violation",
-		            image_path.c_str());
+		error = "Blocked by mount policy";
+		LOG_WARNING("DRIVE-SWAP: Blocked - policy violation");
 		return;
 	}
 
+	// Use the canonical path from validation, not the raw request string.
+	// Mounting the validated object, not re-resolving an untrusted path.
+	const auto& resolved = verdict.resolved.string();
+
 	struct stat st = {};
-	if (stat(image_path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
-		error = "File not found: " + image_path;
+	if (stat(resolved.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
+		error = "File not found";
 		return;
 	}
 
@@ -54,7 +57,8 @@ void DriveSwapCommand::Execute()
 		}
 	}
 
-	const auto drv_idx = static_cast<uint8_t>(std::toupper(drive_letter) - 'A');
+	const auto drv_idx = static_cast<uint8_t>(
+	        std::toupper(static_cast<unsigned char>(drive_letter)) - 'A');
 
 	if (drv_idx >= DOS_DRIVES) {
 		error = "Invalid drive letter";
@@ -65,10 +69,10 @@ void DriveSwapCommand::Execute()
 
 	// API mounts are read-only by default
 	auto new_drive = std::make_shared<fatDrive>(
-	        image_path.c_str(), 512, 0, 0, 0, is_floppy ? 0xF0 : 0xF8, true);
+	        resolved.c_str(), 512, 0, 0, 0, is_floppy ? 0xF0 : 0xF8, true);
 
 	if (!new_drive->created_successfully) {
-		error = "Failed to mount image: " + image_path;
+		error = "Failed to mount image";
 		return;
 	}
 
@@ -92,7 +96,8 @@ void DriveSwapCommand::Post(const httplib::Request& req, httplib::Response& res)
 	}
 
 	const auto drive_str = body["drive"].get<std::string>();
-	if (drive_str.empty() || !std::isalpha(drive_str[0])) {
+	if (drive_str.empty() ||
+	    !std::isalpha(static_cast<unsigned char>(drive_str[0]))) {
 		res.status = 400;
 		json err;
 		err["error"] = "Invalid drive letter";
@@ -113,7 +118,10 @@ void DriveSwapCommand::Post(const httplib::Request& req, httplib::Response& res)
 
 	json result;
 	result["status"] = "ok";
-	result["drive"]  = std::string(1, std::toupper(drive_str[0]));
+	result["drive"]  = std::string(1,
+                                      static_cast<char>(std::toupper(
+                                              static_cast<unsigned char>(
+                                                      drive_str[0]))));
 	send_json(res, result);
 }
 

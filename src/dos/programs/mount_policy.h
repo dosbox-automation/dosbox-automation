@@ -59,8 +59,12 @@ MountVerdict ValidateImagePath(
         const std::filesystem::path& raw_path, MountOrigin origin,
         const std::vector<std::filesystem::path>& allowed_image_roots);
 
-// One-way latch. Once locked, directory mounts are refused entirely
-// and image mounts require the whitelist. Cannot be unlocked.
+#if defined(WIN32)
+bool IsDeviceNamespacePath(const std::string& path);
+#endif
+
+// One-way latch. Once locked, all mounts are refused: directory mounts,
+// image mounts (MOUNT/IMGMOUNT), and BOOT. Cannot be unlocked.
 void Lock();
 bool IsLocked();
 

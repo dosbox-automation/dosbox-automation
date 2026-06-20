@@ -161,6 +161,17 @@ TEST(LuaEngine, RejectsBytecode)
 
 // -- Instruction limit --
 
+TEST(LuaEngine, DefaultInstructionLimitStopsInfiniteLoop)
+{
+	auto engine = Lua::LuaEngine();
+
+	// No explicit SetInstructionLimit - the default must stop this.
+	const auto result = engine.LoadScript("while true do end",
+	                                      "default-limit-loop");
+	EXPECT_FALSE(result.ok);
+	EXPECT_NE(result.error.find("instruction"), std::string::npos);
+}
+
 TEST(LuaEngine, InstructionLimitStopsInfiniteLoop)
 {
 	auto engine = Lua::LuaEngine();

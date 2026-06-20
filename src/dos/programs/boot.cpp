@@ -258,6 +258,13 @@ void BOOT::Run(void)
 			WriteOut(MSG_Get("PROGRAM_BOOT_IMAGE_OPEN"),
 			         temp_line.c_str());
 
+			if (MountPolicy::IsLocked()) {
+				LOG_WARNING("BOOT: Blocked - locked");
+				WriteOut(MSG_Get("PROGRAM_BOOT_IMAGE_NOT_OPEN"),
+				         temp_line.c_str());
+				return;
+			}
+
 			const auto boot_path = resolve_home(temp_line).string();
 			const auto boot_verdict = MountPolicy::ValidateImagePath(
 			        std::filesystem::path(boot_path),

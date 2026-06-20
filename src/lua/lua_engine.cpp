@@ -25,6 +25,7 @@ LuaEngine::LuaEngine(const size_t memory_cap)
 {
 	alloc_state.cap = memory_cap;
 	CreateState();
+	SetInstructionLimit(DefaultInstructionLimit);
 }
 
 LuaEngine::~LuaEngine()
@@ -129,10 +130,9 @@ static void InstructionHook(lua_State* L, [[maybe_unused]] lua_Debug* ar)
 		return;
 	}
 
-	if (engine->AddInstructions(HookInterval)) {
-		luaL_error(L,
-		           "instruction limit exceeded (%d instructions)",
-		           static_cast<int>(engine->InstructionLimit()));
+	const auto* reason = engine->CheckLimits(HookInterval);
+	if (reason) {
+		luaL_error(L, "%s", reason);
 	}
 }
 
@@ -151,10 +151,27 @@ void LuaEngine::Reset()
 	}
 }
 
-bool LuaEngine::AddInstructions(const int count)
+const char* LuaEngine::CheckLimits(const int count)
 {
 	instructions_executed += count;
-	return instruction_limit > 0 && instructions_executed > instruction_limit;
+	if (instruction_limit > 0 && instructions_executed > instruction_limit) {
+		return "instruction limit exceeded";
+	}
+
+	if (wall_clock_limit_ms > 0) {
+		const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+		        Clock::now() - exec_start);
+		if (elapsed.count() > wall_clock_limit_ms) {
+			return "wall-clock time limit exceeded";
+		}
+	}
+
+	return nullptr;
+}
+
+void LuaEngine::SetWallClockLimit(const int64_t max_ms)
+{
+	wall_clock_limit_ms = max_ms;
 }
 
 void LuaEngine::SetInstructionLimit(const int64_t max_instructions)
@@ -182,6 +199,7 @@ ScriptResult LuaEngine::LoadScript(const std::string& source, const std::string&
 	}
 
 	instructions_executed = 0;
+	exec_start            = Clock::now();
 
 	// "t" flag: reject bytecode, accept only text source.
 	const auto status = luaL_loadbufferx(

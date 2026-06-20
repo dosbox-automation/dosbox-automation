@@ -12,9 +12,11 @@
 
 #include "dosbox.h"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cassert>
+#include <cctype>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -41,6 +43,17 @@ bool IsLocked()
 {
 	return mount_locked.load(std::memory_order_acquire);
 }
+
+#if defined(WIN32)
+bool IsDeviceNamespacePath(const std::string& path)
+{
+	if (path.size() < 4) {
+		return false;
+	}
+	return (path[0] == '\\' && path[1] == '\\' &&
+	        (path[2] == '.' || path[2] == '?') && path[3] == '\\');
+}
+#endif
 
 std::optional<std::filesystem::path> CanonicalizeExisting(const std::filesystem::path& host_path)
 {
@@ -88,6 +101,39 @@ static bool IsBareRoot(const std::filesystem::path& canonical_path)
 #endif
 }
 
+// Case-insensitive prefix check for path strings. On Windows,
+// C:\Windows and c:\windows are the same path; byte-exact comparison
+// can defeat the system-path denylist via case mismatch.
+static bool PathStartsWith(const std::string& path, const std::string& prefix)
+{
+	if (path.size() < prefix.size()) {
+		return false;
+	}
+#if defined(WIN32)
+	for (size_t i = 0; i < prefix.size(); ++i) {
+		if (std::tolower(static_cast<unsigned char>(path[i])) !=
+		    std::tolower(static_cast<unsigned char>(prefix[i]))) {
+			return false;
+		}
+	}
+	return true;
+#else
+	return path.compare(0, prefix.size(), prefix) == 0;
+#endif
+}
+
+static bool PathEquals(const std::string& a, const std::string& b)
+{
+#if defined(WIN32)
+	if (a.size() != b.size()) {
+		return false;
+	}
+	return PathStartsWith(a, b);
+#else
+	return a == b;
+#endif
+}
+
 bool IsUnderSystemPath(const std::filesystem::path& canonical_path)
 {
 	if (IsBareRoot(canonical_path)) {
@@ -100,7 +146,7 @@ bool IsUnderSystemPath(const std::filesystem::path& canonical_path)
 	for (const auto& sys_path : system_paths) {
 		const auto sys_str = sys_path.string();
 
-		if (canonical_str == sys_str) {
+		if (PathEquals(canonical_str, sys_str)) {
 			return true;
 		}
 
@@ -108,14 +154,14 @@ bool IsUnderSystemPath(const std::filesystem::path& canonical_path)
 		// by a path separator, so "/etc" blocks "/etc/shadow" but
 		// not "/etcetera"
 		if (canonical_str.size() > sys_str.size() &&
-		    canonical_str.compare(0, sys_str.size(), sys_str) == 0) {
-#if defined(WIN32)
+		    PathStartsWith(canonical_str, sys_str)) {
 			const auto next = canonical_str[sys_str.size()];
+#if defined(WIN32)
 			if (next == '\\' || next == '/') {
 				return true;
 			}
 #else
-			if (canonical_str[sys_str.size()] == '/') {
+			if (next == '/') {
 				return true;
 			}
 #endif
@@ -134,19 +180,19 @@ bool IsUnderAnyRoot(const std::filesystem::path& canonical_path,
 	for (const auto& root : roots) {
 		const auto root_str = root.string();
 
-		if (canonical_str == root_str) {
+		if (PathEquals(canonical_str, root_str)) {
 			return true;
 		}
 
 		if (canonical_str.size() > root_str.size() &&
-		    canonical_str.compare(0, root_str.size(), root_str) == 0) {
-#if defined(WIN32)
+		    PathStartsWith(canonical_str, root_str)) {
 			const auto next = canonical_str[root_str.size()];
+#if defined(WIN32)
 			if (next == '\\' || next == '/') {
 				return true;
 			}
 #else
-			if (canonical_str[root_str.size()] == '/') {
+			if (next == '/') {
 				return true;
 			}
 #endif
@@ -261,6 +307,13 @@ MountVerdict ValidateDirectoryMount(const std::filesystem::path& raw_path,
 {
 	auto verdict = MountVerdict{};
 
+#if defined(WIN32)
+	if (IsDeviceNamespacePath(raw_path.string())) {
+		verdict.reason = DenyReason::SystemPath;
+		return verdict;
+	}
+#endif
+
 	const auto canonical = CanonicalizeExisting(raw_path);
 	if (!canonical) {
 		verdict.reason = DenyReason::DoesNotResolve;
@@ -309,6 +362,13 @@ MountVerdict ValidateImagePath(const std::filesystem::path& raw_path,
                                const std::vector<std::filesystem::path>& allowed_image_roots)
 {
 	auto verdict = MountVerdict{};
+
+#if defined(WIN32)
+	if (IsDeviceNamespacePath(raw_path.string())) {
+		verdict.reason = DenyReason::SystemPath;
+		return verdict;
+	}
+#endif
 
 	const auto canonical = CanonicalizeExisting(raw_path);
 	if (!canonical) {
