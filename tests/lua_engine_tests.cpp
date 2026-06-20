@@ -301,6 +301,72 @@ TEST(LuaEngine, PatternFindAllowsAtLimit)
 	EXPECT_TRUE(result.ok) << result.error;
 }
 
+// -- Pattern complexity guard --
+
+TEST(LuaEngine, PatternRejectsCatastrophicPattern)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local s = string.rep('a', 40)\n"
+	        "local p = string.rep('.-', 8) .. 'z'\n"
+	        "return string.find(s, p)\n",
+	        "redos");
+	EXPECT_FALSE(result.ok);
+	EXPECT_NE(result.error.find("too complex"), std::string::npos);
+}
+
+TEST(LuaEngine, PatternRejectsRuntimeBuiltComplexPattern)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local s = string.rep('a', 200)\n"
+	        "local p = string.rep('.-', 12) .. 'z'\n"
+	        "return string.match(s, p)\n",
+	        "redos-runtime");
+	EXPECT_FALSE(result.ok);
+	EXPECT_NE(result.error.find("too complex"), std::string::npos);
+}
+
+TEST(LuaEngine, PatternAllowsSimpleOnLargeSubject)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local s = string.rep('a', 60 * 1024) .. 'b'\n"
+	        "return (string.find(s, 'b') ~= nil)\n",
+	        "simple-large");
+	EXPECT_TRUE(result.ok) << result.error;
+}
+
+TEST(LuaEngine, PatternAllowsComplexOnSmallSubject)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local s = 'Drive C: ready  Insert disk 2'\n"
+	        "return string.match(s, 'disk%%s*(%%d+)')\n",
+	        "screen-text");
+	EXPECT_TRUE(result.ok) << result.error;
+}
+
+TEST(LuaEngine, PatternQuantifierInsideSetIsLiteral)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local s = string.rep('x', 60 * 1024)\n"
+	        "return (string.find(s, '[*+-]') == nil)\n",
+	        "set-literal");
+	EXPECT_TRUE(result.ok) << result.error;
+}
+
+TEST(LuaEngine, PatternEscapedQuantifierIsLiteral)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.LoadScript(
+	        "local s = string.rep('a', 60 * 1024) .. '*'\n"
+	        "return (string.find(s, '%%*') ~= nil)\n",
+	        "escaped-literal");
+	EXPECT_TRUE(result.ok) << result.error;
+}
+
 // -- Metatable escape --
 
 TEST(LuaEngine, SandboxBlocksGetmetatable)

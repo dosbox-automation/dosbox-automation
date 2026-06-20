@@ -17,32 +17,111 @@ namespace {
 constexpr int HookInterval        = 1000;
 constexpr const char* RegistryKey = "LuaEngine";
 
-// Cap on subject string length for pattern-matching functions.
-// Prevents pathological backtracking in the C pattern matcher
-// from stalling the emulation thread. The instruction hook and
-// wall-clock watchdog can't preempt a single C library call.
+// Subject and pattern caps for the pattern-matching functions.
+// The Lua pattern matcher runs entirely in one C call, which neither
+// the instruction hook nor the wall-clock watchdog can preempt, so
+// the cost has to be bounded before the call runs.
 constexpr size_t MaxPatternSubjectLen = 64 * 1024;
+constexpr size_t MaxPatternLen        = 1024;
 
-// Checks that argument 1 (the subject string) does not exceed the
-// cap. Called from the guarded wrappers below.
-static void CheckSubjectLength(lua_State* L)
+// Worst-case backtracking cost is ~ subject_len ^ quantifiers. We
+// bound it in bits: quantifiers * bit_length(subject_len). 24 bits
+// is roughly 1.6e7 match steps, well under a second.
+constexpr int MaxPatternCostBits = 24;
+
+static int BitLength(size_t n)
 {
-	size_t len = 0;
-	luaL_checklstring(L, 1, &len);
-	if (len > MaxPatternSubjectLen) {
+	int bits = 0;
+	while (n > 0) {
+		++bits;
+		n >>= 1;
+	}
+	return bits;
+}
+
+// Counts the unbounded quantifiers (* + -) that act as pattern
+// operators. Escaped quantifiers (%* etc.) and any * + - inside a
+// [set] are literals and are skipped. These are the only constructs
+// that drive n^q backtracking; ? is bounded and ignored.
+static int CountUnboundedQuantifiers(const char* p, size_t len)
+{
+	int count   = 0;
+	bool in_set = false;
+
+	for (size_t i = 0; i < len; ++i) {
+		const char c = p[i];
+
+		if (c == '%') {
+			++i;
+			continue;
+		}
+
+		if (in_set) {
+			if (c == ']') {
+				in_set = false;
+			}
+			continue;
+		}
+
+		if (c == '[') {
+			in_set = true;
+			if (i + 1 < len && p[i + 1] == '^') {
+				++i;
+			}
+			if (i + 1 < len && p[i + 1] == ']') {
+				++i;
+			}
+			continue;
+		}
+
+		if (c == '*' || c == '+' || c == '-') {
+			++count;
+		}
+	}
+	return count;
+}
+
+// Validates argument 1 (subject) and argument 2 (pattern) for all
+// four pattern functions before the matcher runs.
+static void CheckPatternComplexity(lua_State* L)
+{
+	size_t subject_len = 0;
+	luaL_checklstring(L, 1, &subject_len);
+
+	size_t pattern_len    = 0;
+	const char* pattern_p = luaL_checklstring(L, 2, &pattern_len);
+
+	if (subject_len > MaxPatternSubjectLen) {
 		luaL_error(L,
 		           "string too long for pattern operation (%d bytes, limit %d)",
-		           static_cast<int>(len),
+		           static_cast<int>(subject_len),
 		           static_cast<int>(MaxPatternSubjectLen));
+	}
+
+	if (pattern_len > MaxPatternLen) {
+		luaL_error(L,
+		           "pattern too long (%d bytes, limit %d)",
+		           static_cast<int>(pattern_len),
+		           static_cast<int>(MaxPatternLen));
+	}
+
+	const int quantifiers = CountUnboundedQuantifiers(pattern_p, pattern_len);
+	const long long cost_bits = static_cast<long long>(quantifiers) *
+	                            BitLength(subject_len);
+	if (cost_bits > MaxPatternCostBits) {
+		luaL_error(L,
+		           "pattern too complex for subject length "
+		           "(%d quantifiers over %d bytes)",
+		           quantifiers,
+		           static_cast<int>(subject_len));
 	}
 }
 
-// Wraps a string library function with a length check on argument 1.
-// Stores the original function as an upvalue, checks length, then
-// tail-calls the original.
+// Wraps a string library function with the complexity check. Stores
+// the original as an upvalue, checks, then tail-calls the original.
 static int GuardedPatternFunc(lua_State* L)
 {
-	CheckSubjectLength(L);
+	CheckPatternComplexity(L);
 	lua_pushvalue(L, lua_upvalueindex(1));
 	lua_insert(L, 1);
 	lua_call(L, lua_gettop(L) - 1, LUA_MULTRET);
