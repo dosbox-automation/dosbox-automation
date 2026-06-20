@@ -35,6 +35,7 @@ add_executable(dosbox_tests
     mount_policy_tests.cpp
     lua_engine_tests.cpp
     lua_coroutine_tests.cpp
+    lua_api_tests.cpp
     script_validator_tests.cpp
     multi_prefix_tests.cpp
 )
