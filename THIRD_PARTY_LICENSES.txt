@@ -1,0 +1,301 @@
+THIRD-PARTY LICENSES
+====================
+
+This document lists all third-party software included in or linked by
+dosbox-automation, grouped by license. Full license texts are in the
+licenses/ directory.
+
+Individual source file licenses are stated in their SPDX-License-Identifier
+headers. When a component has its own LICENSE or COPYING file in its
+subdirectory, that file is authoritative for that component.
+
+
+================================================================================
+VENDORED LIBRARIES (src/libs/)
+================================================================================
+
+These are compiled directly into the dosbox-automation binary.
+
+--------------------------------------------------------------------------------
+MIT License (licenses/MIT.txt)
+--------------------------------------------------------------------------------
+Used by: base64, clap, enet, httplib (cpp-httplib), json (nlohmann),
+         PL_MPEG, simde, simpleini, stb_truetype, whereami
+
+  base64         Base64 encoder/decoder
+                 Copyright (c) 2019 Tobias Locker
+
+  clap           Command-line argument parser headers
+                 Copyright (c) 2021 Alexandre BIQUE
+
+  enet           Reliable UDP networking
+                 Copyright (c) 2002-2016 Lee Salzman
+                 Copyright (c) 2017-2022 Vladyslav Hrytsenko, Dominik Madarasz
+
+  httplib        C++ HTTP/HTTPS library (cpp-httplib 0.48.0)
+                 Copyright (c) 2017 yhirose
+
+  json           JSON for Modern C++
+                 Copyright (c) 2013-2026 Niels Lohmann
+
+  PL_MPEG        MPEG1 video decoder
+                 Copyright (c) Dominic Szablewski
+
+  simde          SIMD Everywhere - portable SIMD intrinsics
+                 Copyright (c) 2017-2020 Evan Nemerson
+
+  simpleini      INI file parser
+                 Copyright (c) 2006-2024 Brodie Thiesfield
+
+  stb_truetype   TrueType font rasterizer
+                 Copyright (c) 2009-2021 Sean Barrett / RAD Game Tools
+                 Also available as Public Domain (dual-licensed)
+
+  whereami       Executable path detection
+                 Copyright (c) Gregory Pakosz
+                 Also available as WTFPL (dual-licensed)
+
+--------------------------------------------------------------------------------
+Zlib License (licenses/Zlib.txt)
+--------------------------------------------------------------------------------
+Used by: ManyMouse, riffcpp
+
+  ManyMouse      Multi-mouse input library
+                 Copyright (c) 2005-2021 Ryan C. Gordon
+
+  riffcpp        RIFF file parser
+                 Copyright (c) 2019 Francesco Bertolaccini
+
+--------------------------------------------------------------------------------
+BSD 2-Clause License (licenses/BSD-2-Clause.txt)
+--------------------------------------------------------------------------------
+Used by: YM7128B_emu
+
+  YM7128B_emu    Yamaha YM7128B emulator
+                 Copyright (c) 2020-2023 Andrea Zoppi
+
+--------------------------------------------------------------------------------
+BSD 3-Clause License (licenses/BSD-3-Clause.txt)
+--------------------------------------------------------------------------------
+Used by: libslirp headers
+
+  libslirp       User-mode networking library headers
+                 See src/libs/libslirp/ for specific copyright holders
+
+--------------------------------------------------------------------------------
+LGPL-2.1-or-later (licenses/LGPL-2.1-or-later.txt)
+--------------------------------------------------------------------------------
+Used by: ESFMu, Nuked OPL3
+
+  ESFMu          Enhanced Standard FM synthesizer emulator
+                 See src/libs/ESFMu/ for copyright details
+
+  Nuked OPL3     Cycle-accurate Yamaha OPL3 emulator
+                 See src/libs/nuked/ for copyright details
+
+--------------------------------------------------------------------------------
+GPL-2.0-or-later (licenses/GPL-2.0-or-later.txt)
+--------------------------------------------------------------------------------
+Used by: residfp, tal-chorus
+
+  residfp        MOS 6581/8580 SID chip emulator
+                 See src/libs/residfp/ for copyright details
+
+  tal-chorus     Chorus effect DSP (from TAL-NoiseMaker)
+                 Copyright (c) 2005-2010 Patrick Kunz, Togu Audio Line, Inc.
+
+--------------------------------------------------------------------------------
+GPL-3.0-or-later (licenses/GPL-3.0-or-later.txt)
+--------------------------------------------------------------------------------
+Used by: mverb
+
+  mverb          Reverb effect
+                 See src/libs/mverb/ for copyright details
+
+--------------------------------------------------------------------------------
+Public Domain (licenses/CC-PDDC.txt)
+--------------------------------------------------------------------------------
+Used by: loguru, PDCurses, decoders (dr_flac, dr_mp3, dr_wav, stb_vorbis)
+
+  loguru         Lightweight logging library
+                 Public domain
+
+  PDCurses       Console window library
+                 Public domain (some auxiliary files under other licenses)
+
+  dr_flac        FLAC audio decoder
+  dr_mp3         MP3 audio decoder
+  dr_wav         WAV audio decoder
+  stb_vorbis     Ogg Vorbis audio decoder
+                 Public domain or MIT (dual-licensed)
+
+--------------------------------------------------------------------------------
+Hybrid License
+--------------------------------------------------------------------------------
+Used by: glad
+
+  glad           OpenGL loader generator
+                 License: (WTFPL OR CC0-1.0) AND Apache-2.0
+                 See licenses/WTFPL.txt, licenses/CC0-1.0.txt,
+                 and the Apache-2.0 section below for full texts.
+
+--------------------------------------------------------------------------------
+LGPL-2.1-or-later (decoders framework)
+--------------------------------------------------------------------------------
+Used by: SDL_sound decoders
+
+  decoders       Audio decoder framework (SDL_sound derived)
+                 LGPL-2.1-or-later
+                 Contains Timidity MIDI (LGPL/GPL/Perl Artistic)
+                 and libmpg123 MP3 (LGPL)
+
+
+================================================================================
+EMULATOR CORES WITH SEPARATE LICENSES (src/hardware/)
+================================================================================
+
+These are part of the DOSBox/DOSBox Staging codebase but carry licenses
+from their original authors.
+
+  Philips SAA1099 emulator (MAME)
+                 src/hardware/audio/mame/ and src/hardware/audio/private/mame/
+                 Copyright: Juergen Buchmueller, Manuel Abadia
+                 License: BSD-3-Clause
+
+  Texas Instruments SN76489 emulator (MAME)
+                 src/hardware/audio/mame/
+                 License: BSD-3-Clause
+
+  3dfx Voodoo Graphics emulator (MAME)
+                 src/hardware/video/voodoo.cpp
+                 Copyright: Aaron Giles
+                 License: BSD-3-Clause AND GPL-2.0-or-later
+
+  National Semiconductor NE2000 emulator (MandrakeSoft/Bochs)
+                 src/hardware/network/ne2000.cpp
+                 Copyright: MandrakeSoft S.A., Peter Grehan, Dean Beeler,
+                            Ralf Grillenberger, The DOSBox Staging Team
+                 License: LGPL-2.1-or-later
+
+
+================================================================================
+SUBPROJECTS (subprojects/)
+================================================================================
+
+External libraries built as part of the project.
+
+  FluidSynth     MIDI synthesizer
+                 License: LGPL-2.1-or-later
+
+  munt (libmt32emu)
+                 MT-32 emulator
+                 License: LGPL-2.1-or-later
+
+  iir1           IIR digital filter library
+                 Copyright (c) 2009 Vinnie Falco, 2012 Bernd Porr
+                 License: MIT
+
+  speexdsp       Speex DSP library (resampler)
+                 Copyright: Xiph.org Foundation, Jean-Marc Valin, et al.
+                 License: BSD-3-Clause
+
+  libslirp       User-mode TCP/IP networking
+                 License: BSD-3-Clause
+
+  Google Test     C++ testing framework (tests only, not in release binary)
+                 Copyright (c) 2008 Google Inc.
+                 License: BSD-3-Clause
+
+
+================================================================================
+VCPKG DEPENDENCIES
+================================================================================
+
+External libraries resolved and built by vcpkg. Not vendored in the
+source tree.
+
+  SDL2           Simple DirectMedia Layer
+                 License: Zlib
+
+  SDL2_image     SDL2 image loading
+                 License: Zlib
+
+  libpng         PNG reference library
+                 License: libpng/zlib
+
+  zlib           Compression library
+                 License: Zlib
+
+  Opusfile       Opus audio file decoder
+                 License: BSD-3-Clause
+
+
+================================================================================
+BUNDLED DOS PROGRAMS (extras/dos-programs/, resources/)
+================================================================================
+
+  debug.com      FreeDOS debugger (v2.50)
+                 Author: Baron-von-Riedesel
+                 Source: https://github.com/Baron-von-Riedesel/DOS-debug
+                 License: see licenses/DEBUG.COM.txt
+
+  deltree.com    FreeDOS directory removal (v1.02g)
+                 Source: https://gitlab.com/FreeDOS/base/deltree
+                 License: GPL-2.0
+
+  xcopy.exe      FreeDOS file copy utility
+                 Source: https://github.com/joncampbell123/dosbox-x
+                 License: GPL-2.0
+
+  FreeDOS CPI    Code page bitmap fonts
+                 Source: https://gitlab.com/FreeDOS/base/cpidos
+                         https://github.com/FDOS/cpi
+                 License: GPL-2.0
+
+  FreeDOS keyboard layouts
+                 Source: https://gitlab.com/FreeDOS/base/keyb_lay
+                 License: GPL-2.0
+
+
+================================================================================
+RESOURCE FILES
+================================================================================
+
+  Unicode mapping files (resources/mapping-unicode.org/)
+                 License: Unicode, Inc. License Agreement
+                 See licenses/UNICODE.txt
+
+
+================================================================================
+FONTS USED IN SPLASH SCREENS
+================================================================================
+
+  BebasNeue      Display font by Dharma Type
+                 Used in splash screen graphics
+                 License: SIL Open Font License 1.1
+
+  Raleway        Sans-serif font
+                 Used in splash screen graphics
+                 License: SIL Open Font License 1.1
+
+
+================================================================================
+UPSTREAM ATTRIBUTION
+================================================================================
+
+dosbox-automation is a fork of DOSBox Staging, which is a fork of DOSBox.
+
+  DOSBox         Original DOS emulator
+                 Copyright (c) 2002-2021 The DOSBox Team
+                 License: GPL-2.0-or-later
+                 Homepage: https://www.dosbox.com/
+
+  DOSBox Staging Community-driven DOSBox fork
+                 Copyright (c) 2020-2026 The DOSBox Staging Team
+                 License: GPL-2.0-or-later
+                 Homepage: https://dosbox-staging.github.io/
+
+
+================================================================================
+END OF THIRD-PARTY LICENSES
+================================================================================

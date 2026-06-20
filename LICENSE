@@ -1,124 +1,44 @@
-DOSBox Staging License
+dosbox-automation License
+------------------------
+
+dosbox-automation is a fork of DOSBox Staging, which is itself a fork
+of DOSBox. All works derived from the DOSBox project carry the same
+license terms as granted by the DOSBox authors: the GNU General Public
+License version 2 or later (GPL-2.0-or-later).
+
+Original works authored by the dosbox-automation project are also
+licensed under GPL-2.0-or-later to maintain compatibility with the
+upstream codebase and other DOSBox forks.
+
+The full license text is in licenses/GPL-2.0-or-later.txt.
+
+
+Third-party components
 ----------------------
 
-The DOSBox Staging project is a fork of the DOSBox project, and as
-such, all works derived from the DOSBox project carry the same
-license terms as granted by the DOSBox authors, which is the "GNU
-General Public License version 2 or later" (GPL-2.0-or-later).
+This project includes third-party libraries, emulator cores, and
+bundled programs under various open-source licenses. All are compatible
+with the GPL-2.0-or-later as confirmed by the GNU license compatibility
+guidelines.
 
-Original works authored by the DOSBox Staging team are also
-licensed under the GPL-2.0-or-later terms to maximize portability
-of code with both upstream and other DOSBox forks.
+See THIRD_PARTY_LICENSES.txt for the complete inventory, and the
+licenses/ directory for the full text of each license.
 
-Most third party libraries used by Staging are licensed under the
-GPL-2.0-or-later terms, however there are some exceptions:
-
-- MAME's Philips SAA1099 and Texas Instruments SN76489 emulators,
-  under the src/hardware/audio/mame and src/hardware/audio/private/mame
-  directories, are both licensed under the BSD 3-Clause terms.
-
-- MAME's 3dfx Voodoo Graphics emulator by Aaron Giles, in file
-  src/hardware/video/voodoo.cpp, which is licensed under the
-  BSD-3-Clause AND GPL-2.0-or-later terms.
-
-- MandrakeSoft's National Semiconductor NE2000 emulator, in file
-  src/hardware/network/ne2000.cpp, which is licensed under the
-  LGPL-2.1-or-later terms.
-
-- DOS code pages to Unicode mapping definition files in the
-  resources/mapping-unicode.org directory are licensed under the
-  Unicode, Inc. License Agreement for Data Files and Software license.
-
-- Libraries in src/libs directory, are licensed as follows:
-   - base64: MIT
-   - clap headers: MIT
-   - decoders/dr_flac.h, dr_mp3.h, dr_wav.h: Public Domain or MIT
-   - decoders/stb.h, stb_vorbis.h: Public Domain
-   - enet: MIT
-   - ESFMu: LGPL-2
-   - glad: (WTFPL OR CC0-1.0) AND Apache-2.0
-   - http: MIT
-   - json: MIT
-   - libslirp headers: BSD 3-Clause
-   - loguru: Public Domain
-   - ManyMouse: Zlib
-   - mverb: GPL-3
-   - Nuked OPL3: LGPL-2
-   - PDcurses: Public Domain
-   - PL_MPEG: MIT
-   - residfp: GPL-2
-   - riffcpp: Zlib
-   - simde: MIT
-   - simpleini: MIT
-   - stb_truetype: MIT or Public Domain
-   - tal-chorus: GPL-2
-   - whereami: MIT or WTFPL
-   - YM7128B_emu: BSD 2-Clause
-
-The above licenses meet GNU's qualifications for being free
-software (https://www.gnu.org/licenses/license-list.en.html) and
-are compatible with the GNU GPL.
+The license of each individual source file is stated in its first few
+lines, either as a house-format header or an SPDX-License-Identifier.
 
 
-Bundled Binaries Licenses
--------------------------
-
-The following 3rd party binaries are shipped with DOSBox Staging:
-
-- DOS command binaries in resources/drives/y/dos, are licensed as follows:
-   - debug.com: licenses/DEBUG.COM.txt, source code: https://github.com/Baron-von-Riedesel/DOS-debug
-   - deltree.com: GPL-2.0, source code: https://gitlab.com/FreeDOS/base/deltree
-   - xcopy.exe: GPL-2.0, source code: https://github.com/joncampbell123/dosbox-x/tree/master/src/builtin/xcopy
-
-- FreeDOS CPI files in resources/freedos-cpi are GPL-2.0 licensed;
-  these are hand-drawn bitmap fonts, so they don't have a source code; original repositories:
-   - https://gitlab.com/FreeDOS/base/cpidos (the main code page pack)
-   - https://github.com/FDOS/cpi (ISO/KOI/MAC/WIN code page packs)
-  The code page files were originally in the CPX format, they were decompressed into the CPI format.
-
-- FreeDOS keyboard layout files in resources/freedos-keyboard are GPL-2.0 licensed;
-  source code: https://gitlab.com/FreeDOS/base/keyb_lay
-
-The DOSBox Staging repository contains full snapshots of the original
-repositories in the extras/dos-programs directory.
-
-
-Individual Source File Licenses 
--------------------------------
-
-The license of each individual DOSBox Staging source file can be
-found in the first few lines after "SPDX-License-Identifier". The
-full text for each license can be found in the licenses/
-directory.
-
-Some libraries have their own COPYING or LICENSE file in their
-respective subdirectories, however, when not available, the license
-is described in the source files themselves.
-
-See also https://spdx.org/licenses/ for the full license texts,
-and https://spdx.org/ids for the standardized header format.
-
-
-License Compatibility
+License compatibility
 ---------------------
 
-As depicted in GNU's license compatibility flow chart [1],
-answered in their frequently asked questions [2], and described
-in each licenses' text, we understand that the following license
-changes are permitted:
+As depicted in GNU's license compatibility flow chart [1] and their
+FAQ [2], the following license upgrades are permitted:
 
- - LGPL-2.1-or-later -> GPL-2.0-or-later -> GPL-3.0-or-later
+  LGPL-2.1-or-later -> GPL-2.0-or-later -> GPL-3.0-or-later
+  LGPL-3.0-or-later -> GPL-3.0-or-later
 
- - LGPL-3.0-or-later -> GPL-3.0-or-later
+Taken as a whole, the compiled binaries of dosbox-automation are
+covered by the terms of GPL-2.0-or-later.
 
-Taken as a whole, the compiled binaries of DOSBox Staging project
-are covered by the terms of GPL-2.0-or-later license.
-
-[1] "A Quick Guide to GPLv3", GNU license FAQ website, GNU
-    Organizion, accessed 1 July 2022,
-    https://www.gnu.org/licenses/quick-guide-gplv3.en.html.
-
-[2] "Frequently Asked Questions about the GNU Licenses", GNU
-    license FAQ website, GNU Organizion, accessed 1 July 2022,
-    https://www.gnu.org/licenses/gpl-faq.html#AllCompatibility.
-
+[1] https://www.gnu.org/licenses/quick-guide-gplv3.en.html
+[2] https://www.gnu.org/licenses/gpl-faq.html#AllCompatibility
