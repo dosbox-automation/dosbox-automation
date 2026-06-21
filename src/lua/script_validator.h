@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace Lua {
@@ -18,9 +19,9 @@ struct ValidationResult {
 };
 
 struct ScriptParams {
-	std::string name = "unnamed";
-	int64_t seed     = 0;
-	bool debug       = false;
+	std::string name              = "unnamed";
+	std::optional<int64_t> seed   = std::nullopt;
+	bool debug                    = false;
 };
 
 class ScriptValidator {

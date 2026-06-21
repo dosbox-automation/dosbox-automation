@@ -8,6 +8,10 @@
 
 #include <gtest/gtest.h>
 
+extern "C" {
+#include <lua.h>
+}
+
 namespace {
 
 TEST(LuaEngine, ConstructsAndDestroys)
@@ -375,6 +379,150 @@ TEST(LuaEngine, SandboxBlocksGetmetatable)
 	const auto result = engine.RunScript("local mt = getmetatable('')\n",
 	                                      "metatable-escape");
 	EXPECT_FALSE(result.ok);
+}
+
+// S1: setmetatable allows __gc, __index, __tostring injection
+TEST(LuaEngine, SandboxBlocksSetmetatable)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.RunScript(
+	        "local t = {}\n"
+	        "setmetatable(t, {__tostring = function() return 'injected' end})\n",
+	        "setmetatable-escape");
+	EXPECT_FALSE(result.ok);
+}
+
+// S2: string.dump leaks bytecode representation
+TEST(LuaEngine, SandboxBlocksStringDump)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.RunScript(
+	        "local bc = string.dump(function() return 1 end)\n",
+	        "string-dump-escape");
+	EXPECT_FALSE(result.ok);
+}
+
+// S3: collectgarbage does unbounded C-side work, bypasses instruction hook
+TEST(LuaEngine, SandboxBlocksCollectgarbage)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.RunScript("collectgarbage('count')\n",
+	                                      "collectgarbage-escape");
+	EXPECT_FALSE(result.ok);
+}
+
+// S4: raw* functions bypass metamethods
+TEST(LuaEngine, SandboxBlocksRawset)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.RunScript("rawset({}, 'k', 'v')\n",
+	                                      "rawset-escape");
+	EXPECT_FALSE(result.ok);
+}
+
+TEST(LuaEngine, SandboxBlocksRawget)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.RunScript("rawget({}, 'k')\n",
+	                                      "rawget-escape");
+	EXPECT_FALSE(result.ok);
+}
+
+TEST(LuaEngine, SandboxBlocksRawlen)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.RunScript("rawlen({})\n",
+	                                      "rawlen-escape");
+	EXPECT_FALSE(result.ok);
+}
+
+TEST(LuaEngine, SandboxBlocksRawequal)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.RunScript("rawequal({}, {})\n",
+	                                      "rawequal-escape");
+	EXPECT_FALSE(result.ok);
+}
+
+// S5: timers must reset at start, not just at load
+TEST(LuaEngine, ResetTimersClearsCounters)
+{
+	auto engine = Lua::LuaEngine();
+	engine.SetInstructionLimit(50000);
+
+	// Burn through most of the instruction budget.
+	auto r1 = engine.RunScript(
+	        "local sum = 0 for i = 1, 10000 do sum = sum + i end",
+	        "burn-budget");
+	EXPECT_TRUE(r1.ok) << r1.error;
+
+	// Without ResetTimers, a second run would start with the
+	// accumulated count and might exceed the limit.
+	engine.ResetTimers();
+
+	auto r2 = engine.RunScript(
+	        "local sum = 0 for i = 1, 10000 do sum = sum + i end",
+	        "after-reset");
+	EXPECT_TRUE(r2.ok) << r2.error;
+}
+
+// A1: non-string error objects must not crash
+TEST(LuaEngine, NonStringErrorTableDoesNotCrash)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.RunScript("error({})", "table-error");
+	EXPECT_FALSE(result.ok);
+	EXPECT_NE(result.error.find("non-string error"), std::string::npos);
+}
+
+TEST(LuaEngine, NonStringErrorNilDoesNotCrash)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.RunScript("error(nil)", "nil-error");
+	EXPECT_FALSE(result.ok);
+}
+
+TEST(LuaEngine, NonStringErrorBoolDoesNotCrash)
+{
+	auto engine       = Lua::LuaEngine();
+	const auto result = engine.RunScript("error(true)", "bool-error");
+	EXPECT_FALSE(result.ok);
+	EXPECT_NE(result.error.find("non-string error"), std::string::npos);
+}
+
+// D1: seed parameter produces deterministic random output
+TEST(LuaEngine, SeedRandomProducesDeterministicOutput)
+{
+	auto run_seeded = [](int64_t seed) -> std::string {
+		auto engine = Lua::LuaEngine();
+		engine.SeedRandom(seed);
+		auto result = engine.RunScript(
+		        "result = ''\n"
+		        "for i = 1, 5 do\n"
+		        "  result = result .. tostring(math.random(1, 1000)) .. ','\n"
+		        "end\n",
+		        "seed-test");
+		if (!result.ok) {
+			return "ERROR: " + result.error;
+		}
+
+		auto* L = engine.GetState();
+		lua_getglobal(L, "result");
+		const char* s = lua_tostring(L, -1);
+		std::string out = s ? s : "";
+		lua_pop(L, 1);
+		return out;
+	};
+
+	// Same seed must produce same sequence.
+	const auto seq1 = run_seeded(42);
+	const auto seq2 = run_seeded(42);
+	EXPECT_EQ(seq1, seq2);
+	EXPECT_FALSE(seq1.empty());
+
+	// Different seed must produce different sequence.
+	const auto seq3 = run_seeded(99);
+	EXPECT_NE(seq1, seq3);
 }
 
 } // namespace

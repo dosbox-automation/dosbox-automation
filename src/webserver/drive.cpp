@@ -28,6 +28,17 @@ DriveSwapCommand::DriveSwapCommand(char drive_letter, std::string image_path)
 
 void DriveSwapCommand::Execute()
 {
+	// Once mounts are locked, the configuration is frozen for everyone,
+	// the guest commands (BOOT, IMGMOUNT, MOUNT) and the API alike. This
+	// is the authoritative check, on the emulation thread where the swap
+	// actually happens. The Post handler also checks early for a clean
+	// 403, but the latch can flip between that check and this one.
+	if (MountPolicy::IsLocked()) {
+		error = "mount is locked";
+		LOG_WARNING("DRIVE-SWAP: Blocked - locked");
+		return;
+	}
+
 	const auto verdict =
 	        MountPolicy::ValidateImagePath(std::filesystem::path(image_path),
 	                                       MountOrigin::Api,
@@ -65,9 +76,8 @@ void DriveSwapCommand::Execute()
 		return;
 	}
 
-	Drives[drv_idx].reset();
-
-	// API mounts are read-only by default
+	// Build the new drive before releasing the old one so a
+	// construction failure does not leave the slot empty.
 	auto new_drive = std::make_shared<fatDrive>(
 	        resolved.c_str(), 512, 0, 0, 0, is_floppy ? 0xF0 : 0xF8, true);
 
@@ -75,6 +85,8 @@ void DriveSwapCommand::Execute()
 		error = "Failed to mount image";
 		return;
 	}
+
+	Drives[drv_idx].reset();
 
 	Drives[drv_idx] = new_drive;
 
@@ -101,6 +113,14 @@ void DriveSwapCommand::Post(const httplib::Request& req, httplib::Response& res)
 		res.status = 400;
 		json err;
 		err["error"] = "Invalid drive letter";
+		send_json(res, err);
+		return;
+	}
+
+	if (MountPolicy::IsLocked()) {
+		res.status = 403;
+		json err;
+		err["error"] = "mount is locked";
 		send_json(res, err);
 		return;
 	}

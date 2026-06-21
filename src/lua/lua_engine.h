@@ -43,8 +43,10 @@ public:
 	}
 
 	void Reset();
+	void ResetTimers();
 	void SetInstructionLimit(int64_t max_instructions);
 	void SetWallClockLimit(int64_t max_ms);
+	void SeedRandom(int64_t seed);
 
 	int64_t InstructionLimit() const
 	{

@@ -132,6 +132,16 @@ static int GuardedPatternFunc(lua_State* L)
 
 namespace Lua {
 
+static std::string SafeErrorString(lua_State* L, int idx)
+{
+	const char* s = lua_tostring(L, idx);
+	if (s) {
+		return s;
+	}
+	const int t = lua_type(L, idx);
+	return std::string("(non-string error: ") + lua_typename(L, t) + ")";
+}
+
 LuaEngine::LuaEngine(const size_t memory_cap)
 {
 	alloc_state.cap = memory_cap;
@@ -163,18 +173,24 @@ void LuaEngine::CreateState()
 	lua_pop(state, 1);
 	luaL_requiref(state, LUA_STRLIBNAME, luaopen_string, 1);
 
-	// Wrap pattern-matching functions with a length guard on the
-	// subject string. The Lua pattern matcher runs entirely in C,
-	// invisible to both the instruction hook and the wall-clock
-	// watchdog, so pathological patterns on large strings stall
-	// the emulation thread without any limit firing. Capping the
-	// subject length is the only in-process defense.
+	// Wrap pattern-matching functions with a complexity guard.
+	// The Lua pattern matcher runs entirely in C, invisible to
+	// both the instruction hook and the wall-clock watchdog.
+	// CheckPatternComplexity bounds quantifier count relative
+	// to subject length (the actual cost axis) and caps both
+	// subject and pattern length as secondary bounds.
 	const char* pattern_funcs[] = {"find", "match", "gmatch", "gsub", nullptr};
 	for (const char** fn = pattern_funcs; *fn; ++fn) {
 		lua_getfield(state, -1, *fn);
 		lua_pushcclosure(state, GuardedPatternFunc, 1);
 		lua_setfield(state, -2, *fn);
 	}
+
+	// string.dump serializes a function to bytecode. load is
+	// blocked but string.dump still leaks internals and creates
+	// an exfil channel. Remove it.
+	lua_pushnil(state);
+	lua_setfield(state, -2, "dump");
 
 	lua_pop(state, 1);
 	luaL_requiref(state, LUA_MATHLIBNAME, luaopen_math, 1);
@@ -189,8 +205,18 @@ void LuaEngine::CreateState()
 	// String metatable escape: getmetatable('') can reach the string
 	// library's metatable, which in an insufficiently isolated sandbox
 	// could lead to _G. Block it entirely.
-	const char* blocked[] = {
-	        "dofile", "loadfile", "load", "require", "getmetatable", nullptr};
+	const char* blocked[] = {"dofile",
+	                         "loadfile",
+	                         "load",
+	                         "require",
+	                         "getmetatable",
+	                         "setmetatable",
+	                         "collectgarbage",
+	                         "rawset",
+	                         "rawget",
+	                         "rawlen",
+	                         "rawequal",
+	                         nullptr};
 	for (const char** fn = blocked; *fn; ++fn) {
 		lua_pushnil(state);
 		lua_setglobal(state, *fn);
@@ -277,6 +303,29 @@ void LuaEngine::Reset()
 	}
 }
 
+void LuaEngine::ResetTimers()
+{
+	instructions_executed = 0;
+	exec_start            = Clock::now();
+}
+
+void LuaEngine::SeedRandom(const int64_t seed)
+{
+	if (!state) {
+		return;
+	}
+
+	lua_getglobal(state, "math");
+	if (!lua_istable(state, -1)) {
+		lua_pop(state, 1);
+		return;
+	}
+	lua_getfield(state, -1, "randomseed");
+	lua_pushinteger(state, static_cast<lua_Integer>(seed));
+	lua_pcall(state, 1, 0, 0);
+	lua_pop(state, 1);
+}
+
 const char* LuaEngine::CheckLimits(const int count)
 {
 	instructions_executed += count;
@@ -331,7 +380,7 @@ ScriptResult LuaEngine::LoadScript(const std::string& source, const std::string&
 	const auto status = luaL_loadbufferx(
 	        state, source.data(), source.size(), name.c_str(), "t");
 	if (status != LUA_OK) {
-		ScriptResult result = {false, lua_tostring(state, -1)};
+		ScriptResult result = {false, SafeErrorString(state, -1)};
 		lua_pop(state, 1);
 		return result;
 	}
@@ -360,7 +409,7 @@ ScriptResult LuaEngine::RunScript(const std::string& source, const std::string& 
 
 	const auto exec_status = lua_pcall(state, 0, 0, 0);
 	if (exec_status != LUA_OK) {
-		ScriptResult result = {false, lua_tostring(state, -1)};
+		ScriptResult result = {false, SafeErrorString(state, -1)};
 		lua_pop(state, 1);
 		return result;
 	}

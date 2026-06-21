@@ -5,12 +5,25 @@
 #include "lua/lua_coroutine.h"
 #include "lua/lua_api.h"
 
+#include <algorithm>
+#include <cctype>
+
 extern "C" {
 #include <lauxlib.h>
 #include <lua.h>
 }
 
 namespace Lua {
+
+static std::string SafeErrorString(lua_State* L, int idx)
+{
+	const char* s = lua_tostring(L, idx);
+	if (s) {
+		return s;
+	}
+	const int t = lua_type(L, idx);
+	return std::string("(non-string error: ") + lua_typename(L, t) + ")";
+}
 
 static constexpr const char* CoroutineKey = "LuaCoroutine";
 
@@ -45,13 +58,49 @@ void LuaCoroutine::Cleanup()
 	wait_until_frame = 0;
 	waiting_for_text = false;
 	wait_text_pattern.clear();
+	wait_text_pattern_lower.clear();
 	error_msg.clear();
+}
+
+void LuaCoroutine::SetWaitForText(const std::string& pattern,
+                                  const bool ignorecase,
+                                  const uint64_t deadline)
+{
+	waiting_for_text     = true;
+	wait_text_pattern    = pattern;
+	wait_text_ignorecase = ignorecase;
+	wait_text_deadline   = deadline;
+
+	if (ignorecase) {
+		wait_text_pattern_lower = pattern;
+		std::transform(wait_text_pattern_lower.begin(),
+		               wait_text_pattern_lower.end(),
+		               wait_text_pattern_lower.begin(),
+		               [](unsigned char c) {
+			               return static_cast<char>(std::tolower(c));
+		               });
+	} else {
+		wait_text_pattern_lower.clear();
+	}
 }
 
 bool LuaCoroutine::CheckWaitForText()
 {
-	const auto text = ReadScreenText();
-	if (MatchSubstring(text, wait_text_pattern, wait_text_ignorecase)) {
+	auto text = ReadScreenText();
+
+	if (wait_text_ignorecase) {
+		std::transform(text.begin(),
+		               text.end(),
+		               text.begin(),
+		               [](unsigned char c) {
+			               return static_cast<char>(std::tolower(c));
+		               });
+		if (text.find(wait_text_pattern_lower) != std::string::npos) {
+			waiting_for_text = false;
+			lua_pushboolean(coroutine, true);
+			return true;
+		}
+	} else if (text.find(wait_text_pattern) != std::string::npos) {
 		waiting_for_text = false;
 		// Push true onto coroutine stack so the resumed wait_for_text
 		// call returns true to the script.
@@ -127,6 +176,10 @@ bool LuaCoroutine::Start(DebugLog* log)
 
 ScriptState LuaCoroutine::DispatchFrame(const uint64_t frame_number)
 {
+	if (state != ScriptState::Running && state != ScriptState::Yielded) {
+		return state;
+	}
+
 	current_frame = frame_number;
 
 	if (state == ScriptState::Yielded) {
@@ -149,7 +202,7 @@ ScriptState LuaCoroutine::DispatchFrame(const uint64_t frame_number)
 				lua_pop(coroutine, nresults);
 			} else {
 				state     = ScriptState::Error;
-				error_msg = lua_tostring(coroutine, -1);
+				error_msg = SafeErrorString(coroutine, -1);
 				lua_pop(coroutine, 1);
 			}
 			return state;

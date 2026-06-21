@@ -194,6 +194,12 @@ void LuaStartCommand::Execute()
 		return;
 	}
 
+	mgr.Engine().ResetTimers();
+
+	if (mgr.Params().seed.has_value()) {
+		mgr.Engine().SeedRandom(mgr.Params().seed.value());
+	}
+
 	if (!mgr.Coroutine().Start(&mgr.Log())) {
 		error = "failed to create coroutine";
 		return;

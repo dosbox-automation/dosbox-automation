@@ -98,12 +98,14 @@ ValidationResult ScriptValidator::ValidateParams(const std::string& name,
 	}
 
 	if (!seed.empty()) {
-		const char* first = seed.data();
-		const char* last  = seed.data() + seed.size();
-		auto [ptr, ec]    = std::from_chars(first, last, out.seed);
+		int64_t seed_value = 0;
+		const char* first  = seed.data();
+		const char* last   = seed.data() + seed.size();
+		auto [ptr, ec]     = std::from_chars(first, last, seed_value);
 		if (ec != std::errc{} || ptr != last) {
 			return {false, 400, "seed is not a valid integer"};
 		}
+		out.seed = seed_value;
 	}
 
 	if (!debug.empty()) {

@@ -46,13 +46,7 @@ public:
 	}
 
 	void SetWaitForText(const std::string& pattern, bool ignorecase,
-	                    uint64_t deadline)
-	{
-		waiting_for_text     = true;
-		wait_text_pattern    = pattern;
-		wait_text_ignorecase = ignorecase;
-		wait_text_deadline   = deadline;
-	}
+	                    uint64_t deadline);
 
 private:
 	LuaEngine& engine;
@@ -65,10 +59,11 @@ private:
 	std::string error_msg     = {};
 
 	// wait_for_text polling state
-	bool waiting_for_text         = false;
-	std::string wait_text_pattern = {};
-	bool wait_text_ignorecase     = false;
-	uint64_t wait_text_deadline   = 0;
+	bool waiting_for_text               = false;
+	std::string wait_text_pattern       = {};
+	std::string wait_text_pattern_lower = {};
+	bool wait_text_ignorecase           = false;
+	uint64_t wait_text_deadline         = 0;
 
 	void RegisterApi();
 	void Cleanup();

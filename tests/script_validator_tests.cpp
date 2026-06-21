@@ -158,7 +158,7 @@ TEST(ScriptValidator, AcceptsEmptyParamsAsDefaults)
 	const auto result = Lua::ScriptValidator::ValidateParams("", "", "", params);
 	EXPECT_TRUE(result.ok);
 	EXPECT_EQ(params.name, "unnamed");
-	EXPECT_EQ(params.seed, 0);
+	EXPECT_FALSE(params.seed.has_value());
 	EXPECT_FALSE(params.debug);
 }
 

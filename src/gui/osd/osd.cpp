@@ -14,8 +14,12 @@ OsdManager& OsdManager::Instance()
 	return instance;
 }
 
-void OsdManager::ShowText(const TextOverlay& overlay)
+void OsdManager::ShowText(TextOverlay overlay)
 {
+	if (overlay.text.size() > MaxTextLen) {
+		overlay.text.resize(MaxTextLen);
+	}
+
 	if (!overlay.tag.empty()) {
 		for (auto& existing : overlays) {
 			if (existing.tag == overlay.tag) {
@@ -24,7 +28,11 @@ void OsdManager::ShowText(const TextOverlay& overlay)
 			}
 		}
 	}
-	overlays.push_back(overlay);
+
+	if (overlays.size() >= MaxOverlays) {
+		return;
+	}
+	overlays.push_back(std::move(overlay));
 }
 
 void OsdManager::ClearByTag(const std::string& tag)

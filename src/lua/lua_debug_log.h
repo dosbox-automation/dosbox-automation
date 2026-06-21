@@ -27,7 +27,8 @@ public:
 		return file != nullptr;
 	}
 
-	void Trace(uint64_t frame, const char* fmt, ...);
+	void Trace(uint64_t frame, const char* fmt, ...)
+	        __attribute__((format(printf, 3, 4)));
 	void TraceMessage(uint64_t frame, const std::string& msg);
 
 	const std::string& FilePath() const

@@ -40,7 +40,7 @@ class OsdManager {
 public:
 	static OsdManager& Instance();
 
-	void ShowText(const TextOverlay& overlay);
+	void ShowText(TextOverlay overlay);
 	void ClearByTag(const std::string& tag);
 	void ClearAll();
 
@@ -51,7 +51,9 @@ public:
 private:
 	OsdManager() = default;
 
-	static constexpr int MaxIcons = static_cast<int>(IconId::Count);
+	static constexpr int MaxIcons         = static_cast<int>(IconId::Count);
+	static constexpr size_t MaxOverlays  = 32;
+	static constexpr size_t MaxTextLen   = 256;
 
 	struct StatusIcon {
 		IconId id     = IconId::ScriptRunning;
