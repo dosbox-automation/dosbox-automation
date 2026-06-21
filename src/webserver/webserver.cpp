@@ -4,6 +4,7 @@
 
 #include "webserver.h"
 #include "bridge.h"
+#include "capture.h"
 #include "control.h"
 #include "drive.h"
 #include "input.h"
@@ -127,6 +128,10 @@ static void setup_api_handlers()
 	server.Post("/api/v1/script/start", Lua::LuaStartCommand::Post);
 	server.Post("/api/v1/script/stop", Lua::LuaStopCommand::Post);
 	server.Get("/api/v1/script/status", Lua::LuaStatusCommand::Get);
+
+	server.Post("/api/v1/capture/video/start", CaptureStartCommand::Post);
+	server.Post("/api/v1/capture/video/stop", CaptureStopCommand::Post);
+	server.Get("/api/v1/capture/video/status", CaptureStatusCommand::Get);
 }
 
 static std::string strip_port(const std::string& host)

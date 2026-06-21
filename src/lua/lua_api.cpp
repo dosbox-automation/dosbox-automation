@@ -7,6 +7,7 @@
 #include "lua/lua_coroutine.h"
 #include "lua/lua_debug_log.h"
 
+#include "capture/capture.h"
 #include "gui/osd/osd.h"
 
 #include "dos/programs/mount_policy.h"
@@ -774,6 +775,34 @@ static int LuaAbort(lua_State* L)
 }
 
 // ================================================================
+// Capture
+// ================================================================
+
+// dosbox.capture_start() - start ZMBV video recording
+static int LuaCaptureStart(lua_State* L)
+{
+	CAPTURE_StartVideoCapture();
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		dl->Trace(CurrentFrame(L), "dosbox.capture_start()");
+	}
+	return 0;
+}
+
+// dosbox.capture_stop() - stop ZMBV video recording
+static int LuaCaptureStop(lua_State* L)
+{
+	CAPTURE_StopVideoCapture();
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		dl->Trace(CurrentFrame(L), "dosbox.capture_stop()");
+	}
+	return 0;
+}
+
+// ================================================================
 // Registration
 // ================================================================
 
@@ -828,6 +857,12 @@ void RegisterDosboxApi(lua_State* L, LuaCoroutine* coroutine, DebugLog* debug_lo
 	lua_setfield(L, -2, "osd");
 	lua_pushcfunction(L, LuaOsdClear);
 	lua_setfield(L, -2, "osd_clear");
+
+	// Capture
+	lua_pushcfunction(L, LuaCaptureStart);
+	lua_setfield(L, -2, "capture_start");
+	lua_pushcfunction(L, LuaCaptureStop);
+	lua_setfield(L, -2, "capture_stop");
 
 	// Output table
 	lua_newtable(L);

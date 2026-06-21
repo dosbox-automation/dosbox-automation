@@ -1,6 +1,42 @@
 // This file is part of the dosbox-automation Project.
 // License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
 //
+// Mount security policy - what paths MOUNT and drive-swap can reach.
+//
+// Two modes, selected by whether the webserver is running:
+//
+//   OwnerTrusted       (webserver off)
+//     Human at the keyboard. Any path is allowed except system
+//     directories (/etc, /proc, C:\Windows, etc). No whitelist.
+//
+//   WhitelistEnforced  (webserver on)
+//     The REST API is an attack surface. Paths must be under one of:
+//       1. The conf anchor - parent directory of the last -conf file
+//          loaded on the command line. If DOSBox was started with
+//          -conf /home/user/games/test.conf, the anchor is
+//          /home/user/games/ and everything below it is reachable.
+//       2. mount_allowed_bases - extra directory roots listed in the
+//          [webserver] section of the primary config file.
+//       3. mount_allowed_image_roots - same, but for image files
+//          (floppies, CDs). Read from the primary config too.
+//     Anything outside these roots is blocked, even from autoexec.
+//     System directories are always blocked in both modes.
+//
+// The primary config is at $HOME/.config/dosbox-automation/ (Linux),
+// ~/Library/Preferences/DOSBox/ (macOS), or %LOCALAPPDATA% (Windows).
+// It is NOT the -conf file; it is the persistent user config.
+//
+// Common "why is MOUNT blocked?" situations:
+//   - Temp directory (/tmp, %TEMP%) is outside conf anchor and not
+//     in mount_allowed_bases. Put files under the conf anchor or add
+//     the path to mount_allowed_bases in the primary config.
+//   - Webserver enabled but no -conf file passed. Conf anchor is
+//     empty, so only mount_allowed_bases paths work.
+//   - Symlinks in the path. The policy rejects any path that has a
+//     symlink component, even if the target is under an allowed root.
+//
+// IMGMOUNT is deprecated. Use MOUNT for all media types.
+//
 
 #include "mount_policy.h"
 

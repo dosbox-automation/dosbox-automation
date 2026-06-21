@@ -815,12 +815,21 @@ std::string MOUNT::GetDosMappedHostPath(const std::string& dos_path) const
 
 // Parent directory of the last loaded config file, used as the
 // trusted anchor for mount path validation.
+// The conf anchor is the parent directory of the last -conf file on the
+// command line. Everything below it is reachable by MOUNT.
+// Must return a canonical path: IsUnderAnyRoot expects canonical roots.
 static std_fs::path GetConfAnchor()
 {
 	if (control->config_files.empty()) {
 		return {};
 	}
-	return std_fs::path(control->config_files.back()).parent_path();
+	auto parent = std_fs::path(control->config_files.back()).parent_path();
+	std::error_code ec;
+	auto canonical = std_fs::canonical(parent, ec);
+	if (ec) {
+		return parent;
+	}
+	return canonical;
 }
 
 static DirMountPolicy GetCurrentDirPolicy()

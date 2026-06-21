@@ -273,23 +273,25 @@ static json LuaTableToJson(lua_State* L, int idx, int depth = 0)
 	lua_pushnil(L);
 	while (lua_next(L, idx) != 0) {
 		std::string key;
-		if (lua_isstring(L, -2)) {
-			key = lua_tostring(L, -2);
-		} else if (lua_isinteger(L, -2)) {
+		if (lua_isinteger(L, -2)) {
 			key = std::to_string(lua_tointeger(L, -2));
+		} else if (lua_type(L, -2) == LUA_TSTRING) {
+			key = lua_tostring(L, -2);
 		} else {
 			lua_pop(L, 1);
 			continue;
 		}
 
-		if (lua_isstring(L, -1)) {
-			j[key] = lua_tostring(L, -1);
+		// Check order matters: lua_isstring returns true for numbers
+		// due to coercion, so check specific types first.
+		if (lua_isboolean(L, -1)) {
+			j[key] = static_cast<bool>(lua_toboolean(L, -1));
 		} else if (lua_isinteger(L, -1)) {
 			j[key] = lua_tointeger(L, -1);
 		} else if (lua_isnumber(L, -1)) {
 			j[key] = lua_tonumber(L, -1);
-		} else if (lua_isboolean(L, -1)) {
-			j[key] = static_cast<bool>(lua_toboolean(L, -1));
+		} else if (lua_type(L, -1) == LUA_TSTRING) {
+			j[key] = lua_tostring(L, -1);
 		} else if (lua_istable(L, -1)) {
 			j[key] = LuaTableToJson(L, lua_absindex(L, -1), depth + 1);
 		}
@@ -326,7 +328,7 @@ void LuaStatusCommand::Execute()
 void LuaStatusCommand::Get(const httplib::Request&, httplib::Response& res)
 {
 	LuaStatusCommand cmd;
-	cmd.WaitForCompletion(5000);
+	cmd.WaitForCompletion(15000);
 
 	json j;
 	j["state"] = ScriptStateName(cmd.result.state);
