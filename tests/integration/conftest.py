@@ -56,7 +56,7 @@ def dosbox(tmp_path_factory):
 
     env = {
         **os.environ,
-        "SDL_VIDEODRIVER": "dummy",
+        "SDL_VIDEODRIVER": "offscreen",
         "SDL_AUDIODRIVER": "dummy",
         "HOME": str(work_dir),
         "DOSBOX_API_TOKEN": token,
