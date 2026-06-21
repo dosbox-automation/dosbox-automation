@@ -18,8 +18,10 @@
 
 #include "dos/programs/mount_policy.h"
 
+#include <cctype>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <set>
 #include <string>
 #include <thread>
@@ -182,6 +184,19 @@ static std::string generate_api_token()
 	return token;
 }
 
+static bool is_valid_hex_token(const std::string& s)
+{
+	if (s.size() != 64) {
+		return false;
+	}
+	for (const char c : s) {
+		if (!std::isxdigit(static_cast<unsigned char>(c))) {
+			return false;
+		}
+	}
+	return true;
+}
+
 static std::string extract_bearer_token(const std::string& auth_header)
 {
 	constexpr auto prefix = std::string_view("Bearer ");
@@ -253,7 +268,27 @@ static void setup_security(const std::string& addr, int port,
 static void run(const std::string addr, const int port, const std::string resource_home)
 {
 	const auto config_home = (get_config_dir() / DefaultWebserverDir).string();
-	const auto api_token = generate_api_token();
+
+	// Channel A: a launcher can supply the token via env var so it
+	// never needs to scrape stderr or read a file.
+	std::string api_token;
+	bool token_from_env = false;
+
+	const char* env_token = std::getenv("DOSBOX_API_TOKEN");
+	if (env_token) {
+		std::string candidate(env_token);
+		if (is_valid_hex_token(candidate)) {
+			api_token      = std::move(candidate);
+			token_from_env = true;
+		} else {
+			LOG_WARNING("WEBSERVER: DOSBOX_API_TOKEN set but invalid "
+			            "(need 64 hex chars), generating token");
+		}
+	}
+
+	if (api_token.empty()) {
+		api_token = generate_api_token();
+	}
 
 	server.set_mount_point("/", config_home);
 	server.set_mount_point("/", resource_home);
@@ -274,9 +309,11 @@ static void run(const std::string addr, const int port, const std::string resour
 	         addr.c_str(),
 	         port);
 
-	// Show only the first 8 characters so the operator can identify
-	// the token without exposing it fully in captured logs.
-	LOG_MSG("WEBSERVER: API token: %.8s...", api_token.c_str());
+	if (token_from_env) {
+		LOG_MSG("WEBSERVER: Using API token from DOSBOX_API_TOKEN");
+	} else {
+		LOG_MSG("WEBSERVER: API token: %.8s...", api_token.c_str());
+	}
 
 	auto ok = server.listen(addr, port);
 	if (!ok) {

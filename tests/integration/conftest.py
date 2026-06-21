@@ -1,5 +1,5 @@
 import os
-import re
+import secrets
 import shutil
 import socket
 import subprocess
@@ -17,8 +17,6 @@ DOSBOX_BIN = os.environ.get(
 
 WORKSPACE = Path(__file__).resolve().parents[2] / ".workspace" / "test-runs"
 
-TOKEN_RE = re.compile(r"WEBSERVER: API token: ([0-9a-f]{64})")
-
 
 def find_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -27,23 +25,20 @@ def find_free_port() -> int:
 
 
 class StderrCapture(threading.Thread):
-    """Read stderr line by line, extract API token, buffer output."""
+    """Read stderr line by line, buffer output."""
 
     def __init__(self, pipe):
         super().__init__(daemon=True)
         self.pipe = pipe
-        self.token = None
-        self.token_found = threading.Event()
+        self.ready = threading.Event()
         self.lines = []
 
     def run(self):
         for raw_line in self.pipe:
             line = raw_line.decode(errors="replace").rstrip()
             self.lines.append(line)
-            m = TOKEN_RE.search(line)
-            if m:
-                self.token = m.group(1)
-                self.token_found.set()
+            if "WEBSERVER:" in line and "API token" in line:
+                self.ready.set()
 
     def get_output(self) -> str:
         return "\n".join(self.lines)
@@ -54,6 +49,7 @@ def dosbox(tmp_path_factory):
     """Start a headless DOSBox with webserver enabled, yield API client."""
 
     port = find_free_port()
+    token = secrets.token_hex(32)
 
     work_dir = WORKSPACE / f"run-{port}"
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -63,6 +59,7 @@ def dosbox(tmp_path_factory):
         "SDL_VIDEODRIVER": "dummy",
         "SDL_AUDIODRIVER": "dummy",
         "HOME": str(work_dir),
+        "DOSBOX_API_TOKEN": token,
     }
 
     cmd = [
@@ -84,16 +81,16 @@ def dosbox(tmp_path_factory):
     capture = StderrCapture(proc.stderr)
     capture.start()
 
-    if not capture.token_found.wait(timeout=10):
+    if not capture.ready.wait(timeout=15):
         proc.kill()
         capture.join(timeout=2)
         pytest.fail(
-            f"DOSBox did not emit API token within 10s:\n"
+            f"DOSBox webserver did not start within 15s:\n"
             f"{capture.get_output()[:2000]}"
         )
 
     client = DosboxClient(
-        f"http://127.0.0.1:{port}", token=capture.token
+        f"http://127.0.0.1:{port}", token=token
     )
 
     try:
@@ -103,7 +100,7 @@ def dosbox(tmp_path_factory):
         proc.kill()
         capture.join(timeout=2)
         pytest.fail(
-            f"DOSBox failed to start:\n{capture.get_output()[:2000]}"
+            f"DOSBox failed to reach shell:\n{capture.get_output()[:2000]}"
         )
 
     yield client
