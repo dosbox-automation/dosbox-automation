@@ -238,3 +238,51 @@ class DosboxClient:
         return requests.get(
             self._url(path), timeout=self.timeout, headers=headers
         )
+
+    # --- Lua Scripting ---
+
+    def script_load(self, source: str, name: str = "test",
+                    seed: int | None = None,
+                    debug: bool = False) -> requests.Response:
+        params = {"name": name}
+        if seed is not None:
+            params["seed"] = str(seed)
+        if debug:
+            params["debug"] = "true"
+        return self._post(
+            "/api/v1/script/load",
+            params=params,
+            data=source,
+            headers={"Content-Type": "text/plain"},
+        )
+
+    def script_start(self) -> requests.Response:
+        return self._post("/api/v1/script/start")
+
+    def script_stop(self) -> requests.Response:
+        return self._post("/api/v1/script/stop")
+
+    def script_status(self) -> requests.Response:
+        return self._get("/api/v1/script/status")
+
+    def wait_script_done(self, timeout: float = 30.0) -> dict:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            r = self.script_status()
+            if r.status_code == 200:
+                data = r.json()
+                if data["state"] in ("completed", "error"):
+                    return data
+            time.sleep(0.2)
+        raise TimeoutError(f"Script did not finish within {timeout}s")
+
+    # --- Video Capture ---
+
+    def capture_start(self) -> requests.Response:
+        return self._post("/api/v1/capture/video/start")
+
+    def capture_stop(self) -> requests.Response:
+        return self._post("/api/v1/capture/video/stop")
+
+    def capture_status(self) -> requests.Response:
+        return self._get("/api/v1/capture/video/status")
