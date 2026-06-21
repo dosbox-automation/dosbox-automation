@@ -61,6 +61,36 @@ def test_screen_text_returns_string(dosbox):
     assert out["len"] > 0
 
 
+def test_screen_text_contains_typed_content(dosbox):
+    # Type a unique marker at the DOS prompt and verify screen_text
+    # returns it. This asserts content, not just byte count.
+    out = run_script(dosbox, (
+        "dosbox.wait_frames(30)\n"
+        "dosbox.type('echo MARKER7Q3X')\n"
+        "dosbox.key('KBD_enter', true)\n"
+        "dosbox.key('KBD_enter', false)\n"
+        "dosbox.wait_frames(30)\n"
+        "local t = dosbox.screen_text()\n"
+        "dosbox.output.has_marker = string.find(t, 'MARKER7Q3X') and 'yes' or 'no'\n"
+    ))
+    assert out["has_marker"] == "yes"
+
+
+def test_screen_text_columns_match_bios(dosbox):
+    # Verify that screen_text uses the live BIOS column count, not a
+    # hardcoded default. Read BIOSMEM_NB_COLS (seg 0x40, off 0x4a) and
+    # compare to the line length in screen_text output.
+    out = run_script(dosbox, (
+        "dosbox.wait_frames(10)\n"
+        "local cols = dosbox.mem_read_word(0x40, 0x4a)\n"
+        "local t = dosbox.screen_text()\n"
+        "local first_line = string.match(t, '([^\\n]*)')\n"
+        "dosbox.output.bios_cols = cols\n"
+        "dosbox.output.line_len = #first_line\n"
+    ))
+    assert out["bios_cols"] == out["line_len"]
+
+
 def test_screen_match_finds_text(dosbox):
     # Default DOSBox shell is on Z: drive with no config loaded.
     out = run_script(dosbox, (

@@ -446,26 +446,28 @@ std::string ReadScreenText()
 		return {};
 	}
 
-	const int cols = CurMode->twidth;
+	// Live BIOS data area, not mode-table defaults: the guest can flip
+	// display page or change column count at runtime.
+	// Mirrors ReadCharAttr M_TEXT case (src/ints/int10_char.cpp).
+	const int cols = real_readw(BIOSMEM_SEG, BIOSMEM_NB_COLS);
 	const int rows = CurMode->theight;
-
 	if (cols <= 0 || rows <= 0) {
 		return {};
 	}
 
-	// Text buffer: character-attribute pairs (2 bytes per cell) at
-	// the physical address CurMode->pstart. Access through mem_readw
-	// so this works for all text-capable adapters (VGA, CGA, Hercules,
-	// Tandy), not just VGA's linear buffer.
+	const uint8_t page     = real_readb(BIOSMEM_SEG, BIOSMEM_CURRENT_PAGE);
+	const auto page_size   = real_readw(BIOSMEM_SEG, BIOSMEM_PAGE_SIZE);
+	const PhysPt page_base = CurMode->pstart +
+	                         static_cast<uint32_t>(page) * page_size;
+
 	std::string result;
 	result.reserve(static_cast<size_t>((cols + 1) * rows));
 
 	for (int row = 0; row < rows; ++row) {
 		for (int col = 0; col < cols; ++col) {
-			const PhysPt addr = CurMode->pstart +
+			const PhysPt addr = page_base +
 			                    static_cast<uint32_t>(
 			                            (row * cols + col) * 2);
-			// Low byte = character, high byte = attribute.
 			const uint8_t ch = mem_readb(addr);
 			result += static_cast<char>(ch);
 		}
