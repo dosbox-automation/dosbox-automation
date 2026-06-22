@@ -47,6 +47,7 @@
 #endif
 
 #include "dosbox.h"
+#include "misc/support.h"
 
 #include <algorithm>
 #include <array>
@@ -581,6 +582,18 @@ void InitPolicyConfig(const std::filesystem::path& primary_config_path)
 {
 	policy_paths       = ParsePolicyConfig(primary_config_path);
 	policy_initialized = true;
+
+	// Bundled drives/[c] auto-mount at startup (autoexec.cpp) through the
+	// same MOUNT path as guest/API mounts. First-party shipped content,
+	// same trust level as the conf anchor.
+	const auto drives_root = get_resource_path("drives");
+	if (!drives_root.empty()) {
+		std::error_code ec;
+		const auto canonical = std::filesystem::canonical(drives_root, ec);
+		if (!ec) {
+			policy_paths.allowed_bases.push_back(canonical);
+		}
+	}
 
 	for (const auto& p : policy_paths.allowed_bases) {
 		LOG_MSG("MOUNT_POLICY: Allowed base: %s", p.string().c_str());

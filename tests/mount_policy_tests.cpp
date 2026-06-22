@@ -381,6 +381,46 @@ TEST_F(MountPolicyTest, DirMountTraversalOutOfAnchor)
 	EXPECT_EQ(verdict.reason, DenyReason::OutsideWhitelist);
 }
 
+TEST_F(MountPolicyTest, BundledDrivesRootAllowedAsBase)
+{
+	// Simulates the InitPolicyConfig fix: the bundled drives/ root is
+	// added to allowed_bases, so drives/y (or any letter) passes the
+	// whitelist, while a directory outside it is still denied.
+	const auto anchor   = CreateDir("conf");
+	const auto drives   = CreateDir("drives");
+	const auto drives_y = CreateDir("drives/y");
+	const auto outside  = CreateDir("hostile");
+
+	const std::vector<fs::path> bases = {fs::canonical(drives)};
+
+	const auto allowed = MountPolicy::ValidateDirectoryMount(
+	        drives_y, anchor, bases, DirMountPolicy::WhitelistEnforced);
+	EXPECT_TRUE(allowed.allowed);
+	EXPECT_EQ(allowed.reason, DenyReason::None);
+
+	const auto denied = MountPolicy::ValidateDirectoryMount(
+	        outside, anchor, bases, DirMountPolicy::WhitelistEnforced);
+	EXPECT_FALSE(denied.allowed);
+	EXPECT_EQ(denied.reason, DenyReason::OutsideWhitelist);
+}
+
+#if !defined(WIN32)
+TEST_F(MountPolicyTest, BundledDrivesBaseDoesNotOpenSystemPaths)
+{
+	// Even with drives/ in allowed_bases, /etc is still blocked by
+	// IsUnderSystemPath which runs before the whitelist check.
+	const auto anchor = CreateDir("conf");
+	const auto drives = CreateDir("drives");
+
+	const std::vector<fs::path> bases = {fs::canonical(drives)};
+
+	const auto verdict = MountPolicy::ValidateDirectoryMount(
+	        fs::path("/etc"), anchor, bases, DirMountPolicy::WhitelistEnforced);
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::SystemPath);
+}
+#endif
+
 // -- ValidateImagePath --
 
 TEST_F(MountPolicyTest, ImagePathValidFat)
