@@ -54,22 +54,24 @@ void LuaCoroutine::Cleanup()
 		luaL_unref(L, LUA_REGISTRYINDEX, coroutine_ref);
 		coroutine_ref = 0;
 	}
-	coroutine        = nullptr;
-	wait_until_frame = 0;
-	waiting_for_text = false;
+	coroutine               = nullptr;
+	wait_until_frame        = 0;
+	waiting_for_text        = false;
+	wait_text_wall_deadline = {};
 	wait_text_pattern.clear();
 	wait_text_pattern_lower.clear();
 	error_msg.clear();
 }
 
 void LuaCoroutine::SetWaitForText(const std::string& pattern,
-                                  const bool ignorecase,
-                                  const uint64_t deadline)
+                                  const bool ignorecase, const uint64_t deadline)
 {
-	waiting_for_text     = true;
-	wait_text_pattern    = pattern;
-	wait_text_ignorecase = ignorecase;
-	wait_text_deadline   = deadline;
+	waiting_for_text        = true;
+	wait_text_pattern       = pattern;
+	wait_text_ignorecase    = ignorecase;
+	wait_text_deadline      = deadline;
+	wait_text_wall_deadline = std::chrono::steady_clock::now() +
+	                          std::chrono::seconds(30);
 
 	if (ignorecase) {
 		wait_text_pattern_lower = pattern;
@@ -89,12 +91,9 @@ bool LuaCoroutine::CheckWaitForText()
 	auto text = ReadScreenText();
 
 	if (wait_text_ignorecase) {
-		std::transform(text.begin(),
-		               text.end(),
-		               text.begin(),
-		               [](unsigned char c) {
-			               return static_cast<char>(std::tolower(c));
-		               });
+		std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
+			return static_cast<char>(std::tolower(c));
+		});
 		if (text.find(wait_text_pattern_lower) != std::string::npos) {
 			waiting_for_text = false;
 			lua_pushboolean(coroutine, true);
@@ -108,7 +107,8 @@ bool LuaCoroutine::CheckWaitForText()
 		return true;
 	}
 
-	if (current_frame >= wait_text_deadline) {
+	if (current_frame >= wait_text_deadline ||
+	    std::chrono::steady_clock::now() >= wait_text_wall_deadline) {
 		waiting_for_text = false;
 		lua_pushboolean(coroutine, false);
 		return true;

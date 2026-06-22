@@ -7,6 +7,7 @@
 
 #include "lua/lua_engine.h"
 
+#include <chrono>
 #include <cstdint>
 #include <string>
 
@@ -59,11 +60,12 @@ private:
 	std::string error_msg     = {};
 
 	// wait_for_text polling state
-	bool waiting_for_text               = false;
-	std::string wait_text_pattern       = {};
-	std::string wait_text_pattern_lower = {};
-	bool wait_text_ignorecase           = false;
-	uint64_t wait_text_deadline         = 0;
+	bool waiting_for_text                                         = false;
+	std::string wait_text_pattern                                 = {};
+	std::string wait_text_pattern_lower                           = {};
+	bool wait_text_ignorecase                                     = false;
+	uint64_t wait_text_deadline                                   = 0;
+	std::chrono::steady_clock::time_point wait_text_wall_deadline = {};
 
 	void RegisterApi();
 	void Cleanup();
