@@ -153,6 +153,14 @@ class DosboxClient:
             headers={"Content-Type": "application/json"},
         )
 
+    # --- Mount Policy ---
+
+    def mount_lock(self) -> requests.Response:
+        return self._post("/api/v1/mount/lock")
+
+    def mount_lock_status(self) -> requests.Response:
+        return self._get("/api/v1/mount/lock")
+
     # --- Memory ---
 
     def memory_read(self, offset: int, length: int) -> requests.Response:

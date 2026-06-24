@@ -145,12 +145,15 @@ class DosboxInstance:
 
 
 def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
-                          conf_dir=None):
+                          conf_dir=None, allowed_image_roots=None):
     """Start a headless DOSBox instance with optional autoexec and config.
 
     conf_dir: directory for the config file. The mount policy's conf
     anchor is the config file's parent, so placing the config next to
     disk images lets MOUNT reach them. Defaults to work_dir.
+
+    allowed_image_roots: list of paths to whitelist for API image mounting
+    (drive swap). Written into the primary config as mount_allowed_image_roots.
 
     Returns a DosboxInstance with client, process, and work_dir.
     """
@@ -169,13 +172,18 @@ def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
     # the build resource directory so the internal auto-mount succeeds.
     dosbox_bin = Path(DOSBOX_BIN).resolve()
     resource_dir = dosbox_bin.parent / "resources"
-    config_dir = work_dir / ".config" / "dosbox-automation"
+    config_dir = work_dir / ".config" / "dosbox"
     config_dir.mkdir(parents=True, exist_ok=True)
     primary_conf = config_dir / "dosbox-automation.conf"
-    primary_conf.write_text(textwrap.dedent(f"""\
-        [webserver]
-        mount_allowed_bases = {resource_dir}
-    """))
+
+    primary_lines = [f"mount_allowed_bases = {resource_dir}"]
+    if allowed_image_roots:
+        roots_str = ";".join(str(p) for p in allowed_image_roots)
+        primary_lines.append(f"mount_allowed_image_roots = {roots_str}")
+
+    primary_conf.write_text(
+        "[webserver]\n" + "\n".join(primary_lines) + "\n"
+    )
 
     # Write a config file with autoexec if provided.
     conf_path = None
@@ -249,11 +257,12 @@ def dosbox_e2e(tmp_path):
     instances = []
 
     def _factory(autoexec_lines=None, extra_sets=None, work_dir=None,
-                 conf_dir=None):
+                 conf_dir=None, allowed_image_roots=None):
         if work_dir is None:
             work_dir = WORKSPACE / f"e2e-{secrets.token_hex(4)}"
         inst = start_dosbox_instance(
             work_dir, autoexec_lines, extra_sets, conf_dir=conf_dir,
+            allowed_image_roots=allowed_image_roots,
         )
         instances.append(inst)
         return inst
