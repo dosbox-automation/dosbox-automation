@@ -1,5 +1,6 @@
-// SPDX-FileCopyrightText: 2026 The DOSBox Staging Team
-// SPDX-License-Identifier: GPL-2.0-or-later
+// This file is part of the dosbox-automation Project.
+// License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
+//
 
 #ifndef DOSBOX_WEBSERVER_VIDEO_H
 #define DOSBOX_WEBSERVER_VIDEO_H

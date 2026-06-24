@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
-// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
+// SPDX-FileCopyrightText:  2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "dosbox.h"

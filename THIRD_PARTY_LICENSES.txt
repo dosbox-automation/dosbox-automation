@@ -137,7 +137,7 @@ Used by: glad
   glad           OpenGL loader generator
                  License: (WTFPL OR CC0-1.0) AND Apache-2.0
                  See licenses/WTFPL.txt, licenses/CC0-1.0.txt,
-                 and the Apache-2.0 section below for full texts.
+                 and licenses/Apache-2.0.txt for full texts.
 
 --------------------------------------------------------------------------------
 LGPL-2.1-or-later (decoders framework)
@@ -239,6 +239,10 @@ source tree.
                  https://github.com/ThePhD/sol2
                  License: MIT
 
+  asio           Asynchronous I/O library (standalone, non-Boost)
+                 Copyright (c) 2003-2024 Christopher M. Kohlhoff
+                 License: BSL-1.0 (licenses/BSL-1.0.txt)
+
 
 ================================================================================
 BUNDLED DOS PROGRAMS (extras/dos-programs/, resources/)
@@ -282,11 +286,11 @@ FONTS USED IN SPLASH SCREENS
 
   BebasNeue      Display font by Dharma Type
                  Used in splash screen graphics
-                 License: SIL Open Font License 1.1
+                 License: SIL Open Font License 1.1 (licenses/OFL-1.1.txt)
 
   Raleway        Sans-serif font
                  Used in splash screen graphics
-                 License: SIL Open Font License 1.1
+                 License: SIL Open Font License 1.1 (licenses/OFL-1.1.txt)
 
 
 ================================================================================

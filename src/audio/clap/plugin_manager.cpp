@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText:  2024-2025 The DOSBox Staging Team
-// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
+// SPDX-FileCopyrightText:  2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 // The MSVC min/max macro imported by clap/all.h collides with
