@@ -1,0 +1,35 @@
+[game]
+name = "Epic Pinball"
+slug = "epic-pinball"
+media = "floppy"
+license = "commercial"
+
+[source]
+url = "https://archive.org/download/001491-EpicPinballAndroidAndSilverballNovaBoards/001491_epic_pinball_android_and_silverball_nova_boards.7z"
+
+[discs]
+images = ["disk1.img"]
+
+[installer]
+path = "INSTALL.EXE"
+source_drive = "A"
+target_drive = "C"
+
+[prompts]
+# All text mode. Extended ASCII art at top, prompts below.
+# Flow: select drive -> pick program -> confirm -> extract -> decline readme -> exit
+sequence = [
+    { wait = "Drive to install to", type = "" },
+    { wait = "Which program do you want to install", type = "" },
+    { wait = "Android", type = "" },
+    { wait = "Android", type = "" },
+    { wait = "Android", type = "Y" },
+    { wait = "is now installed", type = "N" },
+    { wait = "Which program do you want to install", type = "3" },
+]
+
+[verify]
+files = ["C:\\PINBALL\\PINBALL.EXE", "C:\\PINBALL\\HELPME.EXE"]
+
+[capture]
+screenshot_at = [0]
