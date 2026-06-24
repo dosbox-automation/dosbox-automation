@@ -23,6 +23,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <set>
 #include <string>
 #include <thread>
@@ -189,6 +191,72 @@ static std::string generate_api_token()
 	return token;
 }
 
+static std::filesystem::path token_file_path = {};
+
+static std::filesystem::path get_token_file_dir()
+{
+	return get_config_dir() / DefaultWebserverDir;
+}
+
+static bool write_token_file(const std::string& token)
+{
+	namespace fs = std::filesystem;
+
+	const auto dir  = get_token_file_dir();
+	const auto path = dir / "api_token";
+
+	std::error_code ec;
+	fs::create_directories(dir, ec);
+	if (ec) {
+		LOG_WARNING("WEBSERVER: Cannot create token dir '%s': %s",
+		            dir.string().c_str(), ec.message().c_str());
+		return false;
+	}
+
+	const auto tmp = dir / "api_token.tmp";
+
+	{
+		auto out = std::ofstream(tmp, std::ios::binary | std::ios::trunc);
+		if (!out.is_open()) {
+			LOG_WARNING("WEBSERVER: Cannot write token file '%s'",
+			            tmp.string().c_str());
+			return false;
+		}
+		out << token;
+	}
+
+#if !defined(WIN32)
+	fs::permissions(tmp, fs::perms::owner_read | fs::perms::owner_write, ec);
+	if (ec) {
+		LOG_WARNING("WEBSERVER: Cannot set permissions on '%s'",
+		            tmp.string().c_str());
+		fs::remove(tmp, ec);
+		return false;
+	}
+#endif
+
+	fs::rename(tmp, path, ec);
+	if (ec) {
+		LOG_WARNING("WEBSERVER: Cannot rename token file: %s",
+		            ec.message().c_str());
+		fs::remove(tmp, ec);
+		return false;
+	}
+
+	token_file_path = path;
+	return true;
+}
+
+static void remove_token_file()
+{
+	if (token_file_path.empty()) {
+		return;
+	}
+	std::error_code ec;
+	std::filesystem::remove(token_file_path, ec);
+	token_file_path.clear();
+}
+
 static bool is_valid_hex_token(const std::string& s)
 {
 	if (s.size() != 64) {
@@ -270,7 +338,9 @@ static void setup_security(const std::string& addr, int port,
 	server.set_payload_max_length(10 * 1024 * 1024);
 }
 
-static void run(const std::string addr, const int port, const std::string resource_home)
+static void run(const std::string addr, const int port,
+                const std::string resource_home,
+                const bool use_token_file)
 {
 	const auto config_home = (get_config_dir() / DefaultWebserverDir).string();
 
@@ -310,15 +380,24 @@ static void run(const std::string addr, const int port, const std::string resour
 		           send_json(res, j);
 	           });
 
-	LOG_INFO("WEBSERVER: Starting HTTP REST API on http://%s:%d",
-	         addr.c_str(),
-	         port);
-
-	if (token_from_env) {
+	// Channel B: write the auto-generated token to a file so launchers
+	// can read it without scraping stderr.
+	if (use_token_file && !token_from_env) {
+		if (write_token_file(api_token)) {
+			LOG_MSG("WEBSERVER: Token written to %s",
+			        token_file_path.string().c_str());
+		} else {
+			LOG_MSG("WEBSERVER: API token: %.8s...", api_token.c_str());
+		}
+	} else if (token_from_env) {
 		LOG_MSG("WEBSERVER: Using API token from DOSBOX_API_TOKEN");
 	} else {
 		LOG_MSG("WEBSERVER: API token: %.8s...", api_token.c_str());
 	}
+
+	LOG_INFO("WEBSERVER: Starting HTTP REST API on http://%s:%d",
+	         addr.c_str(),
+	         port);
 
 	auto ok = server.listen(addr, port);
 	if (!ok) {
@@ -355,6 +434,14 @@ static void init_config_settings(SectionProp& section)
 	        "Allow binding to non-localhost addresses (0.0.0.0 or ::). This exposes\n"
 	        "the full API to the network. Do not enable unless you understand the\n"
 	        "security implications.");
+
+	auto token_file = section.AddBool("webserver_token_file", OnlyAtStart, false);
+	token_file->SetHelp(
+	        "Write the API token to a file instead of printing it to the log.\n"
+	        "The file is written to the webserver config directory with restricted\n"
+	        "permissions (0600) and removed on clean shutdown. Launchers and tools\n"
+	        "can read the token from this file instead of scraping log output.\n"
+	        "Has no effect when DOSBOX_API_TOKEN is set via environment variable.");
 }
 
 } // namespace Webserver
@@ -395,10 +482,12 @@ void WEBSERVER_Init()
 
 		const auto port = section->GetInt("webserver_port");
 		const auto resource_home = get_resource_path("webserver").string();
+		const auto use_token_file = section->GetBool("webserver_token_file");
 
 		Webserver::InputRecording::InstallHooks();
 
-		std::thread thread(Webserver::run, addr, port, resource_home);
+		std::thread thread(Webserver::run, addr, port, resource_home,
+		                   use_token_file);
 
 		thread.detach();
 	}
@@ -407,6 +496,7 @@ void WEBSERVER_Init()
 void WEBSERVER_Destroy()
 {
 	Webserver::server.stop();
+	Webserver::remove_token_file();
 }
 
 void WEBSERVER_AddConfigSection(const ConfigPtr& conf)

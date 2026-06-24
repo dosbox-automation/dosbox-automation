@@ -38,7 +38,7 @@ class StderrCapture(threading.Thread):
         for raw_line in self.pipe:
             line = raw_line.decode(errors="replace").rstrip()
             self.lines.append(line)
-            if "WEBSERVER:" in line and "API token" in line:
+            if "WEBSERVER:" in line and ("API token" in line or "Token written" in line):
                 self.ready.set()
 
     def get_output(self) -> str:
