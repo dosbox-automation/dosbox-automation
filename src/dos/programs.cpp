@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "dos/programs.h"
@@ -968,7 +969,7 @@ void PROGRAMS_AddMessages()
 	        "\n[color=white]Additional config files:[reset]\n  ");
 
 	MSG_Add("PROGRAM_CONFIG_CONFDIR",
-	        "[color=white]DOSBox Staging %s configuration directory:[reset]\n  %s\n\n");
+	        "[color=white]dosbox-automation %s configuration directory:[reset]\n  %s\n\n");
 
 	// Write config
 	MSG_Add("PROGRAM_CONFIG_FILE_ERROR", "\nCan't open config file '%s'\n");
@@ -992,7 +993,7 @@ void PROGRAMS_AddMessages()
 	        "                    specified absolute or relative path\n"
 	        "\n"
 	        "  -wcd              write the current configuration to the primary (default)\n"
-	        "                    `dosbox-staging.conf` config file in the configuration\n"
+	        "                    `dosbox-automation.conf` config file in the configuration\n"
 	        "                    directory\n"
 	        "\n"
 	        "  -writelang [color=white]FILENAME[reset]\n"

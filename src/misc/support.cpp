@@ -282,7 +282,7 @@ static void maybe_add_path(const std_fs::path& path, std::vector<std_fs::path>& 
 
 	// Filter out duplicates by first canonicalizing the path
 	// and then checking if it already exists in the paths vector.
-	// Ex: /usr/share/dosbox-staging and get_executable_path() /../share can
+	// Ex: /usr/share/dosbox-automation and get_executable_path() /../share can
 	// point to the same location
 	const auto canonical_path = std_fs::canonical(path, ec);
 

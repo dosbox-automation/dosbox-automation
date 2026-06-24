@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2019-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #ifndef DOSBOX_DOSBOX_H
@@ -26,16 +27,16 @@
 #define DOSBOX_COPYRIGHT "(C) " DOSBOX_TEAM
 
 // Address to report bugs
-#define DOSBOX_BUGS_TO "https://github.com/dosbox-staging/dosbox-staging/issues"
+#define DOSBOX_BUGS_TO "https://github.com/dosbox-automation/dosbox-automation/issues"
 
 // Address of the translation manual
 #define DOSBOX_MANUAL_TRANSLATION \
-	"https://github.com/dosbox-staging/dosbox-staging/blob/main/docs/TRANSLATING.md"
+	"https://github.com/dosbox-automation/dosbox-automation/blob/main/docs/TRANSLATING.md"
 
 // Fully qualified application ID for the emulator; see
 // https://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names
 // for more details
-#define DOSBOX_APP_ID "org.dosbox_staging.dosbox_staging"
+#define DOSBOX_APP_ID "org.dosbox_automation.dosbox_automation"
 
 
 // Must be called to break out of the emulator loop and exit gracefully from

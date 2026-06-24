@@ -25,7 +25,7 @@ static const std::string KeywordContext = "msgctxt";
 static const std::string KeywordId      = "msgid";
 static const std::string KeywordString  = "msgstr";
 
-// A generic key to identify DOSBox Staging metadata
+// A generic key to identify dosbox-automation metadata
 static const std::string MetadataKey = "#METADATA";
 
 // ***************************************************************************

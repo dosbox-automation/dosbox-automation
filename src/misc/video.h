@@ -16,7 +16,7 @@
 //
 // As high-DPI displays are becoming increasingly the norm, understanding the
 // difference between screen dimensions expressed as *logical units* versus
-// *pixels* is essential. We fully support high-DPI in DOSBox Staging, so a
+// *pixels* is essential. We fully support high-DPI in dosbox-automation, so a
 // good grasp of this topic essential when dealing with anything rendering
 // related.
 //

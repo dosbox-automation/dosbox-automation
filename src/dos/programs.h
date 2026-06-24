@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2020-2025 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #ifndef DOSBOX_PROGRAMS_H
@@ -15,9 +16,9 @@
 #include "misc/help_util.h"
 #include "shell/command_line.h"
 
-#define WIKI_URL "https://github.com/dosbox-staging/dosbox-staging/wiki"
+#define WIKI_URL "https://dosbox-automation.org"
 
-#define WIKI_ADD_UTILITIES_ARTICLE WIKI_URL "/Adding-utilities"
+#define WIKI_ADD_UTILITIES_ARTICLE WIKI_URL "/manual/"
 
 class Program {
 public:

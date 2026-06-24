@@ -611,7 +611,7 @@ void BOOT::NotifyBooting()
 void BOOT::AddMessages()
 {
 	MSG_Add("PROGRAM_BOOT_HELP_LONG",
-	        "Boot DOSBox Staging from a DOS drive or disk image.\n"
+	        "Boot dosbox-automation from a DOS drive or disk image.\n"
 	        "\n"
 	        "Usage:\n"
 	        "  [color=light-green]boot[reset] [color=white]DRIVE[reset]\n"
@@ -634,7 +634,7 @@ void BOOT::AddMessages()
 	MSG_Add("PROGRAM_BOOT_WRITE_PROTECTED",
 	        "Image file is read-only! Might create problems.\n");
 	MSG_Add("PROGRAM_BOOT_PRINT_ERROR",
-	        "This command boots DOSBox Staging from either a floppy or hard disk image.\n\n"
+	        "This command boots dosbox-automation from either a floppy or hard disk image.\n\n"
 	        "For this command, one can specify a succession of floppy disks swappable by\n"
 	        "pressing [color=yellow]%s+F4[reset], and -l specifies the mounted drive to boot from. If no drive\n"
 	        "letter is specified, this defaults to booting from the A drive. The only\n"

@@ -109,7 +109,7 @@ private:
 		uint8_t driver_revision_major = 0;
 		uint8_t driver_revision_minor = 0;
 
-		// Shouldn't happen inside DOSBox Staging, but there is still a
+		// Shouldn't happen inside dosbox-automation, but there is still a
 		// theoretical possibility the size calculation will fail
 		std::optional<size_t> total_bytes = {};
 

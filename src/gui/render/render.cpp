@@ -1566,7 +1566,7 @@ static void init_color_space_setting(SectionProp& section)
 	        "  - The setting must match the colour space set on your monitor.\n"
 	        "\n"
 	        "  - You must disable all OS and graphics driver level colour management, and you\n"
-	        "    must not use any 3rd party colour management programs for DOSBox Staging,\n"
+	        "    must not use any 3rd party colour management programs for dosbox-automation,\n"
 	        "    otherwise you'll get incorrect colours.");
 
 	string_prop->SetEnabledOptions({
@@ -1679,7 +1679,7 @@ static void init_render_settings(SectionProp& section)
 	        "             aspect ratios (this is less of an issue on high resolution\n"
 	        "             monitors).\n"
 	        "\n"
-	        "Start DOSBox Staging with the '--list-shaders' command line option to see the\n"
+	        "Start dosbox-automation with the '--list-shaders' command line option to see the\n"
 	        "full list of available shaders. You can also use an absolute or relative path to\n"
 	        "a file. In all cases, you may omit the shader's '.glsl' file extension.");
 	string_prop->SetEnabledOptions({

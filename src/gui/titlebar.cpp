@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText:  2023-2026 The DOSBox Staging Team
-// SPDX-FileCopyrightText:  2026 dosbox-automation Project
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "titlebar.h"
@@ -847,9 +847,9 @@ void TITLEBAR_AddConfigSettings()
 	        "                      mode) it is impossible to recognize the full program\n"
 	        "                      name or path; in such cases 'segment' is used instead.\n"
 	        "\n"
-	        "  dosbox=<value>:     Display 'DOSBox Staging' in the title bar.\n"
+	        "  dosbox=<value>:     Display 'dosbox-automation' in the title bar.\n"
 	        "                      <value> can be one of:\n"
-	        "                        always:   Always display 'DOSBox Staging'.\n"
+	        "                        always:   Always display 'dosbox-automation'.\n"
 	        "                        auto:     Only display it if no program is running or\n"
 	        "                                  'program=none' is set (default).\n"
 	        "\n"

@@ -51,7 +51,7 @@ void SETVER::Run()
 	const bool has_arg_batch  = cmd->FindExistRemoveAll("/b");
 	const bool has_arg_global = cmd->FindExistRemoveAll("/g");
 	const bool has_arg_paged  = cmd->FindExistRemoveAll("/p");
-	// DOSBox Staging extensions
+	// dosbox-automation extensions
 	const bool has_arg_all = cmd->FindExistRemoveAll("/all");
 
 	// TODO: DR-DOS also provides /x switch to deal with BDOS versions - for

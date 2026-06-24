@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "private/alsa.h"
@@ -304,7 +305,7 @@ MidiDeviceAlsa::MidiDeviceAlsa(const char* conf)
 		throw std::runtime_error(msg);
 	}
 
-	snd_seq_set_client_name(seq_handle, "DOSBox Staging");
+	snd_seq_set_client_name(seq_handle, "dosbox-automation");
 
 	unsigned int caps = SND_SEQ_PORT_CAP_READ;
 	if (seq.client == SND_SEQ_ADDRESS_SUBSCRIBERS) {

@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "dosbox.h"
@@ -105,7 +106,7 @@ static void register_command_line_help_message()
 	        "                           If PATH is a CD-ROM image (CUE/ISO), it's mounted as D:.\n"
 	        "                           If PATH is a DOS executable (BAT/COM/EXE), it's parent\n"
 	        "                           path is mounted as C: and the executable is run. When\n"
-	        "                           the executable exits, DOSBox Staging quits.\n"
+	        "                           the executable exits, dosbox-automation quits.\n"
 	        "\n"
 	        "List of available options:\n"
 	        "\n"
@@ -345,7 +346,7 @@ static void maybe_write_primary_config(const CommandLineArguments& args)
 	// - secure mode is NOT enabled with the '--securemode' option,
 	//
 	// - AND we're not in portable mode (portable mode is enabled when
-	//   'dosbox-staging.conf' exists in the executable directory)
+	//   'dosbox-automation.conf' exists in the executable directory)
 	//
 	// - AND the primary config is NOT disabled with the
 	//   '--noprimaryconf' option.

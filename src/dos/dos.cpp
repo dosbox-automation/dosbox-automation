@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "dos.h"
@@ -1948,7 +1949,7 @@ static void init_dos_settings(SectionProp& section)
 	pstring = section.AddString("stacks", OnlyAtStart, "auto");
 	pstring->SetHelp(
 	        "Use DOS-style private stacks for hardware interrupts ('auto' by default).\n"
-	        "When a wrapped hardware interrupt fires, DOSBox Staging switches to one\n"
+	        "When a wrapped hardware interrupt fires, dosbox-automation switches to one\n"
 	        "stack from a private pool before invoking the previous handler. Disabling\n"
 	        "this means each running program must have enough stack space for hardware\n"
 	        "interrupts (and any chained handlers) itself. Most programs work correctly\n"

@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText:  2024-2025 The DOSBox Staging Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 // The MSVC min/max macro imported by clap/all.h collides with
@@ -29,9 +30,9 @@ static const clap_host_t dosbox_clap_host = {
 
         .host_data = nullptr,
 
-        .name    = "DOSBox Staging",
-        .vendor  = "The DOSBox Staging Team",
-        .url     = "http://www.dosbox-staging.org",
+        .name    = "dosbox-automation",
+        .vendor  = "The dosbox-automation Project",
+        .url     = "https://dosbox-automation.org",
         .version = "1.0",
 
         .get_extension = []([[maybe_unused]] const clap_host_t* host,

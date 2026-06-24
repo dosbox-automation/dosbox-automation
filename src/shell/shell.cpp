@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2021-2025 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "shell/shell.h"
@@ -575,7 +576,7 @@ void SHELL_InitAndRun()
 	MSG_Add("SHELL_CMD_HELP", "If you want a list of all supported commands, run [color=yellow]help /all[reset]\n"
 			"A short list of the most often used commands:\n");
 	MSG_Add("SHELL_CMD_COMMAND_HELP_LONG",
-	        "Start the DOSBox Staging command shell.\n"
+	        "Start the dosbox-automation command shell.\n"
 	        "\n"
 	        "Usage:\n"
 	        "  [color=light-green]command[reset]\n"
@@ -585,7 +586,7 @@ void SHELL_InitAndRun()
 	        "  [color=light-cyan]COMMAND[reset]  DOS command, game, or program to run\n"
 	        "\n"
 	        "Notes:\n"
-	        "  - DOSBox Staging automatically starts a DOS command shell by invoking this\n"
+	        "  - dosbox-automation automatically starts a DOS command shell by invoking this\n"
 	        "    command with /init option when it starts, which shows the welcome banner.\n"
 	        "  - You can load a new instance of the command shell by running [color=light-green]command[reset].\n"
 	        "  - Adding a /c option along with [color=light-cyan]COMMAND[reset] allows this command to run the\n"
@@ -832,7 +833,7 @@ void SHELL_InitAndRun()
 	        "\n"
 	        "Notes:\n"
 	        "  If you start a DOS shell from a program, running [color=light-green]exit[reset] returns to the program.\n"
-	        "  If there is no DOS program running, the command quits from DOSBox Staging.\n"
+	        "  If there is no DOS program running, the command quits from dosbox-automation.\n"
 	        "\n"
 	        "Examples:\n"
 	        "  [color=light-green]exit[reset]\n");
@@ -1191,7 +1192,7 @@ void SHELL_InitAndRun()
 	        "\n"
 	        "Examples:\n"
 	        "  [color=light-green]ver[reset]\n");
-	MSG_Add("SHELL_CMD_VER_VER", "DOSBox Staging version %s\n"
+	MSG_Add("SHELL_CMD_VER_VER", "dosbox-automation version %s\n"
 	                             "DOS version %d.%02d\n");
 	MSG_Add("SHELL_CMD_VER_INVALID", "The specified DOS version is not correct.\n");
 

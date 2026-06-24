@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText:  2002-2025 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "dosbox.h"
@@ -598,7 +599,7 @@ void CSerialModem::DoCommand()
 		case 'I': // Some strings about firmware
 			switch (ScanNumber(scanbuf)) {
 			case 3:
-				SendLine("DOSBox Staging Emulated Modem Firmware V1.00");
+				SendLine("dosbox-automation Emulated Modem Firmware V1.00");
 				break;
 			case 4:
 				SendLine("Modem compiled for DOSBox version " DOSBOX_VERSION);

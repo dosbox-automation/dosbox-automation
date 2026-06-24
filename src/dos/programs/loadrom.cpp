@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2021-2025 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation contributors
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "loadrom.h"
@@ -115,7 +116,7 @@ void LOADROM::AddMessages()
 	        "\n"
 	        "Notes:\n"
 	        "  After loading an IBM BASIC ROM image into the emulated ROM with the command,\n"
-	        "  you can run the original IBM BASIC interpreter program in DOSBox Staging.\n"
+	        "  you can run the original IBM BASIC interpreter program in dosbox-automation.\n"
 	        "\n"
 	        "Examples:\n"
 	        "  [color=light-green]loadrom[reset] [color=light-cyan]bios.rom[reset]\n");

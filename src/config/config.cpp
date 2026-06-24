@@ -410,7 +410,7 @@ const std::string& Config::GetArgumentLanguage()
 // -conf's, and finally the local dosbox.conf
 void Config::ParseConfigFiles(const std_fs::path& config_dir)
 {
-	// First: parse the user's primary 'dosbox-staging.conf' config file
+	// First: parse the user's primary 'dosbox-automation.conf' config file
 	const bool load_primary_config = !arguments.noprimaryconf;
 
 	if (load_primary_config) {

@@ -889,7 +889,7 @@ static void determine_fat_type(const CommandSettings& settings,
 	// FAT16 Efficiency Limit: 2047 MB
 	// At 512MB, FAT16 requires 16KB clusters, which is inefficient.
 	// Windows 98/DOS 7.1 switch to FAT32 here by default.
-	// However, dosbox-staging does not support FAT32 yet, so for
+	// However, dosbox-automation does not support FAT32 yet, so for
 	// now we accept this inefficiency in favour of compatibility.
 	constexpr int64_t Fat16EfficiencyLimit = 2047 * SectorsPerMB;
 	// FAT16 Hard Limit: 2 GB

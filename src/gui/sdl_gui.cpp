@@ -2817,7 +2817,7 @@ static void init_sdl_config_settings(SectionProp& section)
 
 	pint = section.AddInt("window_transparency", Always, 0);
 	pint->SetHelp(
-	        "Set the transparency of the DOSBox Staging window (0 by default).\n"
+	        "Set the transparency of the dosbox-automation window (0 by default).\n"
 	        "Valid range from 0 (no transparency) to 90 (high transparency).");
 	pint->SetMinMax(0, 90);
 
@@ -2918,7 +2918,7 @@ static void init_sdl_config_settings(SectionProp& section)
 	pbool->SetHelp(
 	        "Capture system keyboard shortcuts ('off' by default).\n"
 	        "When enabled, most system shortcuts such as Alt+Tab are captured and sent to\n"
-	        "DOSBox Staging. This is useful for Windows 3.1 and some DOS programs with\n"
+	        "dosbox-automation. This is useful for Windows 3.1 and some DOS programs with\n"
 	        "unchangeable keyboard shortcuts that conflict with system shortcuts.");
 
 	pstring = section.AddPath("mapperfile", Always, MAPPERFILE);

@@ -11,7 +11,7 @@
 // feature to avoid crashes, so such Tandy + SB machines were possible to run
 // without issues.
 
-// How does this work in DOSBox? DOSBox Staging always shuts down conflicting
+// How does this work in DOSBox? dosbox-automation always shuts down conflicting
 // DMA devices (and the Tandy DAC vs. SB is no exception), however the Tandy DAC
 // is unique in that the machine's BIOS (yes, on real hardware, too) is
 // programmed with a callback that points to the DAC device.  In the case of
