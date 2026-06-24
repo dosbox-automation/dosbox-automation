@@ -231,9 +231,8 @@ void VideoHandlers::GetFrame(const httplib::Request& req, httplib::Response& res
 		res.set_content(std::move(data), "application/octet-stream");
 	} else {
 		int quality = 98;
-		const auto q_str = req.get_param_value("quality");
-		if (!q_str.empty()) {
-			quality = std::clamp(std::stoi(q_str), 1, 100);
+		if (req.has_param("quality")) {
+			quality = num_param<int>(req, Source::Param, "quality", 1, 100);
 		}
 		auto data = encode_jpeg(frame, quality);
 		res.set_content(std::move(data), "image/jpeg");

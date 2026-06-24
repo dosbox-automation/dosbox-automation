@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 #include <set>
 #include <string>
 #include <thread>
@@ -65,6 +66,9 @@ static void error_handler(const httplib::Request&, httplib::Response& res,
 		}
 	} catch (const std::invalid_argument&) {
 		msg        = "Invalid request parameter";
+		res.status = httplib::StatusCode::BadRequest_400;
+	} catch (const std::out_of_range&) {
+		msg        = "Address out of range";
 		res.status = httplib::StatusCode::BadRequest_400;
 	} catch (const nlohmann::json::exception&) {
 		msg        = "Malformed request body";
@@ -319,6 +323,7 @@ static void setup_security(const std::string& addr, int port,
 		        req.get_header_value("Authorization"));
 
 		if (!ConstantTimeEquals(token, api_token)) {
+			LOG_WARNING("WEBSERVER: Rejected request with invalid token");
 			res.status = httplib::StatusCode::Unauthorized_401;
 			res.set_content("Unauthorized", "text/plain");
 			return httplib::Server::HandlerResponse::Handled;
