@@ -50,7 +50,9 @@ namespace Webserver {
 
 void send_json(httplib::Response& res, const nlohmann::json& j)
 {
-	res.set_content(j.dump(2), "application/json");
+	res.set_content(j.dump(2, ' ', false,
+	                       nlohmann::json::error_handler_t::replace),
+	                "application/json");
 }
 
 static void error_handler(const httplib::Request&, httplib::Response& res,

@@ -181,11 +181,19 @@ struct TypeMapping {
 
 static TypeMapping CharToKey(const char c)
 {
+	// KBD_KEYS are in QWERTY row order, not alphabetical.
+	static constexpr KBD_KEYS alpha_keys[26] = {
+		KBD_a, KBD_b, KBD_c, KBD_d, KBD_e, KBD_f, KBD_g, KBD_h,
+		KBD_i, KBD_j, KBD_k, KBD_l, KBD_m, KBD_n, KBD_o, KBD_p,
+		KBD_q, KBD_r, KBD_s, KBD_t, KBD_u, KBD_v, KBD_w, KBD_x,
+		KBD_y, KBD_z,
+	};
+
 	if (c >= 'a' && c <= 'z') {
-		return {static_cast<KBD_KEYS>(KBD_a + (c - 'a')), false};
+		return {alpha_keys[c - 'a'], false};
 	}
 	if (c >= 'A' && c <= 'Z') {
-		return {static_cast<KBD_KEYS>(KBD_a + (c - 'A')), true};
+		return {alpha_keys[c - 'A'], true};
 	}
 	if (c >= '0' && c <= '9') {
 		return {static_cast<KBD_KEYS>(KBD_0 + (c - '0')), false};
