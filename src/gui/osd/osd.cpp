@@ -176,8 +176,22 @@ void OsdManager::RenderIcons(SDL_Renderer* r, const uint64_t frame_number)
 	}
 }
 
+void OsdManager::SetEnabled(const bool on)
+{
+	enabled = on;
+}
+
+bool OsdManager::IsEnabled() const
+{
+	return enabled;
+}
+
 void OsdManager::Render(const uint64_t frame_number)
 {
+	if (!enabled) {
+		return;
+	}
+
 	auto* r = AcquireRenderer();
 	if (!r) {
 		return;

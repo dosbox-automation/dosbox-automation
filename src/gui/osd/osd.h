@@ -46,20 +46,27 @@ public:
 
 	void SetIcon(IconId id, bool active);
 
+	// Master switch. On by default so automation activity is always visible;
+	// set false (webserver_osd=false) to suppress the overlay entirely.
+	void SetEnabled(bool on);
+	bool IsEnabled() const;
+
 	void Render(uint64_t frame_number);
 
 private:
 	OsdManager() = default;
 
-	static constexpr int MaxIcons         = static_cast<int>(IconId::Count);
-	static constexpr size_t MaxOverlays  = 32;
-	static constexpr size_t MaxTextLen   = 256;
+	static constexpr int MaxIcons       = static_cast<int>(IconId::Count);
+	static constexpr size_t MaxOverlays = 32;
+	static constexpr size_t MaxTextLen  = 256;
 
 	struct StatusIcon {
 		IconId id     = IconId::ScriptRunning;
 		bool active   = false;
 		bool blinking = false;
 	};
+
+	bool enabled = true;
 
 	std::vector<TextOverlay> overlays = {};
 	StatusIcon icons[MaxIcons]        = {

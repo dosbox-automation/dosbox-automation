@@ -18,6 +18,7 @@
 #include "lua/lua_bridge_commands.h"
 
 #include "dos/programs/mount_policy.h"
+#include "gui/osd/osd.h"
 
 #include <cctype>
 #include <cstdint>
@@ -25,8 +26,8 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <stdexcept>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -50,8 +51,7 @@ namespace Webserver {
 
 void send_json(httplib::Response& res, const nlohmann::json& j)
 {
-	res.set_content(j.dump(2, ' ', false,
-	                       nlohmann::json::error_handler_t::replace),
+	res.set_content(j.dump(2, ' ', false, nlohmann::json::error_handler_t::replace),
 	                "application/json");
 }
 
@@ -215,7 +215,8 @@ static bool write_token_file(const std::string& token)
 	fs::create_directories(dir, ec);
 	if (ec) {
 		LOG_WARNING("WEBSERVER: Cannot create token dir '%s': %s",
-		            dir.string().c_str(), ec.message().c_str());
+		            dir.string().c_str(),
+		            ec.message().c_str());
 		return false;
 	}
 
@@ -346,8 +347,7 @@ static void setup_security(const std::string& addr, int port,
 }
 
 static void run(const std::string addr, const int port,
-                const std::string resource_home,
-                const bool use_token_file)
+                const std::string resource_home, const bool use_token_file)
 {
 	const auto config_home = (get_config_dir() / DefaultWebserverDir).string();
 
@@ -363,8 +363,9 @@ static void run(const std::string addr, const int port,
 			api_token      = std::move(candidate);
 			token_from_env = true;
 		} else {
-			LOG_WARNING("WEBSERVER: DOSBOX_API_TOKEN set but invalid "
-			            "(need 64 hex chars), generating token");
+			LOG_WARNING(
+			        "WEBSERVER: DOSBOX_API_TOKEN set but invalid "
+			        "(need 64 hex chars), generating token");
 		}
 	}
 
@@ -449,6 +450,13 @@ static void init_config_settings(SectionProp& section)
 	        "permissions (0600) and removed on clean shutdown. Launchers and tools\n"
 	        "can read the token from this file instead of scraping log output.\n"
 	        "Has no effect when DOSBOX_API_TOKEN is set via environment variable.");
+
+	auto osd = section.AddBool("webserver_osd", OnlyAtStart, true);
+	osd->SetHelp(
+	        "Show on-screen indicators while automation is driving the machine\n"
+	        "(script running, recording, replay, injected input). Enabled by\n"
+	        "default so it is always clear when the machine is under remote\n"
+	        "control. Set to false to hide the overlay.");
 }
 
 } // namespace Webserver
@@ -487,14 +495,16 @@ void WEBSERVER_Init()
 
 		is_webserver_enabled = true;
 
+		OSD::OsdManager::Instance().SetEnabled(
+		        section->GetBool("webserver_osd"));
+
 		const auto port = section->GetInt("webserver_port");
 		const auto resource_home = get_resource_path("webserver").string();
 		const auto use_token_file = section->GetBool("webserver_token_file");
 
 		Webserver::InputRecording::InstallHooks();
 
-		std::thread thread(Webserver::run, addr, port, resource_home,
-		                   use_token_file);
+		std::thread thread(Webserver::run, addr, port, resource_home, use_token_file);
 
 		thread.detach();
 	}
