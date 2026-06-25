@@ -1,0 +1,33 @@
+[game]
+name = "One Must Fall 2097"
+slug = "one-must-fall-2097"
+media = "floppy"
+license = "freeware"
+
+[source]
+url = "https://archive.org/download/000931-OneMustFall2097/000931_one_must_fall_2097.7z"
+
+[discs]
+images = ["disk1.img", "disk2.img", "disk3.img", "disk4.img", "disk5.img"]
+
+[installer]
+path = "INSTALL.EXE"
+source_drive = "A"
+target_drive = "C"
+
+[prompts]
+# TODO: record actual prompts by running the installer
+sequence = [
+    { wait = "Install Directory", type = "C:\\OMF" },
+    { wait = "Insert Disk 2", action = "swap:2" },
+    { wait = "Insert Disk 3", action = "swap:3" },
+    { wait = "Insert Disk 4", action = "swap:4" },
+    { wait = "Insert Disk 5", action = "swap:5" },
+    { wait = "Installation Complete", type = "" },
+]
+
+[verify]
+files = ["C:\\OMF\\OMF.EXE", "C:\\OMF\\SETUP.EXE"]
+
+[capture]
+screenshot_at = [0, 5]

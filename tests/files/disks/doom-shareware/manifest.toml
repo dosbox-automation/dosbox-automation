@@ -1,0 +1,29 @@
+[game]
+name = "DOOM Shareware"
+slug = "doom-shareware"
+media = "floppy"
+license = "shareware"
+
+[source]
+url = "https://archive.org/download/doom-shareware-floppy-v-1.666-2-disk.-7z/Doom%20Shareware%20Floppy%20%28v1.666%29%20%5B2%20Disk%5D.7z"
+
+[discs]
+images = ["disk1.ima", "disk2.ima"]
+
+[installer]
+path = "SETUP.EXE"
+source_drive = "A"
+target_drive = "C"
+
+[prompts]
+# TODO: record actual prompts by running the installer
+sequence = [
+    { wait = "Install", type = "C:\\DOOM" },
+    { wait = "Insert Disk", action = "swap:2" },
+]
+
+[verify]
+files = ["C:\\DOOM\\DOOM.EXE"]
+
+[capture]
+screenshot_at = [0]

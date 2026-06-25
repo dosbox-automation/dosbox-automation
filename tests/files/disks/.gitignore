@@ -1,0 +1,18 @@
+# Track only manifests and bare provenance directories.
+# Disk images, recordings, run artifacts, and provenance
+# contents are local test data - not committed.
+
+# Ignore everything inside game directories
+*/*
+
+# Track TOML manifests
+!*/*.toml
+
+# Track provenance directories themselves
+!*/provenance/
+
+# Ignore provenance contents
+*/provenance/*
+
+# Keep the empty directory in git
+!*/provenance/.gitkeep

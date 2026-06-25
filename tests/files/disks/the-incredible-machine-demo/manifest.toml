@@ -1,0 +1,28 @@
+[game]
+name = "The Incredible Machine Demo"
+slug = "incredible-machine-demo"
+media = "directory"
+license = "demo"
+
+[source]
+url = "https://dosgames.com/files/timdemo.zip"
+
+[discs]
+images = ["timdemo"]
+
+[installer]
+path = "INSTALL.COM"
+source_drive = "A"
+target_drive = "C"
+
+[prompts]
+# TODO: record actual prompts by running the installer
+sequence = [
+    { wait = "Install", type = "" },
+]
+
+[verify]
+files = ["C:\\TIM\\TIM.EXE"]
+
+[capture]
+screenshot_at = [0]

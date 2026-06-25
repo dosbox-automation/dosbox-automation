@@ -1,0 +1,35 @@
+[game]
+name = "Augra Greeting Disk"
+slug = "augra-greeting-disk"
+media = "booter"
+license = "GPL-3.0"
+
+[discs]
+images = ["augra-test-disk1.img", "augra-test-disk2.img", "augra-test-disk3.img"]
+
+[installer]
+# Booter: uses BOOT command, not a DOS-level installer.
+path = ""
+source_drive = "A"
+target_drive = "C"
+
+[prompts]
+# Boot sector shows splash screen with status bar at bottom:
+# "Augra Disk Tools Test -- DISK N -- Press Ctrl+F4 to swap"
+# Keypress triggers re-read from current disk.
+# NOTE: booter E2E has a known bridge timing issue after BOOT.
+# The disc swap sequence requires Ctrl+F4 (not yet wired in Lua).
+sequence = [
+    { wait = "Augra Disk Tools Test -- DISK 1", type = "" },
+    { wait = "Augra Disk Tools Test -- DISK 1", action = "swap:2" },
+    { wait = "Augra Disk Tools Test -- DISK 2", type = "" },
+    { wait = "Augra Disk Tools Test -- DISK 2", action = "swap:3" },
+    { wait = "Augra Disk Tools Test -- DISK 3", type = "" },
+]
+
+[verify]
+# Booter has no filesystem output to verify.
+files = []
+
+[capture]
+screenshot_at = [0, 2, 4]

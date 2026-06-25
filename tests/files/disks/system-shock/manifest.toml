@@ -1,0 +1,25 @@
+[game]
+name = "System Shock"
+slug = "system-shock"
+media = "cdrom-iso"
+license = "commercial"
+
+[discs]
+images = ["System Shock (1994)(Electronic Arts - Origin)(M3).iso"]
+
+[installer]
+path = "INSTALL.BAT"
+source_drive = "D"
+target_drive = "C"
+
+[prompts]
+# TODO: record actual prompts by running the installer
+sequence = [
+    { wait = "Install", type = "" },
+]
+
+[verify]
+files = ["C:\\SHOCK\\SSHOCK.EXE"]
+
+[capture]
+screenshot_at = [0]

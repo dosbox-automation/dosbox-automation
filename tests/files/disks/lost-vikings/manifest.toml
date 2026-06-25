@@ -1,0 +1,25 @@
+[game]
+name = "The Lost Vikings"
+slug = "lost-vikings"
+media = "floppy"
+license = "commercial"
+
+[discs]
+images = ["disk1.img"]
+
+[installer]
+path = "INSTALL.EXE"
+source_drive = "A"
+target_drive = "C"
+
+[prompts]
+# TODO: record actual prompts by running the installer
+sequence = [
+    { wait = "Install", type = "C:\\VIKINGS" },
+]
+
+[verify]
+files = ["C:\\VIKINGS\\VIKINGS.EXE"]
+
+[capture]
+screenshot_at = [0]
