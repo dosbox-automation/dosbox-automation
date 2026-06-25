@@ -5,7 +5,9 @@
 #include "lua/lua_coroutine.h"
 #include "lua/lua_engine.h"
 
+#include <chrono>
 #include <string>
+#include <thread>
 
 #include <gtest/gtest.h>
 
@@ -111,13 +113,12 @@ TEST_F(LuaCoroutineTest, ScriptErrorReportsMessage)
 	auto state = coroutine.DispatchFrame(1);
 	EXPECT_EQ(state, Lua::ScriptState::Error);
 	EXPECT_NE(coroutine.ErrorMessage().find("deliberate error"),
-	           std::string::npos);
+	          std::string::npos);
 }
 
 TEST_F(LuaCoroutineTest, StopAbortsRunningScript)
 {
-	engine.LoadScript("while true do dosbox.wait_frames(1) end",
-	                  "stop-test");
+	engine.LoadScript("while true do dosbox.wait_frames(1) end", "stop-test");
 	coroutine.Start();
 
 	coroutine.DispatchFrame(1);
@@ -163,8 +164,7 @@ TEST_F(LuaCoroutineTest, WaitFramesNegativeIsError)
 
 	auto state = coroutine.DispatchFrame(1);
 	EXPECT_EQ(state, Lua::ScriptState::Error);
-	EXPECT_NE(coroutine.ErrorMessage().find("non-negative"),
-	           std::string::npos);
+	EXPECT_NE(coroutine.ErrorMessage().find("non-negative"), std::string::npos);
 }
 
 TEST_F(LuaCoroutineTest, SequentialScriptsWork)
@@ -185,13 +185,80 @@ TEST_F(LuaCoroutineTest, SequentialScriptsWork)
 	EXPECT_EQ(state, Lua::ScriptState::Completed);
 }
 
+// -- Off-frame wall-deadline reaper (aug-5wu4) --
+
+TEST_F(LuaCoroutineTest, ReapNoOpWhenNotYielded)
+{
+	// Nothing is yielded, so the reaper must do nothing and not crash.
+	EXPECT_EQ(coroutine.ReapStalledWaits(), Lua::ScriptState::Idle);
+}
+
+TEST_F(LuaCoroutineTest, ReapTimesOutWaitForTextWhenFramesStall)
+{
+	// A large frame timeout means only the wall deadline can end this wait.
+	// After the script yields we stop dispatching frames (a render stall);
+	// the frame path can no longer fire, so the off-frame reaper must.
+	coroutine.SetWallCeiling(std::chrono::milliseconds(5));
+	engine.LoadScript("dosbox.wait_for_text('NEVERAPPEARS', 1000000)\n",
+	                  "reap-wft");
+	coroutine.Start();
+
+	EXPECT_EQ(coroutine.DispatchFrame(1), Lua::ScriptState::Yielded);
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+	// No further DispatchFrame: frames have stalled. The reaper resumes the
+	// script with a false result, which then runs to completion.
+	EXPECT_EQ(coroutine.ReapStalledWaits(), Lua::ScriptState::Completed);
+}
+
+TEST_F(LuaCoroutineTest, ReapTimesOutTypeWhenFramesStall)
+{
+	coroutine.SetWallCeiling(std::chrono::milliseconds(5));
+	engine.LoadScript("dosbox.type('hi')\n", "reap-type");
+	coroutine.Start();
+
+	EXPECT_EQ(coroutine.DispatchFrame(1), Lua::ScriptState::Yielded);
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+	EXPECT_EQ(coroutine.ReapStalledWaits(), Lua::ScriptState::Completed);
+}
+
+TEST_F(LuaCoroutineTest, ReapLeavesWaitForTextAloneBeforeDeadline)
+{
+	// With frames stalled but the wall deadline far off, the reaper must
+	// not prematurely time out a legitimately waiting script.
+	coroutine.SetWallCeiling(std::chrono::seconds(30));
+	engine.LoadScript("dosbox.wait_for_text('NEVERAPPEARS', 1000000)\n",
+	                  "reap-early");
+	coroutine.Start();
+
+	EXPECT_EQ(coroutine.DispatchFrame(1), Lua::ScriptState::Yielded);
+	EXPECT_EQ(coroutine.ReapStalledWaits(), Lua::ScriptState::Yielded);
+}
+
+TEST_F(LuaCoroutineTest, ReapDoesNotTouchWaitFrames)
+{
+	// wait_frames has no wall ceiling, so even a tiny ceiling plus a sleep
+	// must leave it yielded; that stall is the frame path's concern.
+	coroutine.SetWallCeiling(std::chrono::milliseconds(1));
+	engine.LoadScript("dosbox.wait_frames(100)\n", "reap-frames");
+	coroutine.Start();
+
+	EXPECT_EQ(coroutine.DispatchFrame(1), Lua::ScriptState::Yielded);
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+	EXPECT_EQ(coroutine.ReapStalledWaits(), Lua::ScriptState::Yielded);
+}
+
 TEST_F(LuaCoroutineTest, ScriptStateNames)
 {
 	EXPECT_STREQ(Lua::ScriptStateName(Lua::ScriptState::Idle), "idle");
 	EXPECT_STREQ(Lua::ScriptStateName(Lua::ScriptState::Running), "running");
 	EXPECT_STREQ(Lua::ScriptStateName(Lua::ScriptState::Yielded), "yielded");
-	EXPECT_STREQ(Lua::ScriptStateName(Lua::ScriptState::Completed),
-	             "completed");
+	EXPECT_STREQ(Lua::ScriptStateName(Lua::ScriptState::Completed), "completed");
 	EXPECT_STREQ(Lua::ScriptStateName(Lua::ScriptState::Error), "error");
 }
 

@@ -28,12 +28,10 @@ ScriptManager& ScriptManager::Instance()
 	return instance;
 }
 
-void ScriptManager::DispatchFrame(const uint64_t frame_number)
+void ScriptManager::ReportStateTransition(const uint64_t frame_number,
+                                          const ScriptState prev_state,
+                                          const ScriptState new_state)
 {
-	const auto prev_state = coroutine.State();
-	coroutine.DispatchFrame(frame_number);
-	const auto new_state = coroutine.State();
-
 	const bool running = (new_state == ScriptState::Running ||
 	                      new_state == ScriptState::Yielded);
 	OSD::OsdManager::Instance().SetIcon(OSD::IconId::ScriptRunning, running);
@@ -53,6 +51,20 @@ void ScriptManager::DispatchFrame(const uint64_t frame_number)
 		        params.name.c_str(),
 		        ScriptStateName(new_state));
 	}
+}
+
+void ScriptManager::DispatchFrame(const uint64_t frame_number)
+{
+	const auto prev_state = coroutine.State();
+	coroutine.DispatchFrame(frame_number);
+	ReportStateTransition(frame_number, prev_state, coroutine.State());
+}
+
+void ScriptManager::ReapStalledWaits()
+{
+	const auto prev_state = coroutine.State();
+	coroutine.ReapStalledWaits();
+	ReportStateTransition(coroutine.CurrentFrame(), prev_state, coroutine.State());
 }
 
 // -- ScriptRateLimiter --
@@ -351,4 +363,9 @@ void LuaStatusCommand::Get(const httplib::Request&, httplib::Response& res)
 void LuaDispatchFrame(const uint64_t frame_number)
 {
 	Lua::ScriptManager::Instance().DispatchFrame(frame_number);
+}
+
+void LuaReapStalledWaits()
+{
+	Lua::ScriptManager::Instance().ReapStalledWaits();
 }

@@ -6,6 +6,7 @@
 #include "lua/lua_api.h"
 
 #include "hardware/input/keyboard.h"
+#include "misc/logging.h"
 
 #include <algorithm>
 #include <cctype>
@@ -15,12 +16,6 @@ extern "C" {
 #include <lauxlib.h>
 #include <lua.h>
 }
-
-namespace {
-// Safety ceiling for a yielded wait. A guest that never drains the keyboard
-// buffer (or frames that have stalled) must not hang the script forever.
-constexpr auto WaitWallCeiling = std::chrono::seconds(30);
-} // namespace
 
 namespace Lua {
 
@@ -82,7 +77,7 @@ void LuaCoroutine::SetWaitForText(const std::string& pattern,
 	wait_text_pattern    = pattern;
 	wait_text_ignorecase = ignorecase;
 	wait_text_deadline   = deadline;
-	wait_text_wall_deadline = std::chrono::steady_clock::now() + WaitWallCeiling;
+	wait_text_wall_deadline = std::chrono::steady_clock::now() + wall_ceiling;
 
 	if (ignorecase) {
 		wait_text_pattern_lower = pattern;
@@ -102,7 +97,7 @@ void LuaCoroutine::QueueTypeInput(std::vector<KeyStroke> strokes)
 	injecting_type = true;
 	pending_keys.assign(std::make_move_iterator(strokes.begin()),
 	                    std::make_move_iterator(strokes.end()));
-	type_wall_deadline = std::chrono::steady_clock::now() + WaitWallCeiling;
+	type_wall_deadline = std::chrono::steady_clock::now() + wall_ceiling;
 }
 
 bool LuaCoroutine::DrainPendingKeys()
@@ -282,9 +277,7 @@ ScriptState LuaCoroutine::DispatchFrame(const uint64_t frame_number)
 			// Done, or the safety ceiling elapsed with the guest
 			// never reading keys. Drop any remainder and resume
 			// type(), which yielded with no continuation.
-			injecting_type = false;
-			pending_keys.clear();
-			return ResumeWith(0);
+			return FinishTypeInjection();
 		}
 
 		if (current_frame < wait_until_frame) {
@@ -298,6 +291,51 @@ ScriptState LuaCoroutine::DispatchFrame(const uint64_t frame_number)
 	}
 
 	return ResumeWith(0);
+}
+
+ScriptState LuaCoroutine::FinishTypeInjection()
+{
+	injecting_type = false;
+	pending_keys.clear();
+	return ResumeWith(0);
+}
+
+ScriptState LuaCoroutine::ReapStalledWaits()
+{
+	if (state != ScriptState::Yielded) {
+		return state;
+	}
+
+	// wait_frames has no wall ceiling; only wait_for_text/type() do.
+	if (!waiting_for_text && !injecting_type) {
+		return state;
+	}
+
+	const auto now = std::chrono::steady_clock::now();
+
+	// Only the wall ceiling here; the frame deadline is DispatchFrame's job
+	// and current_frame is frozen during the stall this reaper breaks.
+	if (waiting_for_text) {
+		if (now < wait_text_wall_deadline) {
+			return state;
+		}
+		LOG_MSG("LUA: wait_for_text('%s') wall ceiling elapsed at frame "
+		        "%llu; resuming with timeout (off-frame reaper)",
+		        wait_text_pattern.c_str(),
+		        static_cast<unsigned long long>(current_frame));
+		waiting_for_text = false;
+		lua_pushboolean(coroutine, false);
+		return ResumeWith(1);
+	}
+
+	if (now < type_wall_deadline) {
+		return state;
+	}
+	LOG_MSG("LUA: type() wall ceiling elapsed at frame %llu with %zu keys "
+	        "undelivered; resuming (off-frame reaper)",
+	        static_cast<unsigned long long>(current_frame),
+	        pending_keys.size());
+	return FinishTypeInjection();
 }
 
 void LuaCoroutine::Stop()

@@ -44,8 +44,16 @@ public:
 
 	void DispatchFrame(uint64_t frame_number);
 
+	// Off-frame counterpart to DispatchFrame: times out a yielded wait/type
+	// on its wall deadline when frames have stalled.
+	void ReapStalledWaits();
+
 private:
 	ScriptManager() = default;
+
+	// Shared post-step bookkeeping: OSD running icon and state transition log.
+	void ReportStateTransition(uint64_t frame_number, ScriptState prev_state,
+	                           ScriptState new_state);
 
 	LuaEngine engine;
 	LuaCoroutine coroutine{engine};
@@ -110,5 +118,6 @@ public:
 } // namespace Lua
 
 void LuaDispatchFrame(uint64_t frame_number);
+void LuaReapStalledWaits();
 
 #endif

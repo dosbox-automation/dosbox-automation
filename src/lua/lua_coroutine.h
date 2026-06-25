@@ -42,6 +42,11 @@ public:
 
 	bool Start(DebugLog* debug_log = nullptr);
 	ScriptState DispatchFrame(uint64_t frame_number);
+
+	// Off-frame wall-clock timeout for a yielded wait/type, for when frames
+	// have stalled and DispatchFrame no longer runs. Call between frames.
+	ScriptState ReapStalledWaits();
+
 	void Stop();
 
 	ScriptState State() const
@@ -66,6 +71,12 @@ public:
 	// the queue drains; type() is async by design.
 	void QueueTypeInput(std::vector<KeyStroke> strokes);
 
+	// Override the wall-clock ceiling (default 30s); tests use a short value.
+	void SetWallCeiling(std::chrono::steady_clock::duration ceiling)
+	{
+		wall_ceiling = ceiling;
+	}
+
 private:
 	LuaEngine& engine;
 	DebugLog* debug_log       = nullptr;
@@ -89,9 +100,19 @@ private:
 	std::deque<KeyStroke> pending_keys                       = {};
 	std::chrono::steady_clock::time_point type_wall_deadline = {};
 
+	// Wall-clock ceiling for a yielded wait/type so a stalled guest or
+	// frame clock can't hang the script. Enforced by DispatchFrame and
+	// ReapStalledWaits.
+	static constexpr auto DefaultWallCeiling = std::chrono::seconds(30);
+	std::chrono::steady_clock::duration wall_ceiling = DefaultWallCeiling;
+
 	void RegisterApi();
 	void Cleanup();
 	bool CheckWaitForText();
+
+	// Drop queued type() keys and resume the script. Shared by the
+	// completion path and the reaper.
+	ScriptState FinishTypeInjection();
 
 	// Inject as many queued keystrokes as currently fit in the keyboard
 	// buffer, keeping each stroke's press/release together so a key is

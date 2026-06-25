@@ -110,6 +110,10 @@ void Null_Init([[maybe_unused]] Section *sec) {
 // forward declaration
 static void increase_ticks();
 
+// Times out a yielded Lua wait/type on its wall clock off the frame path,
+// kept serviced by the PIC heartbeat when frames stall. In lua_bridge_commands.cpp.
+void LuaReapStalledWaits();
+
 static Bitu normal_loop()
 {
 	Bits ret;
@@ -118,6 +122,7 @@ static Bitu normal_loop()
 		if (PIC_RunQueue()) {
 			if (WEBSERVER_IsEnabled()) {
 				Webserver::Bridge::Instance().ProcessRequests();
+				LuaReapStalledWaits();
 			}
 
 			ret = (*cpudecoder)();
