@@ -177,6 +177,22 @@ def test_osd_clear_does_not_error(dosbox):
     assert out["ok"] == "yes"
 
 
+def test_stuck_script_does_not_poison_fixture(dosbox):
+    # A script that never finishes must be stopped when the client gives up, or
+    # the shared module fixture is poisoned: the next load returns 400 "a
+    # script is already running" and every later test in the file cascades.
+    time.sleep(2.1)  # rate limiter
+    r = dosbox.script_load(
+        "dosbox.wait_for_text('NEVERSHOWS_ZZZ', 100000)\n", name="hang-test")
+    assert r.status_code == 200
+    assert dosbox.script_start().status_code == 200
+    with pytest.raises(TimeoutError):
+        dosbox.wait_script_done(timeout=3)
+    # wait_script_done stopped the stuck script, so a fresh load works at once.
+    out = run_script(dosbox, "dosbox.output.ok = 'recovered'\n")
+    assert out["ok"] == "recovered"
+
+
 def test_mem_read_byte_returns_integer(dosbox):
     # Read from BIOS data area (segment 0x0040, offset 0x0010) which
     # contains the equipment word. Should be a non-negative integer.

@@ -282,6 +282,14 @@ class DosboxClient:
                 if data["state"] in ("completed", "error"):
                     return data
             time.sleep(0.2)
+        # Stop the still-running script before giving up. A module-scoped
+        # fixture is shared across tests, so a script left running would make
+        # every later script_load return 400 "a script is already running" and
+        # cascade failures through the rest of the file.
+        try:
+            self.script_stop()
+        except requests.RequestException:
+            pass
         raise TimeoutError(f"Script did not finish within {timeout}s")
 
     # --- Video Capture ---
