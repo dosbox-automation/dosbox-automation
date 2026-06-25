@@ -64,7 +64,9 @@ def test_screen_text_cga_40col(dosbox_e2e):
         "dosbox.type('mode co40')\n"
         "dosbox.key('KBD_enter', true)\n"
         "dosbox.key('KBD_enter', false)\n"
-        "dosbox.wait_for_text('Resident', 5000)\n"
+        # mode co40 switches to 40 columns but prints nothing, so there is no
+        # text to wait on. Settle a second for the mode change, then go on.
+        "dosbox.wait_frames(60)\n"
         "dosbox.type('echo TST40COL')\n"
         "dosbox.key('KBD_enter', true)\n"
         "dosbox.key('KBD_enter', false)\n"
