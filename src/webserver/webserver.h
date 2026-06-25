@@ -69,6 +69,11 @@ static T num_param(const httplib::Request& req, Source src, const std::string& n
 
 void send_json(httplib::Response& res, const nlohmann::json& j);
 
+// True when a request may bypass the bearer-token check: a GET/HEAD for one of
+// the fixed documentation assets (landing page, API explorer, openapi spec,
+// vendored Swagger UI). Exact-match only, so no traversal or token file leaks.
+bool IsPublicDocPath(const std::string& method, const std::string& path);
+
 } // namespace Webserver
 
 void WEBSERVER_Init();

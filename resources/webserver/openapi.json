@@ -1,0 +1,965 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "dosbox-automation control API",
+    "version": "0.84-da1",
+    "description": "REST API for programmatic control of dosbox-automation. Automate installations, drive games, capture frames, and record or replay input.\n\nThe API is intended for local automation. By default the server binds to 127.0.0.1 and is not designed to be exposed to untrusted networks. Every endpoint under /api/v1 requires a bearer token; the documentation assets (this page, the landing page, openapi.json) are served without a token so the docs are browsable. Use the Authorize button to paste your token before running a request.\n\nAll endpoints read or write internal state atomically between emulated CPU steps. They never run during native DOS functions or interrupts, so the internal data structures are always consistent.",
+    "license": {
+      "name": "GPL-2.0-or-later"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "The running emulator instance (default http://localhost:8386)."
+    }
+  ],
+  "tags": [
+    {"name": "Status", "description": "Emulator and program state."},
+    {"name": "Input", "description": "Keyboard, mouse, and wheel injection."},
+    {"name": "Recording", "description": "Capture and replay of input sequences."},
+    {"name": "Video", "description": "Frame capture and metadata."},
+    {"name": "Capture", "description": "ZMBV video recording control."},
+    {"name": "Drive", "description": "Disk image mounting and disk swaps."},
+    {"name": "Script", "description": "Lua automation scripts."},
+    {"name": "CPU", "description": "Register access."},
+    {"name": "Memory", "description": "Memory read, write, allocate, and free."},
+    {"name": "DOS", "description": "Internal DOS data structures."}
+  ],
+  "security": [
+    {"bearerAuth": []}
+  ],
+  "paths": {
+    "/api/v1/status": {
+      "get": {
+        "tags": ["Status"],
+        "summary": "Overall emulator status",
+        "operationId": "getStatus",
+        "responses": {
+          "200": {
+            "description": "Current status.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/Status"},
+                "example": {
+                  "running": true,
+                  "shutdown_requested": false,
+                  "is_booted": false,
+                  "is_shell": true,
+                  "program": "COMMAND",
+                  "canonical_name": "COMMAND.COM"
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/program/state": {
+      "get": {
+        "tags": ["Status"],
+        "summary": "Currently running program",
+        "operationId": "getProgramState",
+        "responses": {
+          "200": {
+            "description": "Running program information.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ProgramState"},
+                "example": {
+                  "segment_name": "DOOM",
+                  "canonical_name": "DOOM.EXE",
+                  "is_shell": false,
+                  "is_booted": false
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/dosbox/info": {
+      "get": {
+        "tags": ["Status"],
+        "summary": "DOSBox version",
+        "operationId": "getInfo",
+        "responses": {
+          "200": {
+            "description": "Version string.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {"version": {"type": "string"}}
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/control/shutdown": {
+      "post": {
+        "tags": ["Status"],
+        "summary": "Request a graceful shutdown",
+        "operationId": "controlShutdown",
+        "responses": {
+          "200": {"description": "Shutdown requested."},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/dosbox/shutdown": {
+      "post": {
+        "tags": ["Status"],
+        "summary": "Request a graceful shutdown (alias of /control/shutdown)",
+        "operationId": "dosboxShutdown",
+        "responses": {
+          "200": {"description": "Shutdown requested."},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/cpu/state": {
+      "get": {
+        "tags": ["CPU"],
+        "summary": "Read all CPU registers",
+        "operationId": "getCpuState",
+        "responses": {
+          "200": {
+            "description": "Register file.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "registers": {"$ref": "#/components/schemas/Registers"}
+                  }
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/dos/internals": {
+      "get": {
+        "tags": ["DOS"],
+        "summary": "Pointers to internal DOS data structures",
+        "operationId": "getDosInternals",
+        "responses": {
+          "200": {
+            "description": "List of lists, DOS swappable area, and first shell pointers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "listOfLists": {"type": "integer"},
+                    "dosSwappableArea": {"type": "integer"},
+                    "firstShell": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/memory/allocate": {
+      "post": {
+        "tags": ["Memory"],
+        "summary": "Allocate memory",
+        "operationId": "allocateMemory",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/MemoryAllocate"},
+              "example": {"size": 4096, "area": "CONV", "strategy": "BEST_FIT"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Allocated block address.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {"addr": {"type": "integer", "description": "Physical address."}}
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "503": {"description": "Allocation failed."}
+        }
+      }
+    },
+    "/api/v1/memory/free": {
+      "post": {
+        "tags": ["Memory"],
+        "summary": "Free allocated memory",
+        "operationId": "freeMemory",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["addr"],
+                "properties": {"addr": {"type": "integer", "description": "Physical address."}}
+              },
+              "example": {"addr": 1048576}
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Freed."},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/memory/{offset}/{len}": {
+      "get": {
+        "tags": ["Memory"],
+        "summary": "Read memory at an offset",
+        "operationId": "readMemory",
+        "description": "Reads `len` bytes from the given address. Parameters accept hex strings when prefixed with `0x`. The default response is raw binary; send `Accept: application/json` to get the data Base64-encoded in JSON.",
+        "parameters": [
+          {"$ref": "#/components/parameters/MemoryOffset"},
+          {"$ref": "#/components/parameters/MemoryLen"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Memory contents.",
+            "content": {
+              "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {"data": {"type": "string", "description": "Base64-encoded bytes."}}
+                }
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/memory/{segment}/{offset}/{len}": {
+      "get": {
+        "tags": ["Memory"],
+        "summary": "Read memory at a segment:offset",
+        "operationId": "readMemorySegmented",
+        "description": "Same as the unsegmented read. The segment may be a segment register name or a number.",
+        "parameters": [
+          {"$ref": "#/components/parameters/MemorySegment"},
+          {"$ref": "#/components/parameters/MemoryOffset"},
+          {"$ref": "#/components/parameters/MemoryLen"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Memory contents.",
+            "content": {
+              "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {"data": {"type": "string", "description": "Base64-encoded bytes."}}
+                }
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/memory/{offset}": {
+      "put": {
+        "tags": ["Memory"],
+        "summary": "Write memory at an offset",
+        "operationId": "writeMemory",
+        "description": "Writes to the given address. Accepts raw bytes with `Content-Type: application/octet-stream` or a JSON object with a Base64 `data` field. The `If-Match` header (Base64) performs an atomic compare-and-swap and returns 412 when the current bytes do not match.",
+        "parameters": [
+          {"$ref": "#/components/parameters/MemoryOffset"},
+          {"$ref": "#/components/parameters/IfMatch"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {"data": {"type": "string", "description": "Base64-encoded bytes."}}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Written."},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "412": {"description": "If-Match precondition failed."}
+        }
+      }
+    },
+    "/api/v1/memory/{segment}/{offset}": {
+      "put": {
+        "tags": ["Memory"],
+        "summary": "Write memory at a segment:offset",
+        "operationId": "writeMemorySegmented",
+        "parameters": [
+          {"$ref": "#/components/parameters/MemorySegment"},
+          {"$ref": "#/components/parameters/MemoryOffset"},
+          {"$ref": "#/components/parameters/IfMatch"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {"data": {"type": "string", "description": "Base64-encoded bytes."}}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Written."},
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "412": {"description": "If-Match precondition failed."}
+        }
+      }
+    },
+    "/api/v1/input/sequence": {
+      "post": {
+        "tags": ["Input"],
+        "summary": "Inject a sequence of input events",
+        "operationId": "postInputSequence",
+        "description": "Events with `t > 0` are scheduled via the PIC timer for cycle-accurate delivery. Returns 400 for unknown key names, event types, or button names.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/InputSequence"},
+              "example": {
+                "events": [
+                  {"t": 0, "type": "key", "key": "KBD_enter", "pressed": true},
+                  {"t": 50, "type": "key", "key": "KBD_enter", "pressed": false},
+                  {"type": "mouse_move", "x_rel": 5.0, "y_rel": -3.0},
+                  {"type": "mouse_button", "button": "left", "pressed": true},
+                  {"type": "mouse_wheel", "delta": 1.0}
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Events scheduled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string"},
+                    "events_scheduled": {"type": "integer"}
+                  }
+                },
+                "example": {"status": "ok", "events_scheduled": 5}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/input/record/start": {
+      "post": {
+        "tags": ["Recording"],
+        "summary": "Start recording input",
+        "operationId": "recordStart",
+        "responses": {
+          "200": {"description": "Recording started."},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "409": {"description": "Already recording."}
+        }
+      }
+    },
+    "/api/v1/input/record/pause": {
+      "post": {
+        "tags": ["Recording"],
+        "summary": "Toggle pause on the active recording",
+        "operationId": "recordPause",
+        "responses": {
+          "200": {"description": "Pause toggled."},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "409": {"description": "Not recording."}
+        }
+      }
+    },
+    "/api/v1/input/record/stop": {
+      "post": {
+        "tags": ["Recording"],
+        "summary": "Stop recording and return captured events",
+        "operationId": "recordStop",
+        "description": "The returned events can be replayed via /api/v1/input/sequence.",
+        "responses": {
+          "200": {
+            "description": "Captured events.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/RecordingResult"},
+                "example": {
+                  "event_count": 42,
+                  "duration_ms": 5234.5,
+                  "events": [
+                    {"t": 0.0, "type": "key", "key": "KBD_a", "pressed": true}
+                  ]
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "409": {"description": "Not recording."}
+        }
+      }
+    },
+    "/api/v1/input/record/status": {
+      "get": {
+        "tags": ["Recording"],
+        "summary": "Query recording state",
+        "operationId": "recordStatus",
+        "responses": {
+          "200": {
+            "description": "Recording state.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/RecordingStatus"},
+                "example": {
+                  "recording": true,
+                  "paused": false,
+                  "event_count": 42,
+                  "duration_ms": 5234.5
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/video/frame": {
+      "get": {
+        "tags": ["Video"],
+        "summary": "Capture the current video frame",
+        "operationId": "getFrame",
+        "description": "Returns the current rendered frame. The format is chosen by the `format` query parameter or the `Accept` header. This is the clean emulator output and does not include the on-screen automation overlay (OSD). Returns 503 if no frame has been rendered yet.\n\nThe raw format is a binary header (uint32 width, uint32 height, int32 pitch, uint8 pixel_format, uint16 palette_count) followed by palette data when paletted, then the image data.",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {"type": "string", "enum": ["jpeg", "png", "raw"], "default": "jpeg"}
+          },
+          {
+            "name": "quality",
+            "in": "query",
+            "description": "JPEG quality, 1 to 100.",
+            "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 98}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encoded frame.",
+            "content": {
+              "image/jpeg": {"schema": {"type": "string", "format": "binary"}},
+              "image/png": {"schema": {"type": "string", "format": "binary"}},
+              "application/octet-stream": {"schema": {"type": "string", "format": "binary"}}
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "503": {"description": "No frame available yet."}
+        }
+      }
+    },
+    "/api/v1/video/frame/info": {
+      "get": {
+        "tags": ["Video"],
+        "summary": "Frame metadata without image data",
+        "operationId": "getFrameInfo",
+        "responses": {
+          "200": {
+            "description": "Frame metadata.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/FrameInfo"},
+                "example": {
+                  "width": 720,
+                  "height": 400,
+                  "pixel_format": "BGRX32_ByteArray",
+                  "pitch": 2880,
+                  "is_paletted": false
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "503": {"description": "No frame available yet."}
+        }
+      }
+    },
+    "/api/v1/drive/swap": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Mount or swap a disk image on a drive",
+        "operationId": "driveSwap",
+        "description": "Mount or swap a floppy or hard disk image on a drive letter. For multi-disk installs, call this when the installer prompts for the next disk.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/DriveSwap"},
+              "example": {"drive": "A", "image": "/path/to/disk2.img"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mounted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string"},
+                    "drive": {"type": "string"}
+                  }
+                },
+                "example": {"status": "ok", "drive": "A"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "403": {"description": "Mount blocked by policy (mounts locked or path not allowed)."}
+        }
+      }
+    },
+    "/api/v1/mount/lock": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Lock mounting",
+        "operationId": "mountLock",
+        "responses": {
+          "200": {
+            "description": "Locked.",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"status": {"type": "string"}}},
+                "example": {"status": "locked"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      },
+      "get": {
+        "tags": ["Drive"],
+        "summary": "Query mount lock state",
+        "operationId": "mountLockStatus",
+        "responses": {
+          "200": {
+            "description": "Lock state.",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"locked": {"type": "boolean"}}},
+                "example": {"locked": false}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/script/load": {
+      "post": {
+        "tags": ["Script"],
+        "summary": "Load a Lua automation script",
+        "operationId": "scriptLoad",
+        "description": "The request body is the Lua source. Loading replaces any previously loaded script.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "description": "A name for the script, used in status and logs.",
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "seed",
+            "in": "query",
+            "description": "Optional PRNG seed for deterministic runs.",
+            "schema": {"type": "integer"}
+          },
+          {
+            "name": "debug",
+            "in": "query",
+            "description": "Enable trace logging for this script.",
+            "schema": {"type": "boolean"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/plain": {
+              "schema": {"type": "string"},
+              "example": "dosbox.type('dir')\ndosbox.key('KBD_enter', true)\ndosbox.key('KBD_enter', false)\n"
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Loaded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string"},
+                    "name": {"type": "string"}
+                  }
+                },
+                "example": {"status": "loaded", "name": "demo"}
+              }
+            }
+          },
+          "400": {"$ref": "#/components/responses/BadRequest"},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/script/start": {
+      "post": {
+        "tags": ["Script"],
+        "summary": "Start the loaded script",
+        "operationId": "scriptStart",
+        "responses": {
+          "200": {
+            "description": "Started.",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"status": {"type": "string"}}},
+                "example": {"status": "started"}
+              }
+            }
+          },
+          "400": {"description": "No script loaded, or already running."},
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/script/stop": {
+      "post": {
+        "tags": ["Script"],
+        "summary": "Stop the running script",
+        "operationId": "scriptStop",
+        "responses": {
+          "200": {
+            "description": "Stopped.",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"status": {"type": "string"}}},
+                "example": {"status": "stopped"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/script/status": {
+      "get": {
+        "tags": ["Script"],
+        "summary": "Script state and output",
+        "operationId": "scriptStatus",
+        "responses": {
+          "200": {
+            "description": "Script state. `output` mirrors the script's dosbox.output table when present.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ScriptStatus"},
+                "example": {"state": "running", "frame": 120, "name": "demo"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
+    "/api/v1/capture/video/start": {
+      "post": {
+        "tags": ["Capture"],
+        "summary": "Start ZMBV video capture",
+        "operationId": "captureStart",
+        "responses": {
+          "200": {
+            "description": "Recording.",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"status": {"type": "string"}}},
+                "example": {"status": "recording"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "500": {"description": "Capture could not start."}
+        }
+      }
+    },
+    "/api/v1/capture/video/stop": {
+      "post": {
+        "tags": ["Capture"],
+        "summary": "Stop ZMBV video capture",
+        "operationId": "captureStop",
+        "responses": {
+          "200": {
+            "description": "Stopped.",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"status": {"type": "string"}}},
+                "example": {"status": "stopped"}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "500": {"description": "Capture could not stop."}
+        }
+      }
+    },
+    "/api/v1/capture/video/status": {
+      "get": {
+        "tags": ["Capture"],
+        "summary": "Query capture state",
+        "operationId": "captureStatus",
+        "responses": {
+          "200": {
+            "description": "Capture state.",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"capturing": {"type": "boolean"}}},
+                "example": {"capturing": true}
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The API token printed to the log at startup (or written to the token file). Send it as `Authorization: Bearer <token>`."
+      }
+    },
+    "parameters": {
+      "MemorySegment": {
+        "name": "segment",
+        "in": "path",
+        "required": true,
+        "description": "Segment register name or a number. Hex allowed with a 0x prefix.",
+        "schema": {"type": "string"}
+      },
+      "MemoryOffset": {
+        "name": "offset",
+        "in": "path",
+        "required": true,
+        "description": "Address offset. Hex allowed with a 0x prefix.",
+        "schema": {"type": "string"}
+      },
+      "MemoryLen": {
+        "name": "len",
+        "in": "path",
+        "required": true,
+        "description": "Number of bytes to read. Hex allowed with a 0x prefix.",
+        "schema": {"type": "string"}
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "required": false,
+        "description": "Base64-encoded expected current bytes for an atomic compare-and-swap.",
+        "schema": {"type": "string"}
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Missing or invalid bearer token.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/Error"}
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Invalid request parameters or body.",
+        "content": {
+          "application/json": {
+            "schema": {"$ref": "#/components/schemas/Error"}
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {"error": {"type": "string"}}
+      },
+      "Status": {
+        "type": "object",
+        "properties": {
+          "running": {"type": "boolean"},
+          "shutdown_requested": {"type": "boolean"},
+          "is_booted": {"type": "boolean"},
+          "is_shell": {"type": "boolean"},
+          "program": {"type": "string"},
+          "canonical_name": {"type": "string"}
+        }
+      },
+      "ProgramState": {
+        "type": "object",
+        "properties": {
+          "segment_name": {"type": "string"},
+          "canonical_name": {"type": "string"},
+          "is_shell": {"type": "boolean"},
+          "is_booted": {"type": "boolean"}
+        }
+      },
+      "Registers": {
+        "type": "object",
+        "description": "32-bit general registers, EIP, flags, and 16-bit segment registers.",
+        "properties": {
+          "eax": {"type": "integer"},
+          "ebx": {"type": "integer"},
+          "ecx": {"type": "integer"},
+          "edx": {"type": "integer"},
+          "esi": {"type": "integer"},
+          "edi": {"type": "integer"},
+          "esp": {"type": "integer"},
+          "ebp": {"type": "integer"},
+          "eip": {"type": "integer"},
+          "flags": {"type": "integer"},
+          "cs": {"type": "integer"},
+          "ds": {"type": "integer"},
+          "es": {"type": "integer"},
+          "ss": {"type": "integer"},
+          "fs": {"type": "integer"},
+          "gs": {"type": "integer"}
+        }
+      },
+      "MemoryAllocate": {
+        "type": "object",
+        "required": ["size", "area", "strategy"],
+        "properties": {
+          "size": {"type": "integer", "description": "Bytes to allocate."},
+          "area": {"type": "string", "enum": ["CONV", "UMA", "XMS"]},
+          "strategy": {
+            "type": "string",
+            "enum": ["BEST_FIT", "FIRST_FIT", "LAST_FIT"],
+            "description": "The XMS allocator only supports BEST_FIT."
+          }
+        }
+      },
+      "InputEvent": {
+        "type": "object",
+        "description": "One input event. `type` selects which fields apply.",
+        "properties": {
+          "t": {"type": "integer", "description": "Delay in milliseconds before delivery. 0 is immediate."},
+          "type": {"type": "string", "enum": ["key", "mouse_move", "mouse_button", "mouse_wheel"]},
+          "key": {"type": "string", "description": "Key name, e.g. KBD_enter. Used by key events."},
+          "pressed": {"type": "boolean", "description": "Press (true) or release (false). Used by key and mouse_button events."},
+          "x_rel": {"type": "number", "description": "Relative X motion. Used by mouse_move."},
+          "y_rel": {"type": "number", "description": "Relative Y motion. Used by mouse_move."},
+          "button": {"type": "string", "enum": ["left", "right", "middle"], "description": "Used by mouse_button."},
+          "delta": {"type": "number", "description": "Wheel delta. Used by mouse_wheel."}
+        }
+      },
+      "InputSequence": {
+        "type": "object",
+        "required": ["events"],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/InputEvent"}
+          }
+        }
+      },
+      "RecordingResult": {
+        "type": "object",
+        "properties": {
+          "event_count": {"type": "integer"},
+          "duration_ms": {"type": "number"},
+          "events": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/InputEvent"}
+          }
+        }
+      },
+      "RecordingStatus": {
+        "type": "object",
+        "properties": {
+          "recording": {"type": "boolean"},
+          "paused": {"type": "boolean"},
+          "event_count": {"type": "integer"},
+          "duration_ms": {"type": "number"}
+        }
+      },
+      "FrameInfo": {
+        "type": "object",
+        "properties": {
+          "width": {"type": "integer"},
+          "height": {"type": "integer"},
+          "pixel_format": {"type": "string"},
+          "pitch": {"type": "integer"},
+          "is_paletted": {"type": "boolean"}
+        }
+      },
+      "DriveSwap": {
+        "type": "object",
+        "required": ["drive", "image"],
+        "properties": {
+          "drive": {"type": "string", "description": "Drive letter, e.g. A."},
+          "image": {"type": "string", "description": "Path to the disk image."}
+        }
+      },
+      "ScriptStatus": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": ["idle", "loaded", "running", "yielded", "completed", "error", "unknown"]
+          },
+          "frame": {"type": "integer"},
+          "name": {"type": "string"},
+          "error": {"type": "string", "description": "Present only when the script errored."},
+          "output": {"type": "object", "description": "The script's dosbox.output table, when set."}
+        }
+      }
+    }
+  }
+}

@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "webserver/private/auth.h"
+#include "webserver/webserver.h"
 
 #include <string>
 
 #include <gtest/gtest.h>
 
 using Webserver::ConstantTimeEquals;
+using Webserver::IsPublicDocPath;
 
 namespace {
 
@@ -87,6 +89,56 @@ TEST(WebserverAuth, EmbeddedNullBytesCompared)
 
 	auto c = a;
 	EXPECT_TRUE(ConstantTimeEquals(a, c));
+}
+
+// -- Documentation path allowlist (token bypass) --
+
+TEST(WebserverDocPath, AllowsDocAssetsForGet)
+{
+	for (const auto* p : {"/",
+	                      "/index.html",
+	                      "/style-index.css",
+	                      "/api.html",
+	                      "/openapi.json",
+	                      "/swagger-ui.css",
+	                      "/swagger-ui-bundle.js"}) {
+		EXPECT_TRUE(IsPublicDocPath("GET", p)) << p;
+		EXPECT_TRUE(IsPublicDocPath("HEAD", p)) << p;
+	}
+}
+
+TEST(WebserverDocPath, RejectsNonReadMethods)
+{
+	EXPECT_FALSE(IsPublicDocPath("POST", "/openapi.json"));
+	EXPECT_FALSE(IsPublicDocPath("PUT", "/index.html"));
+	EXPECT_FALSE(IsPublicDocPath("DELETE", "/"));
+	EXPECT_FALSE(IsPublicDocPath("OPTIONS", "/api.html"));
+}
+
+TEST(WebserverDocPath, NeverExposesTokenFile)
+{
+	EXPECT_FALSE(IsPublicDocPath("GET", "/api_token"));
+	EXPECT_FALSE(IsPublicDocPath("GET", "/.dosbox/api_token"));
+}
+
+TEST(WebserverDocPath, RejectsApiEndpoints)
+{
+	EXPECT_FALSE(IsPublicDocPath("GET", "/api/v1/status"));
+	EXPECT_FALSE(IsPublicDocPath("GET", "/api/v1/cpu/state"));
+}
+
+TEST(WebserverDocPath, RejectsTraversalAndTrickyVariants)
+{
+	// httplib hands us the already-decoded path; an exact-match allowlist
+	// fails closed on anything that is not byte-for-byte a known asset.
+	EXPECT_FALSE(IsPublicDocPath("GET", "/openapi.json/../api_token"));
+	EXPECT_FALSE(IsPublicDocPath("GET", "/../api_token"));
+	EXPECT_FALSE(IsPublicDocPath("GET", "/./index.html"));
+	EXPECT_FALSE(IsPublicDocPath("GET", "//index.html"));
+	EXPECT_FALSE(IsPublicDocPath("GET", "/index.html "));
+	EXPECT_FALSE(IsPublicDocPath("GET", "/INDEX.HTML"));
+	EXPECT_FALSE(IsPublicDocPath("GET", "/openapi.json?x=1"));
+	EXPECT_FALSE(IsPublicDocPath("GET", ""));
 }
 
 } // namespace

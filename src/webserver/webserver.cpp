@@ -85,6 +85,27 @@ static void error_handler(const httplib::Request&, httplib::Response& res,
 	send_json(res, j);
 }
 
+bool IsPublicDocPath(const std::string& method, const std::string& path)
+{
+	if (method != "GET" && method != "HEAD") {
+		return false;
+	}
+
+	// Exact match only. A prefix or normalized match would let
+	// "/openapi.json/../api_token" or an encoded traversal reach the config
+	// mount, which holds the API token file.
+	static const std::set<std::string> public_paths = {
+	        "/",
+	        "/index.html",
+	        "/style-index.css",
+	        "/api.html",
+	        "/openapi.json",
+	        "/swagger-ui.css",
+	        "/swagger-ui-bundle.js",
+	};
+	return public_paths.count(path) > 0;
+}
+
 static httplib::Server server;
 
 static void setup_api_handlers()
@@ -320,6 +341,12 @@ static void setup_security(const std::string& addr, int port,
 			res.status = httplib::StatusCode::Forbidden_403;
 			res.set_content("Forbidden", "text/plain");
 			return httplib::Server::HandlerResponse::Handled;
+		}
+
+		// Documentation assets are browsable without a token (Host
+		// check still applies). The /api/v1 endpoints below are not.
+		if (IsPublicDocPath(req.method, req.path)) {
+			return httplib::Server::HandlerResponse::Unhandled;
 		}
 
 		const auto token = extract_bearer_token(

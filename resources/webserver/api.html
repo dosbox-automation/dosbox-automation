@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dosbox-automation API explorer</title>
+    <link rel="stylesheet" href="./swagger-ui.css">
+    <style>
+        body { margin: 0; }
+        .topbar-note {
+            font-family: sans-serif;
+            font-size: 0.85rem;
+            padding: 0.6rem 1rem;
+            background: #1b1b1b;
+            color: #ddd;
+        }
+        .topbar-note a { color: #8ec; }
+    </style>
+</head>
+<body>
+    <div class="topbar-note">
+        Live API explorer. The /api/v1 calls need a token: click
+        <strong>Authorize</strong> and paste the token printed to the log at
+        startup. <a href="./index.html">Back to the overview</a>.
+    </div>
+    <div id="swagger-ui"></div>
+    <script src="./swagger-ui-bundle.js"></script>
+    <script>
+        window.addEventListener('load', function () {
+            window.ui = SwaggerUIBundle({
+                url: './openapi.json',
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [SwaggerUIBundle.presets.apis],
+                layout: 'BaseLayout'
+            });
+        });
+    </script>
+</body>
+</html>

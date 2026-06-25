@@ -279,6 +279,11 @@ RESOURCE FILES
                  License: Unicode, Inc. License Agreement
                  See licenses/UNICODE.txt
 
+  Swagger UI     API explorer for the REST docs (resources/webserver/)
+                 Copyright (c) SmartBear Software
+                 https://github.com/swagger-api/swagger-ui
+                 License: Apache-2.0 (licenses/Apache-2.0.txt)
+
 
 ================================================================================
 FONTS USED IN SPLASH SCREENS
