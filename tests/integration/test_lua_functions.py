@@ -61,9 +61,6 @@ def test_screen_text_returns_string(dosbox):
     assert out["len"] > 0
 
 
-@pytest.mark.skip(reason="type() drops keys past the i8042 buffer and "
-                         "wait_for_text stalls the shared fixture; "
-                         "re-enable once key pacing lands")
 def test_screen_text_contains_typed_content(dosbox):
     # Type a unique marker at the DOS prompt and verify screen_text
     # returns it. Uses wait_for_text for deterministic timing.
@@ -77,6 +74,21 @@ def test_screen_text_contains_typed_content(dosbox):
         "dosbox.output.has_marker = string.find(t, 'MARKER7Q3X') and 'yes' or 'no'\n"
     ), timeout=15)
     assert out["has_marker"] == "yes"
+
+
+def test_type_all_digits_echo(dosbox):
+    # End-to-end guard for the digit mapping. Every digit must reach the shell;
+    # the old arithmetic from KBD_0 turned e.g. '7' into 'u'.
+    out = run_script(dosbox, (
+        "dosbox.wait_frames(10)\n"
+        "dosbox.type('echo 0123456789')\n"
+        "dosbox.key('KBD_enter', true)\n"
+        "dosbox.key('KBD_enter', false)\n"
+        "dosbox.wait_for_text('0123456789', 5000)\n"
+        "local t = dosbox.screen_text()\n"
+        "dosbox.output.found = string.find(t, '0123456789') and 'yes' or 'no'\n"
+    ), timeout=15)
+    assert out["found"] == "yes"
 
 
 def test_screen_text_columns_match_bios(dosbox):

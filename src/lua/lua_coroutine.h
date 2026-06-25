@@ -7,9 +7,13 @@
 
 #include "lua/lua_engine.h"
 
+#include "hardware/input/keyboard.h"
+
 #include <chrono>
 #include <cstdint>
+#include <deque>
 #include <string>
+#include <vector>
 
 struct lua_State;
 
@@ -18,6 +22,13 @@ namespace Lua {
 class DebugLog;
 
 enum class ScriptState { Idle, Loaded, Running, Yielded, Completed, Error };
+
+// One logical key stroke for paced text injection: a key plus whether Shift
+// must be held for it. Expanded to press/release events when drained.
+struct KeyStroke {
+	KBD_KEYS key = KBD_NONE;
+	bool shift   = false;
+};
 
 const char* ScriptStateName(ScriptState s);
 
@@ -49,6 +60,12 @@ public:
 	void SetWaitForText(const std::string& pattern, bool ignorecase,
 	                    uint64_t deadline);
 
+	// Queue text as paced keystrokes. Each stroke is injected only when the
+	// keyboard buffer has room, spread over frames, so the 8-slot i8042
+	// buffer never overflows and drops keys. The script stays yielded until
+	// the queue drains; type() is async by design.
+	void QueueTypeInput(std::vector<KeyStroke> strokes);
+
 private:
 	LuaEngine& engine;
 	DebugLog* debug_log       = nullptr;
@@ -67,9 +84,23 @@ private:
 	uint64_t wait_text_deadline                                   = 0;
 	std::chrono::steady_clock::time_point wait_text_wall_deadline = {};
 
+	// Paced text injection (dosbox.type) state
+	bool injecting_type                                      = false;
+	std::deque<KeyStroke> pending_keys                       = {};
+	std::chrono::steady_clock::time_point type_wall_deadline = {};
+
 	void RegisterApi();
 	void Cleanup();
 	bool CheckWaitForText();
+
+	// Inject as many queued keystrokes as currently fit in the keyboard
+	// buffer, keeping each stroke's press/release together so a key is
+	// never held across frames. Returns true once the queue is empty.
+	bool DrainPendingKeys();
+
+	// Resume the coroutine with nargs results already on its stack and fold
+	// the resume status into state/error_msg.
+	ScriptState ResumeWith(int nargs);
 
 	static int LuaWaitFrames(lua_State* L);
 	static int LuaFrame(lua_State* L);

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2022-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2022 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "keyboard.h"
@@ -688,6 +689,22 @@ void KEYBOARD_AddKey(const KBD_KEYS key_type, const bool is_pressed)
 	if (keyboard_input_hook) {
 		keyboard_input_hook(static_cast<int>(key_type), is_pressed);
 	}
+}
+
+uint8_t KEYBOARD_GetBufferFreeSlots()
+{
+	// While overflowed, every key is dropped until the guest drains the
+	// controller and KEYBOARD_NotifyReadyForFrame clears the latch, so
+	// report no headroom rather than the raw slot count.
+	if (buffer_overflowed) {
+		return 0;
+	}
+	return static_cast<uint8_t>(buffer_size - buffer_num_used);
+}
+
+bool KEYBOARD_IsBufferEmpty()
+{
+	return !buffer_overflowed && buffer_num_used == 0;
 }
 
 uint8_t KEYBOARD_GetLedState()

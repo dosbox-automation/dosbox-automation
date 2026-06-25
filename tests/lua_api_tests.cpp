@@ -7,16 +7,42 @@
 #include "lua/lua_debug_log.h"
 #include "lua/lua_engine.h"
 
+#include "hardware/input/keyboard.h"
+
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 
 namespace {
 
+// Records the key events type()/key() inject, via the keyboard input hook, so
+// tests can verify the exact mapping without a running guest.
+std::vector<std::pair<int, bool>> captured_keys;
+
+void CaptureKeyHook(int key, bool pressed)
+{
+	captured_keys.emplace_back(key, pressed);
+}
+
 class LuaApiTest : public ::testing::Test {
 protected:
 	Lua::LuaEngine engine;
 	Lua::LuaCoroutine coroutine{engine};
+
+	void SetUp() override
+	{
+		KEYBOARD_ClrBuffer();
+		captured_keys.clear();
+		keyboard_input_hook = &CaptureKeyHook;
+	}
+
+	void TearDown() override
+	{
+		keyboard_input_hook = nullptr;
+		KEYBOARD_ClrBuffer();
+	}
 
 	void LoadAndStart(const std::string& script)
 	{
@@ -38,6 +64,37 @@ protected:
 			}
 		}
 		return state;
+	}
+
+	// Paced type() yields until the guest drains the keyboard buffer. With
+	// no guest, clear the buffer each frame to stand in for one consuming
+	// keys, so the script can run to completion.
+	Lua::ScriptState RunTypeDraining(const std::string& script,
+	                                 int max_frames = 300)
+	{
+		LoadAndStart(script);
+		Lua::ScriptState state = Lua::ScriptState::Running;
+		for (int i = 1; i <= max_frames; ++i) {
+			KEYBOARD_ClrBuffer();
+			state = coroutine.DispatchFrame(static_cast<uint64_t>(i));
+			if (state == Lua::ScriptState::Completed ||
+			    state == Lua::ScriptState::Error) {
+				break;
+			}
+		}
+		return state;
+	}
+
+	// The keys pressed (press events only), in order, from the capture hook.
+	std::vector<int> PressedKeys() const
+	{
+		std::vector<int> pressed;
+		for (const auto& [key, down] : captured_keys) {
+			if (down) {
+				pressed.push_back(key);
+			}
+		}
+		return pressed;
 	}
 };
 
@@ -65,16 +122,77 @@ TEST_F(LuaApiTest, KeyMissingPressedErrors)
 
 // -- Input: type() --
 
-TEST_F(LuaApiTest, TypeAsciiSucceeds)
+TEST_F(LuaApiTest, TypeAsciiCompletesWhenBufferDrains)
 {
-	auto state = RunToCompletion("dosbox.type('Hello World')");
+	auto state = RunTypeDraining("dosbox.type('Hello World')");
 	EXPECT_EQ(state, Lua::ScriptState::Completed);
 }
 
 TEST_F(LuaApiTest, TypeEmptyStringSucceeds)
 {
+	// Nothing to inject, so type() returns without yielding.
 	auto state = RunToCompletion("dosbox.type('')");
 	EXPECT_EQ(state, Lua::ScriptState::Completed);
+	EXPECT_TRUE(captured_keys.empty());
+}
+
+TEST_F(LuaApiTest, TypeMapsDigitsToDigitKeys)
+{
+	// Regression: digits must map through a table. Arithmetic from KBD_0
+	// walked into the QWERTY letters (e.g. '7' -> KBD_u) because the enum
+	// orders the row 1..9 then 0.
+	auto state = RunTypeDraining("dosbox.type('0123456789')");
+	ASSERT_EQ(state, Lua::ScriptState::Completed);
+
+	const std::vector<int> expected = {
+	        KBD_0, KBD_1, KBD_2, KBD_3, KBD_4, KBD_5, KBD_6, KBD_7, KBD_8, KBD_9};
+	EXPECT_EQ(PressedKeys(), expected);
+}
+
+TEST_F(LuaApiTest, TypeMapsLowercaseLetters)
+{
+	// Regression: the alpha row is QWERTY-ordered, so letters map through a
+	// table too, not arithmetic from KBD_a.
+	auto state = RunTypeDraining("dosbox.type('abcxyz')");
+	ASSERT_EQ(state, Lua::ScriptState::Completed);
+
+	const std::vector<int> expected = {KBD_a, KBD_b, KBD_c, KBD_x, KBD_y, KBD_z};
+	EXPECT_EQ(PressedKeys(), expected);
+}
+
+TEST_F(LuaApiTest, TypeUppercaseWrapsKeyInShift)
+{
+	auto state = RunTypeDraining("dosbox.type('A')");
+	ASSERT_EQ(state, Lua::ScriptState::Completed);
+
+	const std::vector<std::pair<int, bool>> expected = {
+	        {KBD_leftshift,  true},
+	        {        KBD_a,  true},
+	        {        KBD_a, false},
+	        {KBD_leftshift, false},
+	};
+	EXPECT_EQ(captured_keys, expected);
+}
+
+TEST_F(LuaApiTest, TypePacesInjectionAcrossFrames)
+{
+	// A whole string must not be slammed into the 8-slot buffer at once.
+	// With no guest draining it, the first injecting frame can only fit a
+	// few keys, far fewer than the full string's events.
+	LoadAndStart("dosbox.type('abcdefghij')"); // 10 chars -> 20 events
+	coroutine.DispatchFrame(1); // starts script, queues input
+	coroutine.DispatchFrame(2); // first injecting frame
+
+	EXPECT_GT(captured_keys.size(), 0u);
+	EXPECT_LT(captured_keys.size(), 20u);
+}
+
+TEST_F(LuaApiTest, TypeStaysPendingUntilGuestDrains)
+{
+	// type() is async and waits for the guest to consume the keys. With the
+	// buffer never drained, it must stay yielded rather than report complete.
+	auto state = RunToCompletion("dosbox.type('abcdefgh')", 50);
+	EXPECT_EQ(state, Lua::ScriptState::Yielded);
 }
 
 // -- Input: mouse_click() --

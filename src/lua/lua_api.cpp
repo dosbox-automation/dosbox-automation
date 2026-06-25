@@ -26,6 +26,8 @@ extern "C" {
 #include <cctype>
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace Lua {
 
@@ -183,10 +185,26 @@ static TypeMapping CharToKey(const char c)
 {
 	// KBD_KEYS are in QWERTY row order, not alphabetical.
 	static constexpr KBD_KEYS alpha_keys[26] = {
-		KBD_a, KBD_b, KBD_c, KBD_d, KBD_e, KBD_f, KBD_g, KBD_h,
-		KBD_i, KBD_j, KBD_k, KBD_l, KBD_m, KBD_n, KBD_o, KBD_p,
-		KBD_q, KBD_r, KBD_s, KBD_t, KBD_u, KBD_v, KBD_w, KBD_x,
-		KBD_y, KBD_z,
+	        KBD_a, KBD_b, KBD_c, KBD_d, KBD_e, KBD_f, KBD_g, KBD_h, KBD_i,
+	        KBD_j, KBD_k, KBD_l, KBD_m, KBD_n, KBD_o, KBD_p, KBD_q, KBD_r,
+	        KBD_s, KBD_t, KBD_u, KBD_v, KBD_w, KBD_x, KBD_y, KBD_z,
+	};
+
+	// KBD_KEYS orders the digit row 1..9 then 0, so KBD_0 sits at the end
+	// of the run (right before KBD_q). Arithmetic from KBD_0 would walk
+	// into the QWERTY letters (e.g. '7' -> KBD_u), so map digits through a
+	// table too.
+	static constexpr KBD_KEYS digit_keys[10] = {
+	        KBD_0,
+	        KBD_1,
+	        KBD_2,
+	        KBD_3,
+	        KBD_4,
+	        KBD_5,
+	        KBD_6,
+	        KBD_7,
+	        KBD_8,
+	        KBD_9,
 	};
 
 	if (c >= 'a' && c <= 'z') {
@@ -196,7 +214,7 @@ static TypeMapping CharToKey(const char c)
 		return {alpha_keys[c - 'A'], true};
 	}
 	if (c >= '0' && c <= '9') {
-		return {static_cast<KBD_KEYS>(KBD_0 + (c - '0')), false};
+		return {digit_keys[c - '0'], false};
 	}
 
 	switch (c) {
@@ -270,10 +288,12 @@ static int LuaKey(lua_State* L)
 }
 
 // dosbox.type(text)
-// Sends key press+release for each character, yielding between them
-// for inter-key delay. Since we cannot yield from a C function
-// directly, type() sends all keys immediately with no delay. A
-// script that needs delays should use key() with wait_frames().
+// Queues each character as a paced keystroke and yields. The coroutine drains
+// the queue across frames, gated on real keyboard-buffer headroom, so the
+// 8-slot i8042 buffer never overflows. Injecting a whole string at once would
+// overflow it and silently drop everything past the first few keys. type() is
+// therefore async: the keys land over the following frames, so a script must
+// wait_for_text or wait_frames before reading the result.
 static int LuaType(lua_State* L)
 {
 	const char* text = luaL_checkstring(L, 1);
@@ -283,22 +303,27 @@ static int LuaType(lua_State* L)
 		dl->Trace(CurrentFrame(L), "dosbox.type(\"%s\")", text);
 	}
 
-	while (*text) {
-		const auto mapping = CharToKey(*text);
-		if (mapping.key != KBD_NONE) {
-			if (mapping.shift) {
-				KEYBOARD_AddKey(KBD_leftshift, true);
-			}
-			KEYBOARD_AddKey(mapping.key, true);
-			KEYBOARD_AddKey(mapping.key, false);
-			if (mapping.shift) {
-				KEYBOARD_AddKey(KBD_leftshift, false);
-			}
-		}
-		++text;
+	auto* co = GetCoroutine(L);
+	if (!co) {
+		return luaL_error(L, "type: no coroutine context");
 	}
 
-	return 0;
+	std::vector<KeyStroke> strokes;
+	for (const char* p = text; *p; ++p) {
+		const auto mapping = CharToKey(*p);
+		if (mapping.key != KBD_NONE) {
+			strokes.push_back({mapping.key, mapping.shift});
+		}
+	}
+
+	// Nothing mappable to send: return without yielding so an empty or
+	// all-unsupported string is a no-op rather than a stalled wait.
+	if (strokes.empty()) {
+		return 0;
+	}
+
+	co->QueueTypeInput(std::move(strokes));
+	return lua_yield(L, 0);
 }
 
 // dosbox.mouse_move(dx, dy)

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2022-2025 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #ifndef DOSBOX_KEYBOARD_H
@@ -209,6 +210,18 @@ void KEYBOARD_WaitForSecureMode();
 
 // Simulate key press or release
 void KEYBOARD_AddKey(const KBD_KEYS key_type, const bool is_pressed);
+
+// Free slots in the keyboard's internal scancode buffer (0..8). Each key
+// event (press or release) occupies one slot, and the buffer drops input once
+// full. The automation layer reads this to pace injected keystrokes so a burst
+// never overflows the buffer and silently loses keys.
+uint8_t KEYBOARD_GetBufferFreeSlots();
+
+// True when the internal scancode buffer holds nothing and is not in the
+// overflow-latched state, so the guest has consumed all queued input. The
+// automation layer waits for this before handing control back after a paced
+// type(), so the script's next key injection starts on a clean buffer.
+bool KEYBOARD_IsBufferEmpty();
 
 using KeyboardHookFn = void (*)(int key, bool pressed);
 extern KeyboardHookFn keyboard_input_hook;

@@ -5,13 +5,22 @@
 #include "lua/lua_coroutine.h"
 #include "lua/lua_api.h"
 
+#include "hardware/input/keyboard.h"
+
 #include <algorithm>
 #include <cctype>
+#include <utility>
 
 extern "C" {
 #include <lauxlib.h>
 #include <lua.h>
 }
+
+namespace {
+// Safety ceiling for a yielded wait. A guest that never drains the keyboard
+// buffer (or frames that have stalled) must not hang the script forever.
+constexpr auto WaitWallCeiling = std::chrono::seconds(30);
+} // namespace
 
 namespace Lua {
 
@@ -60,18 +69,20 @@ void LuaCoroutine::Cleanup()
 	wait_text_wall_deadline = {};
 	wait_text_pattern.clear();
 	wait_text_pattern_lower.clear();
+	injecting_type = false;
+	pending_keys.clear();
+	type_wall_deadline = {};
 	error_msg.clear();
 }
 
 void LuaCoroutine::SetWaitForText(const std::string& pattern,
                                   const bool ignorecase, const uint64_t deadline)
 {
-	waiting_for_text        = true;
-	wait_text_pattern       = pattern;
-	wait_text_ignorecase    = ignorecase;
-	wait_text_deadline      = deadline;
-	wait_text_wall_deadline = std::chrono::steady_clock::now() +
-	                          std::chrono::seconds(30);
+	waiting_for_text     = true;
+	wait_text_pattern    = pattern;
+	wait_text_ignorecase = ignorecase;
+	wait_text_deadline   = deadline;
+	wait_text_wall_deadline = std::chrono::steady_clock::now() + WaitWallCeiling;
 
 	if (ignorecase) {
 		wait_text_pattern_lower = pattern;
@@ -84,6 +95,43 @@ void LuaCoroutine::SetWaitForText(const std::string& pattern,
 	} else {
 		wait_text_pattern_lower.clear();
 	}
+}
+
+void LuaCoroutine::QueueTypeInput(std::vector<KeyStroke> strokes)
+{
+	injecting_type = true;
+	pending_keys.assign(std::make_move_iterator(strokes.begin()),
+	                    std::make_move_iterator(strokes.end()));
+	type_wall_deadline = std::chrono::steady_clock::now() + WaitWallCeiling;
+}
+
+bool LuaCoroutine::DrainPendingKeys()
+{
+	// Each press or release is one buffer slot; a shifted stroke needs four
+	// (shift down, key down, key up, shift up), an unshifted one needs two.
+	// Inject a whole stroke only when it fits, so a key's press and release
+	// always land in the same frame and the key is never held long enough
+	// to trigger typematic repeat.
+	while (!pending_keys.empty()) {
+		const auto& stroke   = pending_keys.front();
+		const uint8_t needed = stroke.shift ? 4 : 2;
+		if (KEYBOARD_GetBufferFreeSlots() < needed) {
+			break;
+		}
+
+		if (stroke.shift) {
+			KEYBOARD_AddKey(KBD_leftshift, true);
+		}
+		KEYBOARD_AddKey(stroke.key, true);
+		KEYBOARD_AddKey(stroke.key, false);
+		if (stroke.shift) {
+			KEYBOARD_AddKey(KBD_leftshift, false);
+		}
+
+		pending_keys.pop_front();
+	}
+
+	return pending_keys.empty();
 }
 
 bool LuaCoroutine::CheckWaitForText()
@@ -174,6 +222,34 @@ bool LuaCoroutine::Start(DebugLog* log)
 	return true;
 }
 
+ScriptState LuaCoroutine::ResumeWith(const int nargs)
+{
+	if (!coroutine) {
+		state     = ScriptState::Error;
+		error_msg = "coroutine is null";
+		return state;
+	}
+
+	state = ScriptState::Running;
+
+	int nresults      = 0;
+	const auto status = lua_resume(coroutine, nullptr, nargs, &nresults);
+
+	if (status == LUA_YIELD) {
+		state = ScriptState::Yielded;
+		lua_pop(coroutine, nresults);
+	} else if (status == LUA_OK) {
+		state = ScriptState::Completed;
+		lua_pop(coroutine, nresults);
+	} else {
+		state     = ScriptState::Error;
+		error_msg = SafeErrorString(coroutine, -1);
+		lua_pop(coroutine, 1);
+	}
+
+	return state;
+}
+
 ScriptState LuaCoroutine::DispatchFrame(const uint64_t frame_number)
 {
 	if (state != ScriptState::Running && state != ScriptState::Yielded) {
@@ -187,25 +263,28 @@ ScriptState LuaCoroutine::DispatchFrame(const uint64_t frame_number)
 			if (!CheckWaitForText()) {
 				return state;
 			}
-			// CheckWaitForText pushed a boolean onto the coroutine
-			// stack. Resume with 1 result so wait_for_text returns it.
-			state = ScriptState::Running;
+			// CheckWaitForText pushed the result boolean; resume so
+			// wait_for_text returns it to the script.
+			return ResumeWith(1);
+		}
 
-			int nresults = 0;
-			const auto status = lua_resume(coroutine, nullptr, 1, &nresults);
-
-			if (status == LUA_YIELD) {
-				state = ScriptState::Yielded;
-				lua_pop(coroutine, nresults);
-			} else if (status == LUA_OK) {
-				state = ScriptState::Completed;
-				lua_pop(coroutine, nresults);
-			} else {
-				state     = ScriptState::Error;
-				error_msg = SafeErrorString(coroutine, -1);
-				lua_pop(coroutine, 1);
+		if (injecting_type) {
+			const bool queue_empty = DrainPendingKeys();
+			// Resume only once the guest has drained the buffer
+			// too, so the script's next key injection starts clean
+			// instead of overflowing a buffer type() left full
+			// (which would drop type()'s own tail).
+			const bool done = queue_empty && KEYBOARD_IsBufferEmpty();
+			if (!done && std::chrono::steady_clock::now() <
+			                     type_wall_deadline) {
+				return state;
 			}
-			return state;
+			// Done, or the safety ceiling elapsed with the guest
+			// never reading keys. Drop any remainder and resume
+			// type(), which yielded with no continuation.
+			injecting_type = false;
+			pending_keys.clear();
+			return ResumeWith(0);
 		}
 
 		if (current_frame < wait_until_frame) {
@@ -218,28 +297,7 @@ ScriptState LuaCoroutine::DispatchFrame(const uint64_t frame_number)
 		return state;
 	}
 
-	if (!coroutine) {
-		state     = ScriptState::Error;
-		error_msg = "coroutine is null";
-		return state;
-	}
-
-	int nresults      = 0;
-	const auto status = lua_resume(coroutine, nullptr, 0, &nresults);
-
-	if (status == LUA_YIELD) {
-		state = ScriptState::Yielded;
-		lua_pop(coroutine, nresults);
-	} else if (status == LUA_OK) {
-		state = ScriptState::Completed;
-		lua_pop(coroutine, nresults);
-	} else {
-		state     = ScriptState::Error;
-		error_msg = lua_tostring(coroutine, -1);
-		lua_pop(coroutine, 1);
-	}
-
-	return state;
+	return ResumeWith(0);
 }
 
 void LuaCoroutine::Stop()
