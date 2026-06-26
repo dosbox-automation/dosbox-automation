@@ -6,6 +6,7 @@
 #include "gui/private/common.h"
 
 #include "capture/capture.h"
+#include "gui/osd/osd.h"
 #include "config/config.h"
 #include "config/setup.h"
 #include "misc/video.h"
@@ -367,6 +368,10 @@ void SdlRenderer::PresentFrame()
 		//
 		GFX_CaptureRenderedImage();
 	}
+
+	// After the capture so the OSD stays out of recordings, before the
+	// present so the clear above doesn't wipe it.
+	OSD_Render(GFX_GetRenderedFrameCount());
 
 	SDL_RenderPresent(renderer);
 }

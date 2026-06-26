@@ -19,7 +19,7 @@ enum class FontSize { Small = 1, Medium = 2, Large = 3 };
 
 struct TextOverlay {
 	std::string text     = {};
-	Color color          = ColorWhite();
+	Color color          = ColorGreen();
 	Position position    = Position::TopLeft;
 	FontSize size        = FontSize::Medium;
 	int custom_x         = 0;

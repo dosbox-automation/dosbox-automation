@@ -10,6 +10,7 @@
 #include "private/shader_manager.h"
 
 #include "capture/capture.h"
+#include "gui/osd/osd.h"
 #include "dosbox_config.h"
 #include "misc/support.h"
 #include "misc/video.h"
@@ -457,6 +458,11 @@ void OpenGlRenderer::PresentFrame()
 		//
 		GFX_CaptureRenderedImage();
 	}
+
+	// Same hook point as the SDL backend: after capture, before present.
+	// No-ops today because the OSD shim draws via SDL_Renderer, which the
+	// GL backend has none of; the SDL3 port adds the GL drawing path.
+	OSD_Render(GFX_GetRenderedFrameCount());
 
 	// Present frame
 	SDL_GL_SwapWindow(window);

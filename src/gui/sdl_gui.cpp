@@ -2547,7 +2547,10 @@ void GFX_MaybePresentFrame()
 
 		if (sdl.draw.active) {
 			sdl.renderer->PrepareFrame();
-			OSD_Render(GFX_GetRenderedFrameCount());
+			// The OSD is drawn inside each backend's PresentFrame,
+			// after the emulator content and frame capture but before
+			// the present. Drawing it here instead gets it wiped by
+			// the backend's clear/redraw on present.
 			sdl.renderer->PresentFrame();
 		}
 

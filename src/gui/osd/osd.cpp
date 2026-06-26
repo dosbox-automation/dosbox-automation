@@ -126,7 +126,7 @@ void OsdManager::RenderOverlays(SDL_Renderer* r, const uint64_t frame_number)
 			break;
 		}
 
-		Color bg     = {0, 0, 0, 160};
+		Color bg     = {0, 0, 0, 96};
 		Rect bg_rect = {x - 2, y - 2, text_w + 4, glyph_h + 4};
 		DrawFilledRect(r, bg_rect, bg);
 
