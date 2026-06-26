@@ -107,7 +107,7 @@ static std_fs::path get_or_create_config_dir()
 
 static std_fs::path get_or_create_config_dir()
 {
-	const auto conf_path = get_xdg_config_home() / "dosbox";
+	const auto conf_path = get_xdg_config_home() / DOSBOX_PROJECT_NAME;
 	std::error_code ec   = {};
 
 	if (std_fs::exists(conf_path / get_primary_config_name())) {
