@@ -20,7 +20,7 @@
 class DOSBoxTestFixture : public ::testing::Test {
 public:
 	DOSBoxTestFixture()
-	        : arg_c_str("-conf tests/files/dosbox-staging-tests.conf\0"),
+	        : arg_c_str("-conf tests/files/dosbox-automation-tests.conf\0"),
 	          argv{arg_c_str},
 	          command_line(1, argv)
 	{

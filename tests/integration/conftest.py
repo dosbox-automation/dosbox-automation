@@ -172,7 +172,7 @@ def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
     # the build resource directory so the internal auto-mount succeeds.
     dosbox_bin = Path(DOSBOX_BIN).resolve()
     resource_dir = dosbox_bin.parent / "resources"
-    config_dir = work_dir / ".config" / "dosbox"
+    config_dir = work_dir / ".config" / "dosbox-automation"
     config_dir.mkdir(parents=True, exist_ok=True)
     primary_conf = config_dir / "dosbox-automation.conf"
 

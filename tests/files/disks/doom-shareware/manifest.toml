@@ -23,7 +23,7 @@ sequence = [
 ]
 
 [verify]
-files = ["C:\\DOOM\\DOOM.EXE"]
+files = ["C:\\GOLD\\DOOM\\DOOM.EXE"]
 
 [capture]
 screenshot_at = [0]

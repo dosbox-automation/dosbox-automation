@@ -88,6 +88,24 @@ def build_autoexec(manifest: GameManifest, game_dir: Path,
     return lines
 
 
+def split_at_swaps(events):
+    """Split an event list into (input_chunk, swap_event) pairs.
+
+    Returns a list of tuples: [(events, None), (events, swap), ...].
+    The last tuple always has swap=None.
+    """
+    chunks = []
+    current = []
+    for event in events:
+        if event.get("type") == "drive_swap":
+            chunks.append((current, event))
+            current = []
+        else:
+            current.append(event)
+    chunks.append((current, None))
+    return chunks
+
+
 def run_via_recording(client, game_dir):
     """Replay a recorded input session. Returns True on success."""
     recording_path = game_dir / "recording.json"
@@ -98,26 +116,47 @@ def run_via_recording(client, game_dir):
     if not events:
         return False
 
-    # Start capture.
     client.capture_start()
     time.sleep(0.5)
 
-    # Send the recorded events for replay.
-    r = client.input_sequence(events)
-    if r.status_code != 200:
-        return False
+    chunks = split_at_swaps(events)
 
-    # Wait for replay to finish based on the recording duration.
+    for i, (input_events, swap) in enumerate(chunks):
+        if input_events:
+            last_t = max(e.get("t", 0) for e in input_events)
+            first_t = min(e.get("t", 0) for e in input_events)
+            chunk_duration_s = (last_t - first_t) / 1000.0
+
+            r = client.input_sequence(input_events)
+            if r.status_code != 200:
+                return False
+
+            time.sleep(chunk_duration_s + 3.0)
+
+        if swap:
+            image_path = str(game_dir / swap["image"])
+            swap_t = swap.get("t", 0)
+
+            next_chunk_events = chunks[i + 1][0] if i + 1 < len(chunks) else []
+            if next_chunk_events:
+                next_first_t = min(e.get("t", 0) for e in next_chunk_events)
+                gap_s = (next_first_t - swap_t) / 1000.0
+            else:
+                gap_s = 1.0
+
+            r = client.drive_swap(swap["drive"], image_path)
+            if r.status_code != 200:
+                return False
+
+            time.sleep(gap_s)
+
     duration_s = recording.get("duration_ms", 60000) / 1000.0
-    wait_time = duration_s + 10  # buffer
+    wait_time = duration_s + 10
     deadline = time.monotonic() + wait_time
 
     while time.monotonic() < deadline:
         r = client.recording_status()
         if r.status_code == 200:
-            # Check if replay is done by polling status endpoint.
-            # The status endpoint only reports recording state, not
-            # replay. Use the program state to detect shell return.
             ps = client.program_state()
             if ps.status_code == 200 and ps.json().get("is_shell"):
                 time.sleep(2)

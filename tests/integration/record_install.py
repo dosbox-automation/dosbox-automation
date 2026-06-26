@@ -108,6 +108,7 @@ def main():
     config_dir.mkdir(parents=True, exist_ok=True)
     (config_dir / "dosbox-automation.conf").write_text(
         f"[webserver]\nmount_allowed_bases = {resource_dir}\n"
+        f"mount_allowed_image_roots = {game_dir}\n"
     )
 
     env = {
