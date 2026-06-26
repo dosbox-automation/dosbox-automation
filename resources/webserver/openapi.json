@@ -522,6 +522,33 @@
         }
       }
     },
+    "/api/v1/video/text": {
+      "get": {
+        "tags": ["Video"],
+        "summary": "Text-mode screen contents as characters",
+        "operationId": "getScreenText",
+        "description": "Reads the text-mode character buffer and returns it as UTF-8, with CP437 box-drawing and shade glyphs preserved. Empty text with is_text_mode false in a graphics mode. Use this to drive installers by screen state instead of fixed timings.",
+        "responses": {
+          "200": {
+            "description": "Screen text and geometry.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ScreenText"},
+                "example": {
+                  "is_text_mode": true,
+                  "bios_mode": 3,
+                  "columns": 80,
+                  "rows": 25,
+                  "page": 0,
+                  "text": "Setup ver 1.666                  (C) 1994 id Software\n"
+                }
+              }
+            }
+          },
+          "401": {"$ref": "#/components/responses/Unauthorized"}
+        }
+      }
+    },
     "/api/v1/drive/swap": {
       "post": {
         "tags": ["Drive"],
@@ -937,6 +964,17 @@
           "pixel_format": {"type": "string"},
           "pitch": {"type": "integer"},
           "is_paletted": {"type": "boolean"}
+        }
+      },
+      "ScreenText": {
+        "type": "object",
+        "properties": {
+          "is_text_mode": {"type": "boolean", "description": "False in graphics modes; text is empty then."},
+          "bios_mode": {"type": "integer", "description": "BIOS video mode number."},
+          "columns": {"type": "integer", "description": "Live column count from the BIOS data area."},
+          "rows": {"type": "integer"},
+          "page": {"type": "integer", "description": "Active display page."},
+          "text": {"type": "string", "description": "Screen contents, rows separated by newlines, CP437 converted to UTF-8."}
         }
       },
       "DriveSwap": {

@@ -7,7 +7,12 @@
 
 #include "gui/render/render_shared.h"
 #include "misc/rendered_image.h"
+#include "misc/unicode.h"
 #include "misc/video.h"
+
+#include "hardware/memory.h"
+#include "ints/int10.h"
+#include "lua/lua_api.h"
 
 #include "libs/json/json.h"
 
@@ -275,6 +280,43 @@ void VideoHandlers::GetFrameInfo(const httplib::Request&, httplib::Response& res
 	j["double_height"]        = frame.params.double_height;
 
 	frame.free();
+
+	send_json(res, j);
+}
+
+void ScreenTextCommand::Execute()
+{
+	bios_mode    = CurMode->mode;
+	is_text_mode = INT10_IsTextMode(*CurMode);
+	if (!is_text_mode) {
+		return;
+	}
+
+	// Same live BIOS-data-area reads ReadScreenText uses, so the
+	// reported geometry matches the buffer it actually walked.
+	columns  = real_readw(BIOSMEM_SEG, BIOSMEM_NB_COLS);
+	rows     = CurMode->theight;
+	page     = real_readb(BIOSMEM_SEG, BIOSMEM_CURRENT_PAGE);
+	text_dos = Lua::ReadScreenText();
+}
+
+void ScreenTextCommand::Get(const httplib::Request&, httplib::Response& res)
+{
+	ScreenTextCommand cmd;
+	cmd.WaitForCompletion();
+
+	json j;
+	j["is_text_mode"] = cmd.is_text_mode;
+	j["bios_mode"]    = cmd.bios_mode;
+	j["columns"]      = cmd.columns;
+	j["rows"]         = cmd.rows;
+	j["page"]         = cmd.page;
+
+	// CP437 screen codes to UTF-8 so box-drawing and shade glyphs survive
+	// the JSON round-trip instead of being dropped as invalid bytes.
+	// WithControlCodes keeps the row-separating newlines as line breaks.
+	j["text"] = dos_to_utf8(cmd.text_dos,
+	                        DosStringConvertMode::WithControlCodes);
 
 	send_json(res, j);
 }

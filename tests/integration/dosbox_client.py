@@ -135,6 +135,9 @@ class DosboxClient:
     def frame_info(self) -> requests.Response:
         return self._get("/api/v1/video/frame/info")
 
+    def screen_text(self) -> requests.Response:
+        return self._get("/api/v1/video/text")
+
     def capture_frame(self, path: Path, fmt: str = "jpeg") -> Path:
         r = self.frame(fmt=fmt)
         r.raise_for_status()

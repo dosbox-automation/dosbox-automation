@@ -127,6 +127,7 @@ static void setup_api_handlers()
 
 	server.Get("/api/v1/video/frame", VideoHandlers::GetFrame);
 	server.Get("/api/v1/video/frame/info", VideoHandlers::GetFrameInfo);
+	server.Get("/api/v1/video/text", ScreenTextCommand::Get);
 
 	server.Get("/api/v1/program/state", ControlHandlers::GetProgramState);
 	server.Get("/api/v1/status", ControlHandlers::GetStatus);
