@@ -11,6 +11,15 @@ import pytest
 
 from dosbox_client import DosboxClient
 
+SETTING_SECTIONS = {
+    "cpu_cycles": "cpu",
+    "cpu_cycles_protected": "cpu",
+    "cpu_throttle": "cpu",
+    "cpu_type": "cpu",
+    "machine": "dosbox",
+    "memsize": "dosbox",
+}
+
 DOSBOX_BIN = os.environ.get(
     "DOSBOX_BIN",
     str(Path(__file__).resolve().parents[2] / "build" / "debug-linux" / "dosbox"),
@@ -145,7 +154,8 @@ class DosboxInstance:
 
 
 def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
-                          conf_dir=None, allowed_image_roots=None):
+                          conf_dir=None, allowed_image_roots=None,
+                          settings=None):
     """Start a headless DOSBox instance with optional autoexec and config.
 
     conf_dir: directory for the config file. The mount policy's conf
@@ -185,23 +195,35 @@ def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
         "[webserver]\n" + "\n".join(primary_lines) + "\n"
     )
 
-    # Write a config file with autoexec if provided.
+    # Write a config file with settings and autoexec.
     conf_path = None
-    if autoexec_lines:
+    if autoexec_lines or settings:
         conf_path = conf_dir / f"test-{secrets.token_hex(4)}.conf"
-        autoexec_block = "\n".join(autoexec_lines)
-        conf_path.write_text(textwrap.dedent(f"""\
-            [autoexec]
-            {autoexec_block}
-        """))
+        conf_parts = []
+        if settings:
+            sections = {}
+            for key, value in settings.items():
+                section = SETTING_SECTIONS.get(key, "dosbox")
+                sections.setdefault(section, []).append(f"{key} = {value}")
+            for section, lines in sections.items():
+                conf_parts.append(f"[{section}]")
+                conf_parts.extend(lines)
+                conf_parts.append("")
+        if autoexec_lines:
+            conf_parts.append("[autoexec]")
+            conf_parts.extend(autoexec_lines)
+        conf_path.write_text("\n".join(conf_parts) + "\n")
 
     env = {
         **os.environ,
-        "SDL_VIDEODRIVER": "offscreen",
-        "SDL_AUDIODRIVER": "dummy",
         "HOME": str(work_dir),
         "DOSBOX_API_TOKEN": token,
     }
+
+    visible = os.environ.get("DOSBOX_VISIBLE")
+    if not visible:
+        env["SDL_VIDEODRIVER"] = "offscreen"
+        env["SDL_AUDIODRIVER"] = "dummy"
 
     cmd = [
         DOSBOX_BIN,
@@ -211,6 +233,9 @@ def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
         "--set", f"webserver_port={port}",
         "--set", f"capture_dir={work_dir / 'capture'}",
     ]
+
+    if visible:
+        cmd.extend(["--set", "output=texture"])
 
     if extra_sets:
         for s in extra_sets:
@@ -257,12 +282,13 @@ def dosbox_e2e(tmp_path):
     instances = []
 
     def _factory(autoexec_lines=None, extra_sets=None, work_dir=None,
-                 conf_dir=None, allowed_image_roots=None):
+                 conf_dir=None, allowed_image_roots=None, settings=None):
         if work_dir is None:
             work_dir = WORKSPACE / f"e2e-{secrets.token_hex(4)}"
         inst = start_dosbox_instance(
             work_dir, autoexec_lines, extra_sets, conf_dir=conf_dir,
             allowed_image_roots=allowed_image_roots,
+            settings=settings,
         )
         instances.append(inst)
         return inst

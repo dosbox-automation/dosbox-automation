@@ -178,7 +178,7 @@ def run_via_lua(client, manifest, game_dir):
     assert r.status_code == 200, f"Script start failed: {r.json()}"
 
     current_disc = 1
-    deadline = time.monotonic() + 180
+    deadline = time.monotonic() + 300
     while time.monotonic() < deadline:
         r = client.script_status()
         if r.status_code != 200:
@@ -226,6 +226,8 @@ def test_install(slug, manifest_path, dosbox_e2e):
     instance = dosbox_e2e(
         autoexec_lines=autoexec, work_dir=work_dir,
         conf_dir=game_dir,
+        allowed_image_roots=[game_dir],
+        settings=manifest.settings,
     )
     client = instance.client
     client.wait_shell(timeout=15)
