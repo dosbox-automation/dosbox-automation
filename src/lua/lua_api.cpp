@@ -579,6 +579,22 @@ static int LuaScreenMatch(lua_State* L)
 	return 1;
 }
 
+// dosbox.is_text_mode() -> bool
+static int LuaIsTextMode(lua_State* L)
+{
+	const bool text_mode = IsTextMode();
+	lua_pushboolean(L, text_mode);
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		dl->Trace(CurrentFrame(L),
+		          "dosbox.is_text_mode() -> %s",
+		          text_mode ? "true" : "false");
+	}
+
+	return 1;
+}
+
 // dosbox.wait_for_text(pattern, timeout [, {ignorecase=true}])
 // Yields until pattern appears or timeout (in frames) expires.
 // Returns true if found, false on timeout.
@@ -882,6 +898,8 @@ void RegisterDosboxApi(lua_State* L, LuaCoroutine* coroutine, DebugLog* debug_lo
 	lua_setfield(L, -2, "screen_match");
 	lua_pushcfunction(L, LuaWaitForText);
 	lua_setfield(L, -2, "wait_for_text");
+	lua_pushcfunction(L, LuaIsTextMode);
+	lua_setfield(L, -2, "is_text_mode");
 
 	// Drive management
 	lua_pushcfunction(L, LuaMountLock);

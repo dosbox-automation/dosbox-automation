@@ -241,3 +241,10 @@ def test_output_table_multiple_values(dosbox):
     assert out["str_val"] == "hello"
     assert out["int_val"] == 42
     assert out["bool_val"] is True
+
+
+def test_is_text_mode_at_dos_prompt(dosbox):
+    out = run_script(dosbox, (
+        'dosbox.output["text_mode"] = dosbox.is_text_mode() and "yes" or "no"'
+    ))
+    assert out["text_mode"] == "yes"
