@@ -820,16 +820,10 @@ std::string MOUNT::GetDosMappedHostPath(const std::string& dos_path) const
 // Must return a canonical path: IsUnderAnyRoot expects canonical roots.
 static std_fs::path GetConfAnchor()
 {
-	if (control->config_files.empty()) {
+	if (control->loaded_config_paths_canonical.empty()) {
 		return {};
 	}
-	auto parent = std_fs::path(control->config_files.back()).parent_path();
-	std::error_code ec;
-	auto canonical = std_fs::canonical(parent, ec);
-	if (ec) {
-		return parent;
-	}
-	return canonical;
+	return control->loaded_config_paths_canonical.back().parent_path();
 }
 
 static DirMountPolicy GetCurrentDirPolicy()
