@@ -185,13 +185,27 @@ static size_t frame_pending_dispatched = 0;
 static std::chrono::steady_clock::time_point frame_replay_start_wall;
 static double frame_replay_first_t_ms = 0;
 
+static constexpr double backpressure_retry_ms = 1.0;
+
 static void pic_input_handler(uint32_t)
 {
 	std::lock_guard<std::mutex> lock(pending_mutex);
 	if (pending_events.empty()) {
 		return;
 	}
-	auto ev = pending_events.front();
+
+	const auto& ev = pending_events.front();
+
+	// Key events need buffer space. A press/release pair uses two
+	// slots. If there's no room, retry after a short delay instead
+	// of dispatching into the overflow latch.
+	if (ev.type == InputEvent::Type::Key &&
+	    KEYBOARD_GetBufferFreeSlots() < 2) {
+		PIC_AddEvent(pic_input_handler, backpressure_retry_ms);
+		return;
+	}
+
+	auto dispatched_ev = ev;
 	pending_events.pop();
 	++pending_dispatched;
 
@@ -200,24 +214,24 @@ static void pic_input_handler(uint32_t)
 	                               std::chrono::steady_clock::now() -
 	                               replay_start_wall)
 	                               .count();
-	const double pic_drift  = pic_ms - ev.t_ms;
-	const double wall_drift = wall_ms - ev.t_ms;
+	const double pic_drift  = pic_ms - dispatched_ev.t_ms;
+	const double wall_drift = wall_ms - dispatched_ev.t_ms;
 
 	if (pending_dispatched % 100 == 0 || pending_dispatched == pending_total) {
 		LOG_MSG("REPLAY [%zu/%zu] t=%.1fms pic=%+.2fms wall=%+.2fms (pic-wall=%+.2fms)",
 		        pending_dispatched,
 		        pending_total,
-		        ev.t_ms,
+		        dispatched_ev.t_ms,
 		        pic_drift,
 		        wall_drift,
 		        pic_ms - wall_ms);
 	}
 
-	dispatch_input_event(ev);
+	dispatch_input_event(dispatched_ev);
 
 	if (!pending_events.empty()) {
 		const auto& next = pending_events.front();
-		const auto delay = std::max(next.t_ms - ev.t_ms, 0.0);
+		const auto delay = std::max(next.t_ms - dispatched_ev.t_ms, 0.0);
 		PIC_AddEvent(pic_input_handler, delay);
 	} else {
 		TITLEBAR_NotifyApiReplayStatus(false);
@@ -254,15 +268,7 @@ void InputSequenceCommand::ExecutePicBased()
 	}
 
 	for (auto& ev : events) {
-		if (ev.t_ms <= 0) {
-			dispatch_input_event(ev);
-		}
-	}
-
-	for (auto& ev : events) {
-		if (ev.t_ms > 0) {
-			pending_events.push(ev);
-		}
+		pending_events.push(ev);
 	}
 	pending_total      = pending_events.size();
 	pending_dispatched = 0;
@@ -300,17 +306,9 @@ void InputSequenceCommand::ExecuteFrameBased()
 	}
 
 	for (auto& ev : events) {
-		if (ev.frame == 0 && ev.t_ms <= 0) {
-			dispatch_input_event(ev);
-		}
-	}
-
-	for (auto& ev : events) {
-		if (ev.frame > 0 || ev.t_ms > 0) {
-			ev.frame = ev.frame - frame_base;
-			ev.t_ms  = ev.t_ms - t_base;
-			frame_pending_events.push(ev);
-		}
+		ev.frame = (ev.frame >= frame_base) ? ev.frame - frame_base : 0;
+		ev.t_ms  = (ev.t_ms >= t_base) ? ev.t_ms - t_base : 0;
+		frame_pending_events.push(ev);
 	}
 	frame_pending_total      = frame_pending_events.size();
 	frame_pending_dispatched = 0;
@@ -752,13 +750,21 @@ void ReplayDispatchFrame(uint64_t current_frame)
 	while (!frame_pending_events.empty() &&
 	       frame_pending_events.front().frame <= relative_frame &&
 	       dispatched_this_frame < 500) {
-		auto ev = frame_pending_events.front();
+		const auto& ev = frame_pending_events.front();
+
+		// Hold key events until the keyboard buffer has room
+		if (ev.type == InputEvent::Type::Key &&
+		    KEYBOARD_GetBufferFreeSlots() < 2) {
+			break;
+		}
+
+		auto dispatched_ev = ev;
 		frame_pending_events.pop();
 		++frame_pending_dispatched;
 		++dispatched_this_frame;
-		last_dispatched_t_ms = ev.t_ms;
+		last_dispatched_t_ms = dispatched_ev.t_ms;
 
-		dispatch_input_event(ev);
+		dispatch_input_event(dispatched_ev);
 	}
 
 	if (dispatched_this_frame > 0) {
