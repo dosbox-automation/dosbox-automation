@@ -2565,5 +2565,16 @@ dosbox-automation is a fork of DOSBox Staging, which is a fork of DOSBox.
 
 
 ================================================================================
+
+================================================================================
+BUNDLED DOS UTILITIES (resources/drives/y/dos/)
+================================================================================
+
+  Info-ZIP       Zip/Unzip archive utilities (DOS 16-bit builds)
+                 Copyright (c) 1990-2007 Info-ZIP
+                 License: Info-ZIP (BSD-like, GPL-compatible)
+                 Source: https://archive.org/details/infozip_msdos
+                 Homepage: https://infozip.sourceforge.net/
+
 END OF THIRD-PARTY LICENSES
 ================================================================================
