@@ -487,17 +487,8 @@ if (OPT_DEBUGGER)
   set_target_properties(dosbox PROPERTIES OUTPUT_NAME dosbox_with_debugger)
 endif()
 
-# Bundle licenses, but skip the ones that are not relevant for
-# binary distribution or allow us to not distribute the license text.
 set(LICENSE_FILES
-  licenses/BSD-2-Clause.txt
-  licenses/BSD-3-Clause.txt
-  licenses/DEBUG.COM.txt
-  licenses/GPL-2.0.txt
-  licenses/LGPL-2.1.txt
-  licenses/MIT.txt
-  licenses/UNICODE.txt
-  licenses/Zlib.txt
+  THIRD_PARTY_LICENSES.txt
 )
 
 # The source of the resources, relative to the source root
