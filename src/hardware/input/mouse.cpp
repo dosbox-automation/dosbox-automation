@@ -734,7 +734,9 @@ void MOUSE_EventWheel(const int16_t w_rel, const MouseInterfaceId interface_id)
 }
 
 // ***************************************************************************
-// API injection — bypasses capture/focus/drop guards via save/restore
+// API injection — bypasses capture/focus/drop guards entirely by iterating
+// interfaces directly with IsUsingEvents(), reaching all active interfaces
+// (HostPointer and Mapped) without going through the Event functions.
 // ***************************************************************************
 
 void MOUSE_InjectMoved(const float x_rel, const float y_rel)
@@ -769,46 +771,39 @@ void MOUSE_InjectMoved(const float x_rel, const float y_rel)
 
 void MOUSE_InjectButton(const MouseButtonId button_id, const bool pressed)
 {
-	const bool saved_drop          = state.should_drop_events;
-	const bool saved_outside       = state.cursor_is_outside;
-	const bool saved_captured      = state.is_captured;
-	const bool saved_active        = state.is_window_active;
-	const bool saved_capture_click = state.should_capture_on_click;
-	state.should_drop_events       = false;
-	state.cursor_is_outside        = false;
-	state.is_captured              = true;
-	state.is_window_active         = true;
-	state.should_capture_on_click  = false;
+	// Bypass MOUSE_EventButton which filters by IsUsingHostPointer(),
+	// missing interfaces in Mapped mode (ManyMouse). Iterate directly
+	// with IsUsingEvents() to reach all active interfaces, matching
+	// the pattern used by InjectMoved.
 
-	MOUSE_EventButton(button_id, pressed);
+	for (const auto interface_id : AllMouseInterfaceIds) {
+		auto& interface = MouseInterface::GetInstance(interface_id);
+		if (interface.IsUsingEvents()) {
+			interface.NotifyButton(button_id, pressed);
+		}
+	}
 
-	state.should_drop_events      = saved_drop;
-	state.cursor_is_outside       = saved_outside;
-	state.is_captured             = saved_captured;
-	state.is_window_active        = saved_active;
-	state.should_capture_on_click = saved_capture_click;
+	if (mouse_button_hook) {
+		mouse_button_hook(static_cast<int>(button_id), pressed);
+	}
 }
 
 void MOUSE_InjectWheel(const float w_rel)
 {
-	const bool saved_drop          = state.should_drop_events;
-	const bool saved_outside       = state.cursor_is_outside;
-	const bool saved_captured      = state.is_captured;
-	const bool saved_active        = state.is_window_active;
-	const bool saved_capture_click = state.should_capture_on_click;
-	state.should_drop_events       = false;
-	state.cursor_is_outside        = false;
-	state.is_captured              = true;
-	state.is_window_active         = true;
-	state.should_capture_on_click  = false;
+	// Same bypass as InjectButton: iterate with IsUsingEvents()
+	// instead of routing through MOUSE_EventWheel which uses
+	// IsUsingHostPointer().
 
-	MOUSE_EventWheel(w_rel);
+	for (const auto interface_id : AllMouseInterfaceIds) {
+		auto& interface = MouseInterface::GetInstance(interface_id);
+		if (interface.IsUsingEvents()) {
+			interface.NotifyWheel(w_rel);
+		}
+	}
 
-	state.should_drop_events      = saved_drop;
-	state.cursor_is_outside       = saved_outside;
-	state.is_captured             = saved_captured;
-	state.is_window_active        = saved_active;
-	state.should_capture_on_click = saved_capture_click;
+	if (mouse_wheel_hook) {
+		mouse_wheel_hook(w_rel);
+	}
 }
 
 // ***************************************************************************
