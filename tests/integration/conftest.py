@@ -35,20 +35,26 @@ def find_free_port() -> int:
 
 
 class StderrCapture(threading.Thread):
-    """Read stderr line by line, buffer output."""
+    """Read stderr line by line, buffer output and optionally write to file."""
 
-    def __init__(self, pipe):
+    def __init__(self, pipe, log_path=None):
         super().__init__(daemon=True)
         self.pipe = pipe
         self.ready = threading.Event()
         self.lines = []
+        self._log_fh = open(log_path, "w") if log_path else None
 
     def run(self):
         for raw_line in self.pipe:
             line = raw_line.decode(errors="replace").rstrip()
             self.lines.append(line)
+            if self._log_fh:
+                self._log_fh.write(line + "\n")
+                self._log_fh.flush()
             if "WEBSERVER:" in line and ("API token" in line or "Token written" in line):
                 self.ready.set()
+        if self._log_fh:
+            self._log_fh.close()
 
     def get_output(self) -> str:
         return "\n".join(self.lines)
@@ -252,7 +258,8 @@ def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
         cwd=str(work_dir),
     )
 
-    capture = StderrCapture(proc.stderr)
+    stderr_log = work_dir / "dosbox-stderr.log"
+    capture = StderrCapture(proc.stderr, log_path=stderr_log)
     capture.start()
 
     if not capture.ready.wait(timeout=15):

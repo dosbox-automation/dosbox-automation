@@ -99,7 +99,10 @@ def main():
 
     # Config in game_dir for conf anchor.
     conf_path = game_dir / f"record-{run_id}.conf"
-    conf_path.write_text("[autoexec]\n" + "\n".join(autoexec) + "\n")
+    conf_path.write_text(
+        "[cpu]\ncpu_cycles = 12000\n\n"
+        "[autoexec]\n" + "\n".join(autoexec) + "\n"
+    )
 
     # Primary config for Y: drive whitelist.
     dosbox_bin = Path(DOSBOX_BIN).resolve()
@@ -120,10 +123,13 @@ def main():
     import subprocess
     cmd = [
         str(dosbox_bin),
+        "--noprimaryconf",
         "--nolocalconf",
         "--set", "webserver_enabled=true",
         "--set", f"webserver_port={port}",
         "--set", f"capture_dir={work_dir / 'capture'}",
+        "--set", "output=texture",
+        "--set", "joysticktype=none",
         "-conf", str(conf_path),
     ]
 

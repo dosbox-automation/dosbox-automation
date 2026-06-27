@@ -2,7 +2,7 @@
 name = "One Must Fall 2097"
 slug = "one-must-fall-2097"
 media = "floppy"
-license = "freeware"
+license = "commercial"
 
 [source]
 url = "https://archive.org/download/000931-OneMustFall2097/000931_one_must_fall_2097.7z"
@@ -15,19 +15,69 @@ path = "INSTALL.EXE"
 source_drive = "A"
 target_drive = "C"
 
+[settings]
+cpu_cycles = "24000"
+
 [prompts]
-# TODO: record actual prompts by running the installer
+# Epic MegaGames text-mode installer + graphical SETUP.EXE.
+# Lua mapping:
+#   wait    -> dosbox.wait_for_text(pattern, 1800)
+#   key     -> dosbox.key(KBD_name, true) + wait + release
+#   type    -> dosbox.type(text + "\n")
+#   action  -> dosbox.output["swap_N"] = disc (harness swaps, script waits for ack)
+#   repeat/until -> while is_text_mode/not do ... end
 sequence = [
-    { wait = "Install Directory", type = "C:\\OMF" },
-    { wait = "Insert Disk 2", action = "swap:2" },
-    { wait = "Insert Disk 3", action = "swap:3" },
-    { wait = "Insert Disk 4", action = "swap:4" },
-    { wait = "Insert Disk 5", action = "swap:5" },
-    { wait = "Installation Complete", type = "" },
+    { wait = "Which program do you want to install", key = "enter" },
+    { wait = "Drive to install to", key = "enter" },
+    { wait = "Directory to install to", key = "enter" },
+    { wait = "Create it", key = "enter" },
+    { key =   "y"},
+    { wait = "Please insert disk 2", action = "swap:2", key = "enter" },
+    { wait = "Please insert disk 3", action = "swap:3", key = "enter" },
+    { wait = "Please insert disk 4", action = "swap:4", key = "enter" },
+    { wait = "Please insert disk 5", action = "swap:5", key = "enter" },
+    { wait = "read the instructions", key = "n" },
+    { wait = "Which program do you want to install", type = "2" },
+    # Installer exits to C:\OMF>. Run SETUP.EXE for sound config.
+    { wait = "C:\\OMF", type = "SETUP.EXE" },
+    # SETUP.EXE runs in graphics mode 13h with its own input loop.
+    # Needs pauses between screens - keys pile up if fired too fast.
+    { repeat = "wait", until = "gfx" },
+    { pause = 70 },
+    # Screen 1: Language. ENGLISH already selected.
+    { key = "enter" },
+    { pause = 70 },
+    # Screen 2: Sound card. 4x down to SOUND BLASTER 16 (STEREO).
+    { key = "down" },
+    { pause = 15 },
+    { key = "down" },
+    { pause = 15 },
+    { key = "down" },
+    { pause = 15 },
+    { key = "down" },
+    { pause = 15 },
+    { key = "enter" },
+    # Screen 3: "BLASTER SETTINGS ARE OK. ACCEPT THEM?" YES selected.
+    { pause = 70 },
+    { key = "enter" },
+    # Screen 4: "SELECT PLAYBACK QUALITY." "HIGH QUALITY (486-33)" selected.
+    { pause = 70 },
+    { key = "enter" },
+    # Screen 5: Back in setup screen, navigating out of the application.
+    { pause = 15 },
+    { key = "down" },
+    { pause = 15 },
+    { key = "down" },
+    { pause = 15 },
+    { key = "down" },
+    { pause = 15 },
+    { key = "enter" },
+    # SETUP exits back to text mode: "Please run OMF to begin."
+    { repeat = "wait", until = "text" },
 ]
 
 [verify]
-files = ["C:\\OMF\\OMF.EXE", "C:\\OMF\\SETUP.EXE"]
+files = ["C:\\OMF\\OMF.EXE", "C:\\OMF\\SETUP.EXE", "C:\\OMF\\SETUP.CFG"]
 
 [capture]
-screenshot_at = [0, 5]
+screenshot_at = [0, 4]

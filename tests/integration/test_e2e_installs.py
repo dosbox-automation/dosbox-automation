@@ -33,6 +33,8 @@ from e2e_helpers import (
     collect_provenance,
     download_disk_images,
     generate_install_script,
+    save_run_stats,
+    write_provenance_readme,
 )
 
 from conftest import WORKSPACE
@@ -78,6 +80,9 @@ def build_autoexec(manifest: GameManifest, game_dir: Path,
         disk_path = game_dir / manifest.disc_images[0]
         lines.append(f"mount {manifest.target_drive} \"{hd_dir}\"")
         lines.append(f"mount {manifest.source_drive} \"{disk_path}\"")
+    elif manifest.media == "zip":
+        lines.append(f"mount {manifest.target_drive} \"{hd_dir}\"")
+        lines.append(f"mount {manifest.source_drive} \"{game_dir}\"")
     else:
         lines.append(f"mount {manifest.target_drive} \"{hd_dir}\"")
         disk_path = game_dir / manifest.disc_images[0]
@@ -168,7 +173,10 @@ def run_via_recording(client, game_dir):
 
 
 def run_via_lua(client, manifest, game_dir):
-    """Drive the installer via Lua text matching. Returns status dict."""
+    """Drive the installer via Lua text matching.
+
+    Returns (status_dict, generated_lua_script).
+    """
     script = generate_install_script(manifest)
     time.sleep(0.3)
     r = client.script_load(script, name=f"install-{manifest.slug}", debug=True)
@@ -198,7 +206,70 @@ def run_via_lua(client, manifest, game_dir):
 
     r = client.script_status()
     assert r.status_code == 200, f"Status failed: {r.status_code}"
-    return r.json()
+    return r.json(), script
+
+
+def _dump_diagnostics(slug, instance, client, status, lua_script,
+                      work_dir, game_dir, failed):
+    """Print diagnostics and collect provenance regardless of outcome."""
+    state_label = "FAILED" if failed else "GREEN"
+
+    stderr_log = work_dir / "dosbox-stderr.log"
+
+    print(f"\n{'=' * 60}")
+    print(f"  {slug}  [{state_label}]")
+    print(f"  work_dir: {work_dir}")
+    if stderr_log.exists():
+        print(f"  stderr:   {stderr_log}")
+    print(f"{'=' * 60}")
+
+    if status:
+        output = status.get("output", {})
+        print(f"  script state: {status.get('state', '?')}")
+        if status.get("error"):
+            print(f"  script error: {status['error']}")
+        for key in sorted(output):
+            print(f"    {key} = {output[key]}")
+
+    try:
+        r = client.screen_text()
+        if r.status_code == 200:
+            screen = r.json().get("text", "")
+            if screen.strip():
+                print(f"  --- screen text at end ---")
+                for line in screen.splitlines():
+                    stripped = line.rstrip()
+                    if stripped:
+                        print(f"  | {stripped}")
+                print(f"  --- end screen text ---")
+    except Exception:
+        pass
+
+    if lua_script:
+        script_path = work_dir / "generated-install.lua"
+        script_path.parent.mkdir(parents=True, exist_ok=True)
+        script_path.write_text(lua_script)
+        print(f"  lua script: {script_path}")
+
+    if stderr_log.exists():
+        try:
+            lines = stderr_log.read_text().splitlines()
+            tail = lines[-30:] if len(lines) > 30 else lines
+            print(f"  --- dosbox stderr (last {len(tail)} lines) ---")
+            for line in tail:
+                print(f"  | {line}")
+            print(f"  --- end stderr ---")
+        except Exception:
+            pass
+
+    print(f"{'=' * 60}")
+
+    collect_provenance(instance.work_dir, game_dir, slug)
+
+    if lua_script:
+        provenance_dir = game_dir / "provenance"
+        provenance_dir.mkdir(parents=True, exist_ok=True)
+        (provenance_dir / f"{slug}-install.lua").write_text(lua_script)
 
 
 @pytest.mark.parametrize("slug,manifest_path", GAMES,
@@ -232,31 +303,102 @@ def test_install(slug, manifest_path, dosbox_e2e):
     client = instance.client
     client.wait_shell(timeout=15)
 
+    start_time = time.monotonic()
+    status = None
+    lua_script = None
+    recording_ok = None
+    failures = []
+
+    # --- run the installer ---
     if has_recording:
-        ok = run_via_recording(client, game_dir)
-        assert ok, "Recording replay failed"
+        recording_ok = run_via_recording(client, game_dir)
     else:
-        status = run_via_lua(client, manifest, game_dir)
-        assert status["state"] == "completed", (
-            f"Install failed: state={status['state']}, "
-            f"error={status.get('error', '')}"
-        )
-        assert status.get("output", {}).get("install_complete") == "yes"
-        for key, val in status.get("output", {}).items():
-            if key.startswith("prompt_"):
-                assert val == "found", f"{key} timed out"
+        status, lua_script = run_via_lua(client, manifest, game_dir)
+
+    duration_s = round(time.monotonic() - start_time, 2)
+
+    # --- check results, collect all failures before raising ---
+    if has_recording:
+        if not recording_ok:
+            failures.append("Recording replay failed")
+    else:
+        if status["state"] != "completed":
+            failures.append(
+                f"state={status['state']}, "
+                f"error={status.get('error', '')}"
+            )
+        elif status.get("output", {}).get("install_complete") != "yes":
+            failures.append("install_complete not set to 'yes'")
+        else:
+            for key, val in status.get("output", {}).items():
+                if key.startswith("prompt_") and val != "found":
+                    failures.append(f"{key} timed out")
 
     # Verify installed files exist (skip for booters).
-    if manifest.media != "booter":
+    file_stats = {}
+    if manifest.media != "booter" and not failures:
         for expected_file in manifest.verify_files:
             rel = expected_file.split(":\\", 1)[1].replace("\\", "/")
             host_path = hd_dir / rel
-            assert host_path.exists(), f"Expected file missing: {expected_file}"
+            if host_path.exists():
+                file_stats[expected_file] = host_path.stat().st_size
+            else:
+                failures.append(f"missing: {expected_file}")
 
-    # Collect provenance.
-    collect_provenance(instance.work_dir, game_dir, slug)
+    # --- diagnostics and provenance always run ---
+    _dump_diagnostics(slug, instance, client, status, lua_script,
+                      work_dir, game_dir, failed=bool(failures))
 
-    # Clean up HD directory.
+    # --- run statistics ---
+    run_stats = {
+        "game": slug,
+        "state": "GREEN" if not failures else "FAILED",
+        "duration_s": duration_s,
+    }
+
+    if status and not has_recording:
+        output = status.get("output", {})
+        prompts_found = sum(1 for k, v in output.items()
+                            if k.startswith("prompt_") and v == "found")
+        prompts_timeout = sum(1 for k, v in output.items()
+                              if k.startswith("prompt_") and v == "timeout")
+        swaps = sum(1 for k in output if k.startswith("swap_")
+                    and not k.endswith("_ack"))
+        run_stats["prompts_found"] = prompts_found
+        run_stats["prompts_timeout"] = prompts_timeout
+        run_stats["disk_swaps"] = swaps
+
+    if file_stats:
+        run_stats["installed_files"] = file_stats
+        run_stats["files_found"] = len(file_stats)
+        run_stats["files_expected"] = len(manifest.verify_files)
+
+    if "cpu_cycles" in manifest.settings:
+        run_stats["cpu_cycles"] = manifest.settings["cpu_cycles"]
+
+    print(f"  Duration: {duration_s}s")
+    if "disk_swaps" in run_stats:
+        print(f"  Swaps:    {run_stats['disk_swaps']}")
+    if "prompts_found" in run_stats:
+        print(f"  Prompts:  {run_stats['prompts_found']} found, "
+              f"{run_stats.get('prompts_timeout', 0)} timeout")
+    if file_stats:
+        print(f"  Files:    {len(file_stats)}"
+              f"/{len(manifest.verify_files)}")
+        for path, size in file_stats.items():
+            print(f"    {path}: {size:,} bytes")
+
+    provenance_dir = game_dir / "provenance"
+    provenance_dir.mkdir(parents=True, exist_ok=True)
+    save_run_stats(provenance_dir, slug, run_stats)
+    write_provenance_readme(provenance_dir, slug, manifest)
+
+    # --- assert after everything is collected ---
+    assert not failures, (
+        f"Install failed for {slug}:\n  " + "\n  ".join(failures)
+    )
+
+    # Clean up HD directory only on success.
     resolved_hd = hd_dir.resolve()
     resolved_game = game_dir.resolve()
     if (resolved_hd.parent == resolved_game

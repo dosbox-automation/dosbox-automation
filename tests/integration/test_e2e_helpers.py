@@ -76,3 +76,20 @@ def test_classic_wait_type_still_works():
     script = generate_install_script(m)
     assert 'dosbox.wait_for_text("Destination"' in script
     assert 'dosbox.type("C\\n")' in script
+
+
+def test_change_drive_emits_type_with_colon():
+    m = make_manifest(prompts=[
+        PromptStep(change_drive="D"),
+    ])
+    script = generate_install_script(m)
+    assert 'dosbox.type("D:\\n")' in script
+    assert "dosbox.wait_frames(30)" in script
+
+
+def test_change_drive_strips_trailing_colon():
+    m = make_manifest(prompts=[
+        PromptStep(change_drive="A:"),
+    ])
+    script = generate_install_script(m)
+    assert 'dosbox.type("A:\\n")' in script

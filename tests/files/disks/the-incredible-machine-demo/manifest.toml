@@ -1,28 +1,45 @@
 [game]
 name = "The Incredible Machine Demo"
 slug = "incredible-machine-demo"
-media = "directory"
+media = "zip"
 license = "demo"
 
 [source]
 url = "https://dosgames.com/files/timdemo.zip"
 
 [discs]
-images = ["timdemo"]
+images = ["timdemo.zip"]
 
 [installer]
 path = "INSTALL.COM"
 source_drive = "A"
 target_drive = "C"
 
+[settings]
+cpu_cycles = "12000"
+
 [prompts]
-# TODO: record actual prompts by running the installer
+# Dynamix Smart Start installer (text mode, Sierra On-Line 1992).
+# The zip contains loose game files. Unzip to C:\TIMDEMO, then run
+# INSTALL.COM which shows a menu. Option 5 launches the game directly
+# from the current directory without copying.
+#
+# The game is mouse-driven (puzzle drag-and-drop). Proving gameplay
+# requires input recording/replay (ada-j72x), not text matching.
 sequence = [
-    { wait = "Install", type = "" },
+    # Unzip game files from A: to C:\TIMDEMO.
+    { type = "MD TIMDEMO" },
+    { wait = "C:\\>", type = "Y:\\DOS\\UNZIP.EXE A:\\TIMDEMO.ZIP -d C:\\TIMDEMO" },
+    { wait = "C:\\>", type = "CD TIMDEMO" },
+    { wait = "TIMDEMO>", type = "INSTALL.COM" },
+    # Dynamix Smart Start menu. Defaults: VGA 256, AdLib.
+    { wait = "Smart Start", type = "5" },
+    # Game enters graphics mode (640x480 VGA).
+    { repeat = "wait", until = "gfx" },
 ]
 
 [verify]
-files = ["C:\\TIM\\TIM.EXE"]
+files = ["C:\\TIMDEMO\\TIM.EXE", "C:\\TIMDEMO\\RESOURCE.001"]
 
 [capture]
 screenshot_at = [0]
