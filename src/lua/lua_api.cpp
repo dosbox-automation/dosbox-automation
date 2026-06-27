@@ -274,6 +274,10 @@ static int LuaKey(lua_State* L)
 		return luaL_error(L, "unknown key name: %s", name);
 	}
 
+	if (pressed) {
+		OSD_ShowCommand(std::string("key: ") + name, CurrentFrame(L));
+	}
+
 	KEYBOARD_AddKey(it->second, pressed);
 
 	auto* dl = GetDebugLog(L);
@@ -297,6 +301,8 @@ static int LuaKey(lua_State* L)
 static int LuaType(lua_State* L)
 {
 	const char* text = luaL_checkstring(L, 1);
+
+	OSD_ShowCommand(std::string("type: ") + text, CurrentFrame(L));
 
 	auto* dl = GetDebugLog(L);
 	if (dl && dl->IsOpen()) {
@@ -604,6 +610,18 @@ static int LuaWaitForText(lua_State* L)
 	const auto timeout  = static_cast<int64_t>(luaL_checkinteger(L, 2));
 	bool ignorecase     = false;
 
+	// Persistent overlay - stays until the wait resolves (cleared in
+	// CheckWaitForText) rather than expiring after 90 frames.
+	{
+		OSD::TextOverlay overlay;
+		overlay.text     = std::string("wait: ") + pattern;
+		overlay.color    = OSD::ColorGreen();
+		overlay.position = OSD::Position::TopLeft;
+		overlay.size     = OSD::FontSize::Medium;
+		overlay.tag      = "lua-cmd";
+		OSD::OsdManager::Instance().ShowText(std::move(overlay));
+	}
+
 	if (timeout < 0) {
 		return luaL_error(L, "wait_for_text: timeout must be non-negative");
 	}
@@ -628,6 +646,7 @@ static int LuaWaitForText(lua_State* L)
 	// Check immediately before yielding.
 	const auto text = ReadScreenText();
 	if (MatchSubstring(text, pattern, ignorecase)) {
+		OSD_ClearCommand();
 		lua_pushboolean(L, true);
 
 		if (dl && dl->IsOpen()) {
@@ -832,6 +851,7 @@ static int LuaAbort(lua_State* L)
 // dosbox.capture_start() - start ZMBV video recording
 static int LuaCaptureStart(lua_State* L)
 {
+	OSD_ShowCommand("capture_start", CurrentFrame(L));
 	CAPTURE_StartVideoCapture();
 
 	auto* dl = GetDebugLog(L);
@@ -844,6 +864,7 @@ static int LuaCaptureStart(lua_State* L)
 // dosbox.capture_stop() - stop ZMBV video recording
 static int LuaCaptureStop(lua_State* L)
 {
+	OSD_ShowCommand("capture_stop", CurrentFrame(L));
 	CAPTURE_StopVideoCapture();
 
 	auto* dl = GetDebugLog(L);

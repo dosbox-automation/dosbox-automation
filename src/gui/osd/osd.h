@@ -41,6 +41,7 @@ public:
 	static OsdManager& Instance();
 
 	void ShowText(TextOverlay overlay);
+	void ShowCommand(const std::string& command, uint64_t current_frame);
 	void ClearByTag(const std::string& tag);
 	void ClearAll();
 
@@ -87,5 +88,7 @@ private:
 } // namespace OSD
 
 void OSD_Render(uint64_t frame_number);
+void OSD_ShowCommand(const std::string& command, uint64_t frame);
+void OSD_ClearCommand();
 
 #endif

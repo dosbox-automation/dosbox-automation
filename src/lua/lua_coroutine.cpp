@@ -5,6 +5,7 @@
 #include "lua/lua_coroutine.h"
 #include "lua/lua_api.h"
 
+#include "gui/osd/osd.h"
 #include "hardware/input/keyboard.h"
 #include "misc/logging.h"
 
@@ -139,13 +140,13 @@ bool LuaCoroutine::CheckWaitForText()
 		});
 		if (text.find(wait_text_pattern_lower) != std::string::npos) {
 			waiting_for_text = false;
+			OSD_ClearCommand();
 			lua_pushboolean(coroutine, true);
 			return true;
 		}
 	} else if (text.find(wait_text_pattern) != std::string::npos) {
 		waiting_for_text = false;
-		// Push true onto coroutine stack so the resumed wait_for_text
-		// call returns true to the script.
+		OSD_ClearCommand();
 		lua_pushboolean(coroutine, true);
 		return true;
 	}
@@ -153,6 +154,7 @@ bool LuaCoroutine::CheckWaitForText()
 	if (current_frame >= wait_text_deadline ||
 	    std::chrono::steady_clock::now() >= wait_text_wall_deadline) {
 		waiting_for_text = false;
+		OSD_ClearCommand();
 		lua_pushboolean(coroutine, false);
 		return true;
 	}
@@ -324,6 +326,7 @@ ScriptState LuaCoroutine::ReapStalledWaits()
 		        wait_text_pattern.c_str(),
 		        static_cast<unsigned long long>(current_frame));
 		waiting_for_text = false;
+		OSD_ClearCommand();
 		lua_pushboolean(coroutine, false);
 		return ResumeWith(1);
 	}

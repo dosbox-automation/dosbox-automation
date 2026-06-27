@@ -176,6 +176,19 @@ void OsdManager::RenderIcons(SDL_Renderer* r, const uint64_t frame_number)
 	}
 }
 
+void OsdManager::ShowCommand(const std::string& command,
+                             const uint64_t current_frame)
+{
+	TextOverlay overlay;
+	overlay.text         = command;
+	overlay.color        = ColorGreen();
+	overlay.position     = Position::TopLeft;
+	overlay.size         = FontSize::Medium;
+	overlay.expire_frame = static_cast<int64_t>(current_frame) + 90;
+	overlay.tag          = "lua-cmd";
+	ShowText(std::move(overlay));
+}
+
 void OsdManager::SetEnabled(const bool on)
 {
 	enabled = on;
@@ -207,4 +220,14 @@ void OsdManager::Render(const uint64_t frame_number)
 void OSD_Render(const uint64_t frame_number)
 {
 	OSD::OsdManager::Instance().Render(frame_number);
+}
+
+void OSD_ShowCommand(const std::string& command, const uint64_t frame)
+{
+	OSD::OsdManager::Instance().ShowCommand(command, frame);
+}
+
+void OSD_ClearCommand()
+{
+	OSD::OsdManager::Instance().ClearByTag("lua-cmd");
 }
