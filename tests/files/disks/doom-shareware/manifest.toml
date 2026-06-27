@@ -15,11 +15,24 @@ path = "SETUP.EXE"
 source_drive = "A"
 target_drive = "C"
 
+[settings]
+cpu_cycles = "12000"
+
 [prompts]
-# TODO: record actual prompts by running the installer
 sequence = [
-    { wait = "Install", type = "C:\\DOOM" },
-    { wait = "Insert Disk", action = "swap:2" },
+    { wait = "Available Drives", type = "C" },
+    { wait = "insert disk DOOM 2", action = "swap:2", key = "enter" },
+    { wait = "Controller Type", key = "down" },
+    { repeat = "enter", until = "gfx" },
+    { pause = 60 },
+    { key = "escape" },
+    { pause = 15 },
+    { key = "up" },
+    { pause = 15 },
+    { key = "enter" },
+    { pause = 15 },
+    { key = "y" },
+    { repeat = "wait", until = "text" },
 ]
 
 [verify]

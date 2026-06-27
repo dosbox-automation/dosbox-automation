@@ -21,9 +21,13 @@ except ImportError:
 
 @dataclass
 class PromptStep:
-    wait: str
+    wait: str | None = None
     type_text: str | None = None
     action: str | None = None
+    key: str | None = None
+    pause: int | None = None
+    repeat: str | None = None
+    until_mode: str | None = None
 
 
 @dataclass
@@ -41,6 +45,7 @@ class GameManifest:
     prompts: list[PromptStep]
     verify_files: list[str]
     screenshot_at: list[int] = field(default_factory=list)
+    settings: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_file(cls, path: Path) -> "GameManifest":
@@ -50,10 +55,16 @@ class GameManifest:
         prompts = []
         for entry in data.get("prompts", {}).get("sequence", []):
             prompts.append(PromptStep(
-                wait=entry["wait"],
+                wait=entry.get("wait"),
                 type_text=entry.get("type"),
                 action=entry.get("action"),
+                key=entry.get("key"),
+                pause=entry.get("pause"),
+                repeat=entry.get("repeat"),
+                until_mode=entry.get("until"),
             ))
+
+        settings = data.get("settings", {})
 
         source = data.get("source", {})
         return cls(
@@ -70,60 +81,136 @@ class GameManifest:
             prompts=prompts,
             verify_files=data.get("verify", {}).get("files", []),
             screenshot_at=data.get("capture", {}).get("screenshot_at", []),
+            settings=settings,
         )
 
 
-def generate_install_script(manifest: GameManifest) -> str:
-    """Generate a Lua automation script from a game manifest.
+def _key_name(short_name):
+    """Map short TOML key names to KBD_ constants used by dosbox.key()."""
+    if short_name.startswith("KBD_"):
+        return short_name
+    mapping = {
+        "enter": "KBD_enter", "escape": "KBD_esc", "esc": "KBD_esc",
+        "up": "KBD_up", "down": "KBD_down", "left": "KBD_left",
+        "right": "KBD_right", "space": "KBD_space", "tab": "KBD_tab",
+        "backspace": "KBD_backspace",
+    }
+    if short_name in mapping:
+        return mapping[short_name]
+    if len(short_name) == 1 and short_name.isalnum():
+        return f"KBD_{short_name.lower()}"
+    return f"KBD_{short_name}"
 
-    The script drives the installer, waits for prompts, types responses,
-    and signals disc swaps via the output table. Disc swaps are handled
-    by the Python harness through the drive-swap REST endpoint.
-    """
+
+def _emit_key_press(lines, key_short, gap_frames=8, indent=""):
+    """Emit a press-wait-release sequence for a single key."""
+    kbd = _key_name(key_short)
+    lines.append(f'{indent}dosbox.key("{kbd}", true)')
+    lines.append(f"{indent}dosbox.wait_frames({gap_frames})")
+    lines.append(f'{indent}dosbox.key("{kbd}", false)')
+    lines.append(f"{indent}dosbox.wait_frames(8)")
+
+
+def generate_install_script(manifest: GameManifest) -> str:
+    """Generate a Lua automation script from a game manifest."""
     lines = [
         "dosbox.capture_start()",
         "dosbox.wait_frames(30)",
     ]
 
     if manifest.media == "booter":
-        # Booter disks use BOOT command, not a DOS-level installer.
         lines.extend([
             "",
-            "-- boot from floppy",
             f'dosbox.type("BOOT {manifest.source_drive}:\\n")',
             "dosbox.wait_frames(120)",
         ])
     else:
         lines.extend([
             "",
-            "-- run the installer",
-            f'dosbox.type("{manifest.source_drive}:\\\\{manifest.installer_path}\\n")',
+            f'dosbox.type("{manifest.source_drive}:\\n")',
+            "dosbox.wait_frames(30)",
+            f'dosbox.type("{manifest.installer_path}\\n")',
             "dosbox.wait_frames(60)",
         ])
 
     lines.append("")
-    lines.append("-- follow prompts")
+    swap_idx = 0
 
     for i, prompt in enumerate(manifest.prompts):
-        escaped_wait = prompt.wait.replace("\\", "\\\\").replace('"', '\\"')
-        lines.append(
-            f'local found_{i} = dosbox.wait_for_text("{escaped_wait}", 1800)'
-        )
-        lines.append(
-            f'dosbox.output["prompt_{i}"] = found_{i} and "found" or "timeout"'
-        )
+        if prompt.pause is not None:
+            lines.append(f"dosbox.wait_frames({prompt.pause})")
+            continue
 
-        if i in manifest.screenshot_at:
-            lines.append(f'dosbox.output["screen_{i}"] = dosbox.screen_text()')
+        if prompt.repeat is not None and prompt.until_mode is not None:
+            if prompt.until_mode == "gfx":
+                lines.append("while dosbox.is_text_mode() do")
+            else:
+                lines.append("while not dosbox.is_text_mode() do")
+
+            if prompt.repeat != "wait":
+                lines.append("  local prev = dosbox.screen_text()")
+                _emit_key_press(lines, prompt.repeat, gap_frames=8,
+                                indent="  ")
+                lines.append("  for _ = 1, 20 do")
+                lines.append("    dosbox.wait_frames(10)")
+                if prompt.until_mode == "gfx":
+                    lines.append(
+                        "    if not dosbox.is_text_mode()"
+                        " or dosbox.screen_text() ~= prev"
+                        " then break end"
+                    )
+                else:
+                    lines.append(
+                        "    if dosbox.is_text_mode()"
+                        " or dosbox.screen_text() ~= prev"
+                        " then break end"
+                    )
+                lines.append("  end")
+            else:
+                lines.append("  dosbox.wait_frames(30)")
+
+            lines.append("end")
+            continue
+
+        if prompt.key is not None and prompt.wait is None:
+            _emit_key_press(lines, prompt.key)
+            continue
+
+        if prompt.wait is not None:
+            escaped_wait = prompt.wait.replace("\\", "\\\\").replace(
+                '"', '\\"'
+            )
+            lines.append(
+                f'local found_{i} = dosbox.wait_for_text('
+                f'"{escaped_wait}", 1800)'
+            )
+            lines.append(
+                f'dosbox.output["prompt_{i}"] = '
+                f'found_{i} and "found" or "timeout"'
+            )
+
+            if i in manifest.screenshot_at:
+                lines.append(
+                    f'dosbox.output["screen_{i}"] = dosbox.screen_text()'
+                )
 
         if prompt.action and prompt.action.startswith("swap:"):
             disc_num = int(prompt.action.split(":")[1])
-            lines.append(f'dosbox.output["swap_{i}"] = {disc_num}')
-            lines.append("dosbox.wait_frames(30)")
-        elif prompt.type_text is not None:
-            escaped = prompt.type_text.replace("\\", "\\\\").replace('"', '\\"')
+            lines.append(
+                f'dosbox.output["swap_{swap_idx}"] = {disc_num}'
+            )
+            swap_idx += 1
+            lines.append("dosbox.wait_frames(150)")
+
+        if prompt.type_text is not None:
+            escaped = prompt.type_text.replace(
+                "\\", "\\\\"
+            ).replace('"', '\\"')
             lines.append(f'dosbox.type("{escaped}\\n")')
             lines.append("dosbox.wait_frames(30)")
+
+        if prompt.key is not None:
+            _emit_key_press(lines, prompt.key)
 
     lines.extend([
         "",
