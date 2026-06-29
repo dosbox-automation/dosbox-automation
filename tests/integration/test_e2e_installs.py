@@ -187,7 +187,7 @@ def run_via_lua(client, manifest, game_dir):
     r = client.script_start()
     assert r.status_code == 200, f"Script start failed: {r.json()}"
 
-    current_disc = 1
+    handled_swaps = set()
     deadline = time.monotonic() + 300
     while time.monotonic() < deadline:
         r = client.script_status()
@@ -197,10 +197,10 @@ def run_via_lua(client, manifest, game_dir):
 
         for key, val in data.get("output", {}).items():
             if key.startswith("swap_") and isinstance(val, int):
-                if val != current_disc:
+                if key not in handled_swaps:
                     disc_path = str(game_dir / manifest.disc_images[val - 1])
                     client.drive_swap(manifest.source_drive, disc_path)
-                    current_disc = val
+                    handled_swaps.add(key)
 
         if data["state"] in ("completed", "error"):
             break

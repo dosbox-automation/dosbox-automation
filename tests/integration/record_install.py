@@ -143,8 +143,9 @@ def main():
     ]
 
     print(f"Starting DOSBox for {manifest.name}...")
-    print(f"  Port: {port}")
-    print(f"  HD:   {hd_dir}")
+    print(f"  Port:  {port}")
+    print(f"  Token: {token}")
+    print(f"  HD:    {hd_dir}")
     print()
     proc = subprocess.Popen(cmd, env=env, cwd=str(work_dir))
 
