@@ -18,6 +18,8 @@ SETTING_SECTIONS = {
     "cpu_type": "cpu",
     "machine": "dosbox",
     "memsize": "dosbox",
+    "output": "sdl",
+    "joysticktype": "joystick",
 }
 
 DOSBOX_BIN = os.environ.get(
@@ -201,6 +203,15 @@ def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
         "[webserver]\n" + "\n".join(primary_lines) + "\n"
     )
 
+    # When running visible, force texture output (OSD needs SDL_Renderer)
+    # and disable joystick (Stadia controller bug).
+    visible = os.environ.get("DOSBOX_VISIBLE")
+    if visible:
+        if settings is None:
+            settings = {}
+        settings.setdefault("output", "texture")
+        settings.setdefault("joysticktype", "none")
+
     # Write a config file with settings and autoexec.
     conf_path = None
     if autoexec_lines or settings:
@@ -226,7 +237,6 @@ def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
         "DOSBOX_API_TOKEN": token,
     }
 
-    visible = os.environ.get("DOSBOX_VISIBLE")
     if not visible:
         env["SDL_VIDEODRIVER"] = "offscreen"
         env["SDL_AUDIODRIVER"] = "dummy"
@@ -239,9 +249,6 @@ def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
         "--set", f"webserver_port={port}",
         "--set", f"capture_dir={work_dir / 'capture'}",
     ]
-
-    if visible:
-        cmd.extend(["--set", "output=texture"])
 
     if extra_sets:
         for s in extra_sets:
