@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from dosbox_client import DosboxClient
+from e2e_helpers import resolve_cycle_settings
 
 DOSBOX_BIN = os.environ.get(
     "DOSBOX_BIN",
@@ -46,6 +47,14 @@ def main():
 
     events = recording if isinstance(recording, list) else recording.get("events", [])
     duration_s = events[-1]["t"] / 1000 if events else 0
+
+    # Match the recorded rates so events stay in sync, real and protected mode
+    # both. DOSBOX_CYCLES still overrides both for manual experiments.
+    recording_data = recording if isinstance(recording, dict) else {}
+    cycles = resolve_cycle_settings(recording_data, None)
+    override = os.environ.get("DOSBOX_CYCLES")
+    if override:
+        cycles = {"cpu_cycles": override, "cpu_cycles_protected": override}
     print(f"Recording: {recording_path.name}")
     print(f"  {len(events)} events, {duration_s:.1f}s duration")
 
@@ -85,7 +94,8 @@ def main():
             "--nolocalconf",
             "--set", "webserver_enabled=true",
             "--set", f"webserver_port={port}",
-            "--set", f"cycles={os.environ.get('DOSBOX_CYCLES', 'auto')}",
+            "--set", f"cpu_cycles={cycles['cpu_cycles']}",
+            "--set", f"cpu_cycles_protected={cycles['cpu_cycles_protected']}",
             "-c", f"MOUNT D {iso_path} -t iso",
             str(c_drive),
         ],

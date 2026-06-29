@@ -19,7 +19,7 @@ sequence = [
 ]
 
 [verify]
-files = ["C:\\SHOCK\\SSHOCK.EXE"]
+files = ["C:\\SSHOCK\\SSHOCK.BAT", "C:\\SSHOCK\\CYB.CFG"]
 
 [capture]
 screenshot_at = [0]

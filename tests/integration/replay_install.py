@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from dosbox_client import DosboxClient
-from e2e_helpers import GameManifest
+from e2e_helpers import GameManifest, resolve_cycle_settings
 
 DOSBOX_BIN = os.environ.get(
     "DOSBOX_BIN",
@@ -90,8 +90,15 @@ def main():
             f'"{game_dir / manifest.disc_images[0]}" -t floppy'
         )
 
+    # Replay at the rates the recording was made at, not DOSBox's defaults.
+    # Pin both or the game jumps to 60000 in protected mode.
+    cycles = resolve_cycle_settings(recording, manifest.settings)
     conf_path = game_dir / f"replay-{run_id}.conf"
-    conf_path.write_text("[autoexec]\n" + "\n".join(autoexec) + "\n")
+    conf_path.write_text(
+        f"[cpu]\ncpu_cycles = {cycles['cpu_cycles']}\n"
+        f"cpu_cycles_protected = {cycles['cpu_cycles_protected']}\n\n"
+        "[autoexec]\n" + "\n".join(autoexec) + "\n"
+    )
 
     dosbox_bin = Path(DOSBOX_BIN).resolve()
     resource_dir = dosbox_bin.parent / "resources"

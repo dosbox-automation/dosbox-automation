@@ -2,9 +2,16 @@
 # License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
 #
 
-"""Unit tests for the Lua script generator."""
+"""Unit tests for the Lua script generator and replay helpers."""
 
-from e2e_helpers import GameManifest, PromptStep, generate_install_script
+from e2e_helpers import (
+    DEFAULT_CPU_CYCLES,
+    GameManifest,
+    PromptStep,
+    generate_install_script,
+    resolve_cpu_cycles,
+    resolve_cycle_settings,
+)
 
 
 def make_manifest(**overrides):
@@ -93,3 +100,77 @@ def test_change_drive_strips_trailing_colon():
     ])
     script = generate_install_script(m)
     assert 'dosbox.type("A:\\n")' in script
+
+
+def test_resolve_cpu_cycles_prefers_recording():
+    # The recording was made at this rate; replay must match it even if the
+    # manifest now says something else.
+    assert resolve_cpu_cycles("25000", {"cpu_cycles": "12000"}) == "25000"
+
+
+def test_resolve_cpu_cycles_falls_back_to_manifest():
+    assert resolve_cpu_cycles(None, {"cpu_cycles": "30000"}) == "30000"
+
+
+def test_resolve_cpu_cycles_falls_back_to_default():
+    assert resolve_cpu_cycles(None, {}) == DEFAULT_CPU_CYCLES
+    assert resolve_cpu_cycles(None, None) == DEFAULT_CPU_CYCLES
+
+
+def test_resolve_cpu_cycles_never_returns_auto():
+    # The whole point: a replay must never run at DOSBox's auto default.
+    for recorded, settings in [
+        (None, None), (None, {}), ("18000", {}), (None, {"cpu_cycles": "9000"}),
+    ]:
+        result = resolve_cpu_cycles(recorded, settings)
+        assert result != "auto"
+        assert result
+
+
+def test_resolve_cpu_cycles_coerces_to_string():
+    # recording.json may hold a JSON number; the conf writer needs a string.
+    assert resolve_cpu_cycles(20000, None) == "20000"
+
+
+def test_cycle_settings_protected_mirrors_realmode_by_default():
+    # One consistent rate: protected mode follows the realmode value when
+    # nothing pins it. This is what keeps the game from jumping to 60000.
+    out = resolve_cycle_settings({"cpu_cycles": "12000"}, {})
+    assert out == {"cpu_cycles": "12000", "cpu_cycles_protected": "12000"}
+
+
+def test_cycle_settings_record_time_uses_manifest():
+    # At record time there is no recording yet (None).
+    out = resolve_cycle_settings(None, {"cpu_cycles": "25000"})
+    assert out == {"cpu_cycles": "25000", "cpu_cycles_protected": "25000"}
+
+
+def test_cycle_settings_default_when_nothing_set():
+    out = resolve_cycle_settings(None, None)
+    assert out == {
+        "cpu_cycles": DEFAULT_CPU_CYCLES,
+        "cpu_cycles_protected": DEFAULT_CPU_CYCLES,
+    }
+
+
+def test_cycle_settings_explicit_protected_override():
+    # A manifest may pin a different protected rate on purpose.
+    out = resolve_cycle_settings(
+        {"cpu_cycles": "12000"}, {"cpu_cycles_protected": "30000"}
+    )
+    assert out == {"cpu_cycles": "12000", "cpu_cycles_protected": "30000"}
+
+
+def test_cycle_settings_recorded_protected_wins_over_manifest():
+    out = resolve_cycle_settings(
+        {"cpu_cycles": "12000", "cpu_cycles_protected": "18000"},
+        {"cpu_cycles_protected": "30000"},
+    )
+    assert out["cpu_cycles_protected"] == "18000"
+
+
+def test_cycle_settings_never_auto_or_60000_default():
+    # The whole point: protected mode must never fall back to the ramping
+    # 60000 default.
+    out = resolve_cycle_settings(None, None)
+    assert out["cpu_cycles_protected"] not in ("auto", "max", "60000")

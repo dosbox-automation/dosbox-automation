@@ -19,6 +19,60 @@ except ImportError:
     import tomli as tomllib
 
 
+# DOSBox defaults cpu_cycles to "auto", which ramps with host load and is not
+# reproducible. Record and replay must run at the same fixed rate, or the
+# frame-indexed input events drift out of sync with the game state. This is the
+# shared fallback used when neither the recording nor the manifest pins a value.
+DEFAULT_CPU_CYCLES = "12000"
+
+
+def resolve_cpu_cycles(recorded_cycles, manifest_settings):
+    """Pick the realmode cpu_cycles value for a replay run.
+
+    The recording wins: a replay has to match the rate its events were captured
+    at. Fall back to the manifest, then the shared default. Never returns None,
+    so the caller always writes a fixed [cpu] section instead of letting DOSBox
+    fall back to the non-deterministic auto rate.
+    """
+    if recorded_cycles:
+        return str(recorded_cycles)
+    if manifest_settings and manifest_settings.get("cpu_cycles"):
+        return str(manifest_settings["cpu_cycles"])
+    return DEFAULT_CPU_CYCLES
+
+
+def resolve_cycle_settings(recording_data, manifest_settings):
+    """Resolve both cpu_cycles (realmode) and cpu_cycles_protected as fixed
+    values for a recording or replay run.
+
+    DOSBox uses two rates: cpu_cycles in real mode and cpu_cycles_protected
+    once a program enters protected mode (DOS extenders, SCI interpreters).
+    cpu_cycles_protected defaults to 60000 and ramps, so pinning only
+    cpu_cycles leaves the in-game rate non-deterministic. We pin both, and by
+    default the protected rate mirrors the realmode one so the whole session
+    runs at a single consistent rate. A manifest or recording may pin a
+    different protected rate explicitly.
+
+    recording_data is the parsed recording.json (or None at record time, when
+    there is no recording yet). Returns a dict ready to feed into a conf
+    [cpu] section or the conftest settings map.
+    """
+    recording_data = recording_data or {}
+    manifest_settings = manifest_settings or {}
+
+    base = resolve_cpu_cycles(recording_data.get("cpu_cycles"), manifest_settings)
+
+    protected = (
+        recording_data.get("cpu_cycles_protected")
+        or manifest_settings.get("cpu_cycles_protected")
+        or base
+    )
+    return {
+        "cpu_cycles": base,
+        "cpu_cycles_protected": str(protected),
+    }
+
+
 @dataclass
 class PromptStep:
     wait: str | None = None

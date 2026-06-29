@@ -1,0 +1,26 @@
+[game]
+name = "Quest for Glory IV - Shadows of Darkness"
+slug = "quest-for-glory-4"
+media = "cdrom-cue"
+license = "commercial"
+
+[source]
+url = "https://archive.org/download/QuestForGloryShadowsOfDarknessUSA/Quest%20for%20Glory%20-%20Shadows%20of%20Darkness%20%28USA%29.zip"
+
+[discs]
+images = ["Quest for Glory - Shadows of Darkness (USA).cue"]
+
+[installer]
+path = "INSTALL.EXE"
+source_drive = "D"
+target_drive = "C"
+
+[prompts]
+# TODO: observe installer flow
+sequence = []
+
+[verify]
+files = ["C:\\SIERRA\\QG4CD.BAT"]
+
+[capture]
+screenshot_at = [0]

@@ -28,7 +28,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from dosbox_client import DosboxClient
-from e2e_helpers import GameManifest, download_disk_images
+from e2e_helpers import GameManifest, download_disk_images, resolve_cycle_settings
 
 DOSBOX_BIN = os.environ.get(
     "DOSBOX_BIN",
@@ -101,10 +101,15 @@ def main():
             f'"{game_dir / manifest.disc_images[0]}" -t floppy'
         )
 
-    # Config in game_dir for conf anchor.
+    # Config in game_dir for conf anchor. The recording is replayed later at
+    # this same rate (persisted into recording.json below), so both the real
+    # and protected mode rates must be fixed, not auto. Pin both or the game
+    # jumps to the 60000 protected default once it leaves real mode.
+    cycles = resolve_cycle_settings(None, manifest.settings)
     conf_path = game_dir / f"record-{run_id}.conf"
     conf_path.write_text(
-        "[cpu]\ncpu_cycles = 12000\n\n"
+        f"[cpu]\ncpu_cycles = {cycles['cpu_cycles']}\n"
+        f"cpu_cycles_protected = {cycles['cpu_cycles_protected']}\n\n"
         "[autoexec]\n" + "\n".join(autoexec) + "\n"
     )
 
@@ -204,6 +209,10 @@ def main():
             data = r.json()
             event_count = data.get("event_count", 0)
             duration = data.get("duration_ms", 0)
+
+            # Pin the rates this session ran at so replay matches them.
+            data["cpu_cycles"] = cycles["cpu_cycles"]
+            data["cpu_cycles_protected"] = cycles["cpu_cycles_protected"]
 
             # Save the recording.
             recording_path = game_dir / "recording.json"

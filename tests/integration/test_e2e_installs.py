@@ -33,6 +33,7 @@ from e2e_helpers import (
     collect_provenance,
     download_disk_images,
     generate_install_script,
+    resolve_cycle_settings,
     save_run_stats,
     write_provenance_readme,
 )
@@ -295,11 +296,23 @@ def test_install(slug, manifest_path, dosbox_e2e):
     work_dir = WORKSPACE / f"e2e-{run_id}"
 
     autoexec = build_autoexec(manifest, game_dir, hd_dir)
+
+    # Replay has to run at the same fixed CPU rate the recording was made at,
+    # or the frame-indexed input events drift out of sync with the game. Pin
+    # both the real and protected mode rates; the recorded values win over the
+    # manifest, and both beat DOSBox's auto/60000 defaults.
+    recording_data = None
+    if has_recording:
+        with open(game_dir / "recording.json") as f:
+            recording_data = json.load(f)
+    settings = dict(manifest.settings)
+    settings.update(resolve_cycle_settings(recording_data, manifest.settings))
+
     instance = dosbox_e2e(
         autoexec_lines=autoexec, work_dir=work_dir,
         conf_dir=game_dir,
         allowed_image_roots=[game_dir],
-        settings=manifest.settings,
+        settings=settings,
     )
     client = instance.client
     client.wait_shell(timeout=15)
@@ -374,8 +387,8 @@ def test_install(slug, manifest_path, dosbox_e2e):
         run_stats["files_found"] = len(file_stats)
         run_stats["files_expected"] = len(manifest.verify_files)
 
-    if "cpu_cycles" in manifest.settings:
-        run_stats["cpu_cycles"] = manifest.settings["cpu_cycles"]
+    run_stats["cpu_cycles"] = settings["cpu_cycles"]
+    run_stats["cpu_cycles_protected"] = settings["cpu_cycles_protected"]
 
     print(f"  Duration: {duration_s}s")
     if "disk_swaps" in run_stats:
