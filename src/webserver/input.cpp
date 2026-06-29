@@ -765,6 +765,22 @@ void ReplayDispatchFrame(uint64_t current_frame)
 		last_dispatched_t_ms = dispatched_ev.t_ms;
 
 		dispatch_input_event(dispatched_ev);
+
+		// OSD feedback for visible replay events
+		if (dispatched_ev.type == InputEvent::Type::Key &&
+		    dispatched_ev.pressed) {
+			auto it = key_id_to_name.find(dispatched_ev.key);
+			if (it != key_id_to_name.end()) {
+				OSD_ShowCommand("replay: " + it->second,
+				                current_frame);
+			}
+		} else if (dispatched_ev.type == InputEvent::Type::MouseButton) {
+			std::string label = dispatched_ev.pressed
+			                            ? "replay: click "
+			                            : "replay: release ";
+			OSD_ShowCommand(label + dispatched_ev.button,
+			                current_frame);
+		}
 	}
 
 	if (dispatched_this_frame > 0) {
