@@ -1,0 +1,62 @@
+[game]
+name = "Borland Turbo Pascal 5.5"
+slug = "turbo-pascal-55"
+media = "floppy"
+license = "commercial"
+
+[source]
+url = "https://archive.org/download/turbopascal5point5"
+
+[discs]
+images = [
+    "Turbo Pascal 5.5 Install.IMA",
+    "Turbo Pascal 5.5 OOP Demos.IMA",
+    "Turbo Pascal 5.5 Tour Help.IMA",
+    "Turbo Pascal 5.5 Utilities Misc.IMA",
+]
+
+[installer]
+path = "INSTALL.EXE"
+source_drive = "A"
+target_drive = "C"
+
+[prompts]
+# Borland text-mode installer. Accepts defaults for drive/path,
+# selects all components, swaps four floppies in sequence.
+# Verified manually 2026-06-30.
+sequence = [
+    # First screen: "Enter the SOURCE drive"
+    { wait = "ENTER to continue", key = "enter"},
+    { wait = "SOURCE drive", key = "enter" },
+    { wait = "Install Turbo Pascal on a Hard Drive", key = "enter" },
+    # "Start installation" - cursor up to select all, then enter
+    { wait = "Start Installation", key = "up" },
+    { pause = 5 },
+    { key = "enter" },
+    # Disk swaps: installer names the disk it wants on screen
+    { wait = "TOUR/ONLINE HELP", action = "swap:3", key = "enter" },
+    { wait = "OOP/DEMOS", action = "swap:2", key = "enter" },
+    { wait = "UTILITIES/MISC", action = "swap:4", key = "enter" },
+    # "Installation complete" or return to DOS
+    { pause = 60 },
+    { key = "enter" },
+    # Verify: run TURBO.EXE, dismiss splash, quit
+    { type = "C:" },
+    { pause = 15 },
+    { type = "CD TP" },
+    { pause = 15 },
+    { type = "TURBO" },
+    { pause = 60 },
+    { key = "space" },
+    { pause = 30 },
+    { key = "enter" },
+    { pause = 30 },
+    # Alt-X to quit Turbo Pascal
+    { key = "q" },
+]
+
+[verify]
+files = ["C:\\TP\\TURBO.EXE"]
+
+[capture]
+screenshot_at = [0]
