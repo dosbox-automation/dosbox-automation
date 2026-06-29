@@ -91,6 +91,10 @@ def main():
             f'mount {manifest.source_drive} '
             f'"{game_dir / manifest.disc_images[0]}"'
         )
+    elif manifest.media == "zip":
+        autoexec.append(
+            f'mount {manifest.source_drive} "{game_dir}"'
+        )
     else:
         autoexec.append(
             f'mount {manifest.source_drive} '
