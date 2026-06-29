@@ -169,6 +169,7 @@ def run_via_recording(client, game_dir):
         time.sleep(1)
 
     client.capture_stop()
+    client.shutdown()
     return True
 
 
