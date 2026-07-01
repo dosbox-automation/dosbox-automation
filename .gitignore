@@ -104,5 +104,8 @@ cmake-build-*/
 # VS Code CMake Tools test discovery cache
 cmake_test_discovery_*.json
 
+# AppImage build output
+/dist
+
 # Python
 __pycache__
