@@ -108,7 +108,7 @@ constexpr ReverbParameters Trevor0402_Sc55ReverbParameters = {
 
 static std::vector<std_fs::path> get_platform_data_dirs()
 {
-	return {
+	std::vector<std_fs::path> dirs = {
 	        get_config_dir() / DefaultSoundfontsDir,
 
 	        // C:\soundfonts is the default place where FluidSynth places
@@ -116,16 +116,26 @@ static std::vector<std_fs::path> get_platform_data_dirs()
 	        // https://www.fluidsynth.org/api/fluidsettings.xml#synth.default-soundfont
 	        std::string("C:\\") + DefaultSoundfontsDir + "\\",
 	};
+
+	for (const auto& res_dir : get_resource_parent_paths()) {
+		dirs.emplace_back(res_dir / DefaultSoundfontsDir);
+	}
+	return dirs;
 }
 
 #elif defined(MACOSX)
 
 static std::vector<std_fs::path> get_platform_data_dirs()
 {
-	return {
+	std::vector<std_fs::path> dirs = {
 	        get_config_dir() / DefaultSoundfontsDir,
 	        resolve_home("~/Library/Audio/Sounds/Banks"),
 	};
+
+	for (const auto& res_dir : get_resource_parent_paths()) {
+		dirs.emplace_back(res_dir / DefaultSoundfontsDir);
+	}
+	return dirs;
 }
 
 #else
@@ -149,6 +159,11 @@ static std::vector<std_fs::path> get_platform_data_dirs()
 
 	// Third priority is $XDG_CONF_HOME, for convenience
 	dirs.emplace_back(get_config_dir() / DefaultSoundfontsDir);
+
+	// Fourth priority: bundled resources shipped with the binary
+	for (const auto& res_dir : get_resource_parent_paths()) {
+		dirs.emplace_back(res_dir / DefaultSoundfontsDir);
+	}
 
 	return dirs;
 }
@@ -1204,11 +1219,11 @@ static void init_fluidsynth_config_settings(SectionProp& secprop)
 {
 	constexpr auto WhenIdle = Property::Changeable::WhenIdle;
 
-	// Name 'default.sf2' picks the default SoundFont if it's installed
-	// in the OS (usually "Fluid_R3").
-	auto str_prop = secprop.AddString("soundfont", WhenIdle, "default.sf2");
+	// GeneralUser GS is our bundled SoundFont (resources/soundfonts/).
+	// Falls back to 'default.sf2' if not found (system-installed).
+	auto str_prop = secprop.AddString("soundfont", WhenIdle, "GeneralUser-GS.sf2");
 	str_prop->SetHelp(
-	        "Name or path of SoundFont file to use ('default.sf2' by default). The SoundFont\n"
+	        "Name or path of SoundFont file to use ('GeneralUser-GS.sf2' by default). The SoundFont\n"
 	        "will be looked up in the following locations in order:\n"
 	        "\n"
 	        "  - The user-defined SoundFont directory (see 'soundfont_dir').\n"

@@ -2242,6 +2242,12 @@ External libraries built as part of the project.
   FluidSynth     MIDI synthesizer
                  License: LGPL-2.1-or-later
 
+  GeneralUser GS SoundFont
+                 General MIDI/GS SoundFont (bundled default)
+                 Copyright (c) S. Christian Collins
+                 License: custom freeware (see resources/soundfonts/LICENSE-GeneralUser-GS.txt)
+                 https://github.com/ad-si/GeneralUser
+
   munt (libmt32emu)
                  MT-32 emulator
                  License: LGPL-2.1-or-later
