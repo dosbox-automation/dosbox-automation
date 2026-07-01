@@ -1219,11 +1219,11 @@ static void init_fluidsynth_config_settings(SectionProp& secprop)
 {
 	constexpr auto WhenIdle = Property::Changeable::WhenIdle;
 
-	// GeneralUser GS is our bundled SoundFont (resources/soundfonts/).
+	// FluidR3_GM is our bundled SoundFont (resources/soundfonts/).
 	// Falls back to 'default.sf2' if not found (system-installed).
-	auto str_prop = secprop.AddString("soundfont", WhenIdle, "GeneralUser-GS.sf2");
+	auto str_prop = secprop.AddString("soundfont", WhenIdle, "FluidR3_GM.sf2");
 	str_prop->SetHelp(
-	        "Name or path of SoundFont file to use ('GeneralUser-GS.sf2' by default). The SoundFont\n"
+	        "Name or path of SoundFont file to use ('FluidR3_GM.sf2' by default). The SoundFont\n"
 	        "will be looked up in the following locations in order:\n"
 	        "\n"
 	        "  - The user-defined SoundFont directory (see 'soundfont_dir').\n"
