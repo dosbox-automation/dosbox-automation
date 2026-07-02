@@ -10,13 +10,14 @@ target_sources(dosboxcommon PRIVATE
   video.cpp
   webserver.cpp)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBJPEG REQUIRED IMPORTED_TARGET libjpeg)
+# find_package instead of pkg-config: works with both system libjpeg
+# (Linux) and vcpkg's libjpeg-turbo (Windows, no pkg-config there)
+find_package(JPEG REQUIRED)
 
 target_link_libraries(dosboxcommon PRIVATE
   simde
   base64
   httplib
   json
-  PkgConfig::LIBJPEG
+  JPEG::JPEG
   png)
