@@ -37,7 +37,7 @@ def start_with_token_file(work_dir, use_env_token=False):
     work_dir.mkdir(parents=True, exist_ok=True)
 
     # Write primary config
-    config_dir = work_dir / ".config" / "dosbox"
+    config_dir = work_dir / ".config" / "dosbox-automation"
     config_dir.mkdir(parents=True, exist_ok=True)
     dosbox_bin = Path(DOSBOX_BIN).resolve()
     resource_dir = dosbox_bin.parent / "resources"
@@ -114,7 +114,7 @@ def test_token_file_created(tmp_path):
     work_dir = tmp_path / "token-test"
     inst, token = start_with_token_file(work_dir)
 
-    token_path = work_dir / ".config" / "dosbox" / "webserver" / "api_token"
+    token_path = work_dir / ".config" / "dosbox-automation" / "webserver" / "api_token"
 
     try:
         assert token_path.exists(), f"Token file not found at {token_path}"
@@ -135,7 +135,7 @@ def test_token_file_permissions(tmp_path):
     work_dir = tmp_path / "perm-test"
     inst, _ = start_with_token_file(work_dir)
 
-    token_path = work_dir / ".config" / "dosbox" / "webserver" / "api_token"
+    token_path = work_dir / ".config" / "dosbox-automation" / "webserver" / "api_token"
 
     try:
         mode = stat.S_IMODE(token_path.stat().st_mode)
@@ -178,7 +178,7 @@ def test_token_file_removed_on_shutdown(tmp_path):
     work_dir = tmp_path / "shutdown-test"
     inst, _ = start_with_token_file(work_dir)
 
-    token_path = work_dir / ".config" / "dosbox" / "webserver" / "api_token"
+    token_path = work_dir / ".config" / "dosbox-automation" / "webserver" / "api_token"
     assert token_path.exists()
 
     inst.shutdown()
@@ -195,7 +195,7 @@ def test_no_token_file_with_env_var(tmp_path):
     work_dir = tmp_path / "env-test"
     inst, _ = start_with_token_file(work_dir, use_env_token=True)
 
-    token_path = work_dir / ".config" / "dosbox" / "webserver" / "api_token"
+    token_path = work_dir / ".config" / "dosbox-automation" / "webserver" / "api_token"
 
     try:
         assert not token_path.exists(), (
