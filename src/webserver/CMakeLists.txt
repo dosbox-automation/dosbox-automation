@@ -20,4 +20,4 @@ target_link_libraries(dosboxcommon PRIVATE
   httplib
   json
   JPEG::JPEG
-  png)
+  PNG::PNG)

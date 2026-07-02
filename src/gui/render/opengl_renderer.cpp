@@ -119,6 +119,26 @@ bool OpenGlRenderer::InitRenderer()
 
 	const auto version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
 
+	// SDL can return a context far below the requested 3.3 core profile
+	// (Windows' software GL driver is stuck at 1.1, common in VMs and
+	// RDP sessions). glad then leaves every modern entry point null, so
+	// the first VAO call would crash. Bail out instead; the caller falls
+	// back to the SDL texture renderer.
+	constexpr int MinGlMajor = 3;
+	constexpr int MinGlMinor = 3;
+	if (GLAD_VERSION_MAJOR(version) < MinGlMajor ||
+	    (GLAD_VERSION_MAJOR(version) == MinGlMajor &&
+	     GLAD_VERSION_MINOR(version) < MinGlMinor)) {
+		LOG_ERR("OPENGL: Version %d.%d is below the required minimum %d.%d",
+		        GLAD_VERSION_MAJOR(version),
+		        GLAD_VERSION_MINOR(version),
+		        MinGlMajor,
+		        MinGlMinor);
+		SDL_GL_DeleteContext(context);
+		context = nullptr;
+		return false;
+	}
+
 #ifdef USE_DEBUG_CONTEXT
 	GLint flags;
 	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
