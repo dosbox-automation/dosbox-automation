@@ -11,6 +11,7 @@ from e2e_helpers import (
     generate_install_script,
     resolve_cpu_cycles,
     resolve_cycle_settings,
+    resolve_keyboard_layout,
 )
 
 
@@ -174,3 +175,31 @@ def test_cycle_settings_never_auto_or_60000_default():
     # 60000 default.
     out = resolve_cycle_settings(None, None)
     assert out["cpu_cycles_protected"] not in ("auto", "max", "60000")
+
+
+def test_keyboard_layout_default_is_us():
+    # 'auto' follows the host locale, so it can never be the resolved
+    # value; without any pin the layout is us.
+    assert resolve_keyboard_layout(None, None) == {"keyboard_layout": "us"}
+
+
+def test_keyboard_layout_recorded_value_wins():
+    # A recording made under another layout must replay under it.
+    out = resolve_keyboard_layout(
+        {"keyboard_layout": "de"}, {"keyboard_layout": "uk"}
+    )
+    assert out == {"keyboard_layout": "de"}
+
+
+def test_keyboard_layout_manifest_used_at_record_time():
+    # At record time there is no recording yet (None).
+    out = resolve_keyboard_layout(None, {"keyboard_layout": "uk"})
+    assert out == {"keyboard_layout": "uk"}
+
+
+def test_keyboard_layout_never_auto():
+    # The QWERTZ lesson: a recording types ':' and a German-locale host
+    # receives 'OE' unless the guest layout is pinned.
+    for recording, manifest in ((None, None), ({}, {}), ({"events": []}, {})):
+        out = resolve_keyboard_layout(recording, manifest)
+        assert out["keyboard_layout"] != "auto"

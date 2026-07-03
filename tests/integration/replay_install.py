@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from dosbox_client import DosboxClient
-from e2e_helpers import GameManifest, resolve_cycle_settings
+from e2e_helpers import GameManifest, resolve_cycle_settings, resolve_keyboard_layout
 
 DOSBOX_BIN = os.environ.get(
     "DOSBOX_BIN",
@@ -90,13 +90,17 @@ def main():
             f'"{game_dir / manifest.disc_images[0]}" -t floppy'
         )
 
-    # Replay at the rates the recording was made at, not DOSBox's defaults.
-    # Pin both or the game jumps to 60000 in protected mode.
+    # Replay at the rates and keyboard layout the recording was made at,
+    # not DOSBox's defaults. Pin both rates or the game jumps to 60000 in
+    # protected mode; pin the layout or scancodes decode into the wrong
+    # characters on hosts with another locale.
     cycles = resolve_cycle_settings(recording, manifest.settings)
+    layout = resolve_keyboard_layout(recording, manifest.settings)
     conf_path = game_dir / f"replay-{run_id}.conf"
     conf_path.write_text(
         f"[cpu]\ncpu_cycles = {cycles['cpu_cycles']}\n"
         f"cpu_cycles_protected = {cycles['cpu_cycles_protected']}\n\n"
+        f"[dos]\nkeyboard_layout = {layout['keyboard_layout']}\n\n"
         "[autoexec]\n" + "\n".join(autoexec) + "\n"
     )
 

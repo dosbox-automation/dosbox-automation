@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from dosbox_client import DosboxClient
-from e2e_helpers import resolve_cycle_settings
+from e2e_helpers import resolve_cycle_settings, resolve_keyboard_layout
 
 DOSBOX_BIN = os.environ.get(
     "DOSBOX_BIN",
@@ -49,9 +49,12 @@ def main():
     duration_s = events[-1]["t"] / 1000 if events else 0
 
     # Match the recorded rates so events stay in sync, real and protected mode
-    # both. DOSBOX_CYCLES still overrides both for manual experiments.
+    # both. DOSBOX_CYCLES still overrides both for manual experiments. The
+    # keyboard layout is pinned too, or the recorded scancodes decode into
+    # the wrong characters on hosts with another locale.
     recording_data = recording if isinstance(recording, dict) else {}
     cycles = resolve_cycle_settings(recording_data, None)
+    layout = resolve_keyboard_layout(recording_data, None)
     override = os.environ.get("DOSBOX_CYCLES")
     if override:
         cycles = {"cpu_cycles": override, "cpu_cycles_protected": override}
@@ -96,6 +99,7 @@ def main():
             "--set", f"webserver_port={port}",
             "--set", f"cpu_cycles={cycles['cpu_cycles']}",
             "--set", f"cpu_cycles_protected={cycles['cpu_cycles_protected']}",
+            "--set", f"keyboard_layout={layout['keyboard_layout']}",
             "-c", f"MOUNT D {iso_path} -t iso",
             str(c_drive),
         ],

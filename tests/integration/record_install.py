@@ -28,7 +28,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from dosbox_client import DosboxClient
-from e2e_helpers import GameManifest, download_disk_images, resolve_cycle_settings
+from e2e_helpers import (
+    GameManifest,
+    download_disk_images,
+    resolve_cycle_settings,
+    resolve_keyboard_layout,
+)
 
 DOSBOX_BIN = os.environ.get(
     "DOSBOX_BIN",
@@ -105,11 +110,15 @@ def main():
     # this same rate (persisted into recording.json below), so both the real
     # and protected mode rates must be fixed, not auto. Pin both or the game
     # jumps to the 60000 protected default once it leaves real mode.
+    # The keyboard layout is pinned for the same reason: recordings store
+    # scancodes, and the layout decides what characters they become.
     cycles = resolve_cycle_settings(None, manifest.settings)
+    layout = resolve_keyboard_layout(None, manifest.settings)
     conf_path = game_dir / f"record-{run_id}.conf"
     conf_path.write_text(
         f"[cpu]\ncpu_cycles = {cycles['cpu_cycles']}\n"
         f"cpu_cycles_protected = {cycles['cpu_cycles_protected']}\n\n"
+        f"[dos]\nkeyboard_layout = {layout['keyboard_layout']}\n\n"
         "[autoexec]\n" + "\n".join(autoexec) + "\n"
     )
 
@@ -211,9 +220,11 @@ def main():
             event_count = data.get("event_count", 0)
             duration = data.get("duration_ms", 0)
 
-            # Pin the rates this session ran at so replay matches them.
+            # Pin the rates and layout this session ran at so replay
+            # matches them.
             data["cpu_cycles"] = cycles["cpu_cycles"]
             data["cpu_cycles_protected"] = cycles["cpu_cycles_protected"]
+            data["keyboard_layout"] = layout["keyboard_layout"]
 
             # Save the recording.
             recording_path = game_dir / "recording.json"

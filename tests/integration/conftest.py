@@ -16,6 +16,7 @@ SETTING_SECTIONS = {
     "cpu_cycles_protected": "cpu",
     "cpu_throttle": "cpu",
     "cpu_type": "cpu",
+    "keyboard_layout": "dos",
     "machine": "dosbox",
     "memsize": "dosbox",
     "output": "sdl",

@@ -34,6 +34,7 @@ from e2e_helpers import (
     download_disk_images,
     generate_install_script,
     resolve_cycle_settings,
+    resolve_keyboard_layout,
     save_run_stats,
     write_provenance_readme,
 )
@@ -307,6 +308,7 @@ def test_install(slug, manifest_path, dosbox_e2e):
             recording_data = json.load(f)
     settings = dict(manifest.settings)
     settings.update(resolve_cycle_settings(recording_data, manifest.settings))
+    settings.update(resolve_keyboard_layout(recording_data, manifest.settings))
 
     instance = dosbox_e2e(
         autoexec_lines=autoexec, work_dir=work_dir,

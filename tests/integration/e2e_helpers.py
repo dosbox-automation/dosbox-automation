@@ -73,6 +73,29 @@ def resolve_cycle_settings(recording_data, manifest_settings):
     }
 
 
+def resolve_keyboard_layout(recording_data, manifest_settings):
+    """Resolve the guest keyboard layout for a recording or replay run.
+
+    Recordings store raw scancodes; the DOS keyboard layout maps them to
+    characters. Record and replay must therefore run the same layout, or a
+    recording made on a US-layout host types garbage on a QWERTZ one
+    (':' arrives as 'Ö', 'z' and 'y' swapped). The default 'auto' follows
+    the host locale, so it is never deterministic across machines. Pin
+    'us' unless the recording or the manifest says otherwise; a recorded
+    value wins so old recordings replay under the layout they were made
+    with.
+    """
+    recording_data = recording_data or {}
+    manifest_settings = manifest_settings or {}
+
+    layout = (
+        recording_data.get("keyboard_layout")
+        or manifest_settings.get("keyboard_layout")
+        or "us"
+    )
+    return {"keyboard_layout": str(layout)}
+
+
 @dataclass
 class PromptStep:
     wait: str | None = None
@@ -450,6 +473,16 @@ def collect_provenance(work_dir: Path, game_dir: Path, slug: str):
 
     if capture_dir.exists():
         avis = sorted(capture_dir.glob("video*.avi"))
+        if avis and shutil.which("ffmpeg") is None:
+            # Provenance videos are artifacts, not pass criteria; a
+            # host without ffmpeg must not fail the test run. Keep the
+            # raw ZMBV capture so the evidence survives anyway.
+            print("  ffmpeg not found, keeping raw capture instead of transcoding")
+            for idx, avi in enumerate(avis):
+                suffix = f"-{idx}" if len(avis) > 1 else ""
+                shutil.copy2(avi, provenance_dir /
+                             f"{base}-install-raw{suffix}.avi")
+            avis = []
         if not avis:
             pass
         elif len(avis) == 1:
