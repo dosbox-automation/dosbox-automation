@@ -9,7 +9,7 @@
 
 
 """
-Set the DOSBox Staging version across all relevant files.
+Set the dosbox-automation version across all relevant files.
 
 This script ensures version consistency across the codebase during the
 release process. It supports the following workflows:
@@ -44,12 +44,6 @@ release process. It supports the following workflows:
   - <f>.github/actions/set-common-vars/action.yml</> (<c>VCPKG_EXT_DEPS_VERSION</>)
       External dependency version with its own iteration counter (e.g.,
       v0.83.0-4). Incremented independently when vcpkg deps change.
-
-  - <f>.github/workflows/release-notes-preview.yml</> (<c>RELEASE_START_TIME</>)
-      Must be set manually to the previous release's publish timestamp.
-
-  - <f>.github/workflows/deploy-website.yml</> (release branch)
-      Updated manually when creating a new release branch.
 
   - Copyright years in various files
       Updated annually, not per-release.
@@ -231,7 +225,7 @@ def update_cmake(base_version, suffix, dry_run=False):
 
     # Update VERSION in project()
     new_content = re.sub(
-        r'(project\(dosbox-staging[^)]*VERSION\s+)\d+\.\d+\.\d+',
+        r'(project\(dosbox-automation[^)]*VERSION\s+)\d+\.\d+\.\d+',
         rf'\g<1>{base_version}',
         content
     )
@@ -347,7 +341,7 @@ def extract_version_from_cmake():
     content = read_file(CMAKE_FILE)
 
     # Extract base version
-    match = re.search(r'project\(dosbox-staging[^)]*VERSION\s+(\d+\.\d+\.\d+)', content)
+    match = re.search(r'project\(dosbox-automation[^)]*VERSION\s+(\d+\.\d+\.\d+)', content)
     base_version = match.group(1) if match else None
 
     # Extract suffix

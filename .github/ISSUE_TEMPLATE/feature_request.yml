@@ -20,7 +20,7 @@ body:
     attributes:
       label: Are you using the latest dosbox-automation version?
       description: |
-        Look up the latest release version [on our website](https://www.github.com/dosbox-automation/dosbox-automation/releases or the [releases page](https://github.com/dosbox-automation/dosbox-automation/releases).
+        Look up the latest release version on the [releases page](https://github.com/dosbox-automation/dosbox-automation/releases).
         To check your version, run `dosbox --version` or execute the `VER` command inside dosbox-automation. If the version is reported as `git` (meaning you compiled it yourself), put the result of `git describe` in the version field below.
       options:
         - label: I have checked and I'm using the latest release.

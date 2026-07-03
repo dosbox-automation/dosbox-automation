@@ -1,4 +1,0 @@
-site
-*.css.map
-hooks/*
-!hooks/*.py

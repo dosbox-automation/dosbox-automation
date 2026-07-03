@@ -216,38 +216,6 @@
         "UseMultiToolTask": "true",
         "EnforceProcessCountAcrossBuilds": "true"
       }
-    },
-    {
-      "name": "debug-windows-manual",
-      "displayName": "Debug (Windows, with offline manual)",
-      "inherits": "debug-windows",
-      "cacheVariables": {
-        "OPT_DOCUMENTATION": "ON"
-      }
-    },
-    {
-      "name": "release-windows-manual",
-      "displayName": "Release (Windows, with offline manual)",
-      "inherits": "release-windows",
-      "cacheVariables": {
-        "OPT_DOCUMENTATION": "ON"
-      }
-    },
-    {
-      "name": "debug-windows-vs2022-manual",
-      "displayName": "Debug (Windows, with offline manual)",
-      "inherits": "debug-windows-vs2022",
-      "cacheVariables": {
-        "OPT_DOCUMENTATION": "ON"
-      }
-    },
-    {
-      "name": "release-windows-vs2022-manual",
-      "displayName": "Release (Windows, with offline manual)",
-      "inherits": "release-windows-vs2022",
-      "cacheVariables": {
-        "OPT_DOCUMENTATION": "ON"
-      }
     }
   ],
   "buildPresets": [
@@ -321,26 +289,6 @@
     {
       "name": "release-windows",
       "configurePreset" : "release-windows",
-      "configuration": "Release"
-    },
-    {
-      "name": "debug-windows-manual",
-      "configurePreset" : "debug-windows-manual",
-      "configuration": "Debug"
-    },
-    {
-      "name": "release-windows-manual",
-      "configurePreset" : "release-windows-manual",
-      "configuration": "Release"
-    },
-    {
-      "name": "debug-windows-vs2022-manual",
-      "configurePreset" : "debug-windows-vs2022-manual",
-      "configuration": "Debug"
-    },
-    {
-      "name": "release-windows-vs2022-manual",
-      "configurePreset" : "release-windows-vs2022-manual",
       "configuration": "Release"
     }
   ],
@@ -450,38 +398,6 @@
     {
       "name": "release-windows",
       "configurePreset" : "release-windows",
-      "configuration": "Release",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "debug-windows-manual",
-      "configurePreset" : "debug-windows-manual",
-      "configuration": "Debug",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "release-windows-manual",
-      "configurePreset" : "release-windows-manual",
-      "configuration": "Release",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "debug-windows-vs2022-manual",
-      "configurePreset" : "debug-windows-vs2022-manual",
-      "configuration": "Debug",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "release-windows-vs2022-manual",
-      "configurePreset" : "release-windows-vs2022-manual",
       "configuration": "Release",
       "output": {
         "outputOnFailure": true

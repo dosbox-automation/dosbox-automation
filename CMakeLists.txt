@@ -396,7 +396,6 @@ endif()
 option(OPT_TESTS "Enable tests" ON)
 
 # Offline documentation
-option(OPT_DOCUMENTATION "Build offline documentation" OFF)
 
 if (OPT_TESTS)
   enable_testing()
@@ -507,13 +506,6 @@ endif()
 include(cmake/add_copy_assets.cmake)
 add_copy_assets()
 
-# Build offline documentation (must come after add_copy_assets because
-# it adds a dependency on the copy_assets target)
-if (OPT_DOCUMENTATION)
-  include(cmake/add_build_documentation.cmake)
-  add_build_documentation()
-endif()
-
 # Project-wide include paths used by the main library and standalone
 # libraries that reference project headers (dosbox_config.h, etc.).
 # Using an INTERFACE library makes these paths explicit per-target
@@ -566,15 +558,6 @@ target_link_libraries(dosbox PRIVATE
 if (HAS_STACK_INCLUDES)
   target_link_options(dosbox PRIVATE "-rdynamic")
 endif()
-
-# Remove MkDocs source-tree caches (website/.cache, __pycache__, site)
-add_custom_target(clean-manual
-  COMMAND "${CMAKE_COMMAND}" -E rm -rf "${CMAKE_SOURCE_DIR}/website/.cache"
-  COMMAND "${CMAKE_COMMAND}" -E rm -rf "${CMAKE_SOURCE_DIR}/website/__pycache__"
-  COMMAND "${CMAKE_COMMAND}" -E rm -rf "${CMAKE_SOURCE_DIR}/website/site"
-  COMMENT "Removing MkDocs caches"
-  VERBATIM
-)
 
 # Add installation rules
 include(cmake/add_install_rules.cmake)

@@ -55,6 +55,5 @@ I have:
 - [ ] confirmed that my code does not cause performance regressions (e.g., by running the Quake benchmark).
 - [ ] added unit tests where applicable to prove the correctness of my code and to avoid future regressions.
 - [ ] provided the release notes draft (for significant user-facing changes).
-- [ ] made corresponding changes to the documentation or the website according to the [documentation guidelines](https://github.com/dosbox-automation/dosbox-automation/blob/main/docs/DOCUMENTATION.md).
-- [ ] [locally verified](https://github.com/dosbox-automation/dosbox-automation/blob/main/docs/DOCUMENTATION.md#previewing-documentation-changes-locally) my website or documentation changes.
+- [ ] made corresponding changes to the documentation. The user manual and website live in a separate project; note in the PR description when a change needs a manual update.
 

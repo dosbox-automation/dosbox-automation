@@ -1,7 +1,0 @@
-DOS Games
-  Beneath a Steel Sky
-    cd
-      bass.iso
-    drives
-      c
-    dosbox.conf
