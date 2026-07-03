@@ -1,13 +1,13 @@
 # HTTP API examples
 
-These files provide examples for interacting with the DOSBox Staging HTTP API.
+These files provide examples for interacting with the dosbox-automation HTTP API.
 Make sure to enable the API by setting `webserver_enabled = on` in the
-`[webserver]` config section and restart Staging. Then open
-http://localhost:8086/ while DOSBox is running to learn more about the API.
-Also check out the provided `api.js` wrapper.
+`[webserver]` config section and restart dosbox-automation. Then open
+http://localhost:8386/ while dosbox-automation is running to learn more about
+the API. Also check out the provided `api.js` wrapper.
 
-These files here need to be placed in the `webserver` dir inside your DOSBox
-config directory to use them.
+These files here need to be placed in the `webserver` dir inside your
+dosbox-automation config directory to use them.
 
 
 ## Memory monitor
@@ -18,7 +18,7 @@ Monitor and manipulate memory locations live.
 
 As an example you can run the
 [Commander Keen Episode 4 Demo](https://www.dosgames.com/game/commander-keen-4-secret-of-the-oracle/)
-with the default DOSBox Staging configuration and import this config string:
+with the default dosbox-automation configuration and import this config string:
 
 ```
 W3siYWRkciI6IjB4YzhlZmUiLCJ0eXBlIjoiY3N0cmluZyIsImxhYmVsIjoiRmlsZSJ9LHsiYWRkciI6IjB4MzgyZjgiLCJ0eXBlIjoidWludDgiLCJsYWJlbCI6IkFtbW8ifSx7ImFkZHIiOiIweDAzODMwYSIsInR5cGUiOiJ1aW50OCIsImxhYmVsIjoiTGl2ZXMifV0==

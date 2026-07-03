@@ -9,7 +9,7 @@ WINDOWS_DIR = windows
 MACOS_DIR = macos
 
 # master raster source - all PNGs are downscaled from this
-MASTER_PNG = ../../augra-developer-docs/design/dosbox-automation/icons/application-logo-without-background.png
+MASTER_PNG = ../../../../augra/augra-developer-docs/design/dosbox-automation/icons/application-logo-without-background.png
 
 MACOS_ICONSET_DIR = $(MACOS_DIR)/dosbox-automation.iconset
 

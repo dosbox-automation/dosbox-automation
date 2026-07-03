@@ -11,7 +11,7 @@ function(add_install_rules)
     set(INSTALL_DIR_ICONS     "${CMAKE_INSTALL_DATADIR}/icons/hicolor")
     set(INSTALL_DIR_METAINFO  "${CMAKE_INSTALL_DATADIR}/metainfo")
 
-    set(INSTALL_ICON_NAME "org.dosbox_staging.dosbox_staging")
+    set(INSTALL_ICON_NAME "org.dosbox_automation.dosbox_automation")
 
     # Install the application binary
     install(TARGETS dosbox RUNTIME)
@@ -29,13 +29,13 @@ function(add_install_rules)
       DESTINATION "${INSTALL_DIR_METAINFO}")
 
     # Scalable icon
-    install(FILES "extras/icons/svg/dosbox-staging.svg"
+    install(FILES "resources/icons/svg/dosbox-automation.svg"
       DESTINATION "${INSTALL_DIR_ICONS}/scalable/apps"
       RENAME "${INSTALL_ICON_NAME}.svg")
 
     # Bitmap icons
     foreach(PX IN ITEMS 16 22 24 32 48 96 128 256 512 1024)
-    install(FILES "extras/icons/png/icon_${PX}.png"
+    install(FILES "resources/icons/png/icon_${PX}.png"
         DESTINATION "${INSTALL_DIR_ICONS}/${PX}x${PX}/apps"
         RENAME "${INSTALL_ICON_NAME}.png")
     endforeach()

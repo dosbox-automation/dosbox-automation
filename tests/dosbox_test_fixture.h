@@ -37,7 +37,7 @@ public:
 
 	void SetUp() override
 	{
-		// Create DOSBox Staging's config directory, which is a
+		// Create the config directory, which is a
 		// pre-requisite that's asserted during the Init process.
 		//
 		init_config_dir();

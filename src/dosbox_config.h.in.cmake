@@ -4,8 +4,7 @@
 #ifndef DOSBOX_DOSBOX_CONFIG_H
 #define DOSBOX_DOSBOX_CONFIG_H
 
-// Current DOSBox Staging version without 'v' prefix (e.g., 0.79.1,
-// 0.81.1-alpha)
+// Current version without 'v' prefix (e.g., 0.84.0-da1)
 #define DOSBOX_VERSION "${DOSBOX_VERSION}"
 
 #define DOSBOX_VERSION_SHORT "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"

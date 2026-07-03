@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText:  2020-2025 The DOSBox Staging Team
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-/* This sample shows how to write a simple unit test for dosbox-staging using
+/* This sample shows how to write a simple unit test for dosbox-automation using
  * Google C++ testing framework.
  *
  * Read Google Test Primer for reference of most available features, macros,
@@ -15,7 +15,7 @@
  * 1. Header declaring functions/classes being tested
  * 2. <gtest/gtest.h>, which declares the testing framework
  * 3. Additional system headers (if needed)
- * 4. Additional dosbox-staging headers (if needed)
+ * 4. Additional dosbox-automation headers (if needed)
  */
 
 #include "shell/shell.h"

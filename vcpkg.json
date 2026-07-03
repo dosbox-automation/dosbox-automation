@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-  "name": "dosbox-staging",
-  "description": "DOSBox Staging is a modern continuation of DOSBox with advanced features and current development practices.",
-  "version": "0.84.0-alpha",
+  "name": "dosbox-automation",
+  "description": "DOS emulator with HTTP REST API and Lua scripting for automated game installation and testing.",
+  "version": "0.84.0",
   "dependencies": [
     "asio",
     "gtest",

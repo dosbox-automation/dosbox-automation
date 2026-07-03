@@ -7,11 +7,11 @@ usage() {
     printf "%s\n" "\
 Usage: $0 TYPE
 
-Print DOSBox Staging version information.
+Print dosbox-automation version information.
 
 TYPE must be one of:
-  version            Current DOSBox Staging version without 'v' prefix
-                     (e.g., 0.79.1, 0.81.1-alpha)
+  version            Current version without 'v' prefix
+                     (e.g., 0.84.0-da1)
 
   hash               Minimum 5-char long Git hash of the currently checked
                      out commit; can be longer to guarantee uniqueness
@@ -30,7 +30,7 @@ fi
 ROOT=$(git rev-parse --show-toplevel)
 
 VERSION=$(
-    grep "project(dosbox-staging" -A 2 "$ROOT/CMakeLists.txt" \
+    grep "project(dosbox-automation" -A 2 "$ROOT/CMakeLists.txt" \
         | grep "VERSION" | sed "s/ *VERSION *//g" | cut -d"\"" -f2
 )
 
