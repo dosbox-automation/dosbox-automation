@@ -51,6 +51,7 @@ def start_with_token_file(work_dir, use_env_token=False):
         "SDL_VIDEODRIVER": "offscreen",
         "SDL_AUDIODRIVER": "dummy",
         "HOME": str(work_dir),
+        "XDG_CONFIG_HOME": str(work_dir / ".config"),
     }
 
     if use_env_token:

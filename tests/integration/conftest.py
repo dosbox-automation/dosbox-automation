@@ -77,6 +77,10 @@ def dosbox(tmp_path_factory):
         "SDL_VIDEODRIVER": "offscreen",
         "SDL_AUDIODRIVER": "dummy",
         "HOME": str(work_dir),
+        # HOME redirects the config dir on POSIX only; XDG_CONFIG_HOME
+        # does it on Windows too (token file and logs must stay in the
+        # per-test work dir on every platform)
+        "XDG_CONFIG_HOME": str(work_dir / ".config"),
         "DOSBOX_API_TOKEN": token,
     }
 
@@ -234,6 +238,7 @@ def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
     env = {
         **os.environ,
         "HOME": str(work_dir),
+        "XDG_CONFIG_HOME": str(work_dir / ".config"),
         "DOSBOX_API_TOKEN": token,
     }
 

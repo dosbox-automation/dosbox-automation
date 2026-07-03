@@ -53,7 +53,8 @@ std_fs::path get_primary_config_path()
 
 static std_fs::path get_or_create_config_dir()
 {
-	const auto conf_path = resolve_home("~/Library/Preferences/DOSBox");
+	const auto conf_path = resolve_home(
+	        "~/Library/Preferences/" DOSBOX_PROJECT_NAME);
 
 	if (!create_dir_if_not_exist(conf_path)) {
 		LOG_ERR("CONFIG: Can't create config directory '%s'",
@@ -66,6 +67,22 @@ static std_fs::path get_or_create_config_dir()
 
 static std_fs::path get_or_create_config_dir()
 {
+	// An explicit XDG_CONFIG_HOME wins on Windows too. The automation
+	// harness (and parallel instances in general) need a way to isolate
+	// the config dir - the token file and logs live there - and the
+	// shell folder below cannot be redirected per process. HOME is not
+	// used for this on purpose: Git Bash sets it routinely.
+	const auto xdg_config_home = get_env_var("XDG_CONFIG_HOME");
+	if (!xdg_config_home.empty()) {
+		const auto conf_path = std_fs::path(xdg_config_home) /
+		                       DOSBOX_PROJECT_NAME;
+		if (!create_dir_if_not_exist(conf_path)) {
+			LOG_ERR("CONFIG: Can't create config directory '%s'",
+			        conf_path.string().c_str());
+		}
+		return conf_path;
+	}
+
 	char appdata_path[MAX_PATH] = {0};
 
 	const int create = 1;
@@ -90,7 +107,7 @@ static std_fs::path get_or_create_config_dir()
 		                                 create);
 	}
 
-	const auto conf_path = std_fs::path(appdata_path) / "DOSBox";
+	const auto conf_path = std_fs::path(appdata_path) / DOSBOX_PROJECT_NAME;
 
 	if (!create_dir_if_not_exist(conf_path)) {
 		LOG_ERR("CONFIG: Can't create config directory '%s'",
