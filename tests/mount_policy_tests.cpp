@@ -74,12 +74,34 @@ protected:
 		return path;
 	}
 
-	// Create a symlink
+	// Create a symlink. Directory targets need a directory symlink:
+	// on Windows file and directory symlinks are distinct link types,
+	// and a file symlink to a directory does not resolve as one.
 	fs::path CreateSymlink(const fs::path& target, const std::string& link_name)
 	{
 		const auto link_path = tmp_dir / link_name;
-		fs::create_symlink(target, link_path);
+		std::error_code ec   = {};
+		if (fs::is_directory(target)) {
+			fs::create_directory_symlink(target, link_path, ec);
+		} else {
+			fs::create_symlink(target, link_path, ec);
+		}
+		EXPECT_FALSE(ec) << "symlink creation failed: " << ec.message();
 		return link_path;
+	}
+
+	// Windows permits symlink creation only with Developer Mode or
+	// SeCreateSymbolicLinkPrivilege; symlink tests skip where absent
+	bool SymlinksAvailable()
+	{
+		const auto probe   = tmp_dir / "symlink_probe";
+		std::error_code ec = {};
+		fs::create_directory_symlink(tmp_dir, probe, ec);
+		if (ec) {
+			return false;
+		}
+		fs::remove(probe, ec);
+		return true;
 	}
 
 	// Write a minimal FAT boot sector image (512 bytes, 0x55AA at 510)
@@ -166,6 +188,9 @@ TEST_F(MountPolicyTest, NoSymlinksInPath)
 
 TEST_F(MountPolicyTest, SymlinkInPath)
 {
+	if (!SymlinksAvailable()) {
+		GTEST_SKIP() << "symlink creation not permitted on this host";
+	}
 	const auto real_dir = CreateDir("real_target");
 	const auto link     = CreateSymlink(real_dir, "link_to_target");
 	EXPECT_TRUE(MountPolicy::HasSymlinkComponent(link));
@@ -173,6 +198,9 @@ TEST_F(MountPolicyTest, SymlinkInPath)
 
 TEST_F(MountPolicyTest, SymlinkAsIntermediateComponent)
 {
+	if (!SymlinksAvailable()) {
+		GTEST_SKIP() << "symlink creation not permitted on this host";
+	}
 	const auto real_dir = CreateDir("real_parent/child");
 	const auto link = CreateSymlink(real_dir.parent_path(), "link_parent");
 	const auto through_link = tmp_dir / "link_parent" / "child";
@@ -374,6 +402,9 @@ TEST_F(MountPolicyTest, DirMountNonexistentPath)
 
 TEST_F(MountPolicyTest, DirMountThroughSymlink)
 {
+	if (!SymlinksAvailable()) {
+		GTEST_SKIP() << "symlink creation not permitted on this host";
+	}
 	const auto real = CreateDir("real_game");
 	const auto link = CreateSymlink(real, "link_game");
 
@@ -498,6 +529,9 @@ TEST_F(MountPolicyTest, ImagePathDirectory)
 
 TEST_F(MountPolicyTest, ImagePathSymlink)
 {
+	if (!SymlinksAvailable()) {
+		GTEST_SKIP() << "symlink creation not permitted on this host";
+	}
 	const auto real = CreateFatImage("real.img");
 	const auto link = CreateSymlink(real, "link.img");
 
@@ -586,6 +620,9 @@ TEST_F(MountPolicyTest, SymlinkToEtcShadowViaDirectory)
 	// pointing to /etc
 	if (!fs::exists("/etc")) {
 		GTEST_SKIP() << "/etc not available";
+	}
+	if (!SymlinksAvailable()) {
+		GTEST_SKIP() << "symlink creation not permitted on this host";
 	}
 	const auto link = CreateSymlink(fs::path("/etc"), "innocent_game");
 
@@ -795,6 +832,27 @@ TEST(MountPolicyWindows, CaseInsensitiveSystemPathMatch)
 	} else {
 		GTEST_SKIP() << "C:\\Windows not found on this system";
 	}
+}
+
+TEST(MountPolicyWindows, HostsFileDirectoryBlocked)
+{
+	// A mounted drivers\etc means a rewritable hosts file (DNS
+	// redirection). Covered by the SYSTEMROOT prefix block; this
+	// pins it so a SystemPaths() change cannot silently drop it.
+	const auto etc = std::filesystem::path("C:\\Windows\\System32\\drivers\\etc");
+
+	if (!std::filesystem::exists(etc)) {
+		GTEST_SKIP() << "drivers\\etc not found on this system";
+	}
+	EXPECT_TRUE(MountPolicy::IsUnderSystemPath(etc));
+
+	const auto verdict = MountPolicy::ValidateDirectoryMount(
+	        etc,
+	        std::filesystem::temp_directory_path(),
+	        {},
+	        DirMountPolicy::WhitelistEnforced);
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::SystemPath);
 }
 
 TEST(MountPolicyWindows, CaseInsensitiveRootMatch)
