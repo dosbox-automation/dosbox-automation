@@ -19,10 +19,18 @@
 
 class DOSBoxTestFixture : public ::testing::Test {
 public:
+	// argv[0] is consumed as the program name, so switches must be
+	// separate elements. The old single-string form was parsed as a
+	// name and zero arguments, which silently loaded the developer's
+	// primary config instead of the tests config. -noprimaryconf and
+	// -nolocalconf keep host configs out of the test environment.
 	DOSBoxTestFixture()
-	        : arg_c_str("-conf tests/files/dosbox-automation-tests.conf\0"),
-	          argv{arg_c_str},
-	          command_line(1, argv)
+	        : argv{"dosbox_tests",
+	               "-noprimaryconf",
+	               "-nolocalconf",
+	               "-conf",
+	               "tests/files/dosbox-automation-tests.conf"},
+	          command_line(5, argv)
 	{
 		control = std::make_unique<Config>(&command_line);
 	}
@@ -34,8 +42,11 @@ public:
 		//
 		init_config_dir();
 		const auto config_path = get_config_dir();
-		control->ParseConfigFiles(config_path);
 
+		// Register module config sections before parsing config
+		// files; values parsed into unregistered sections are
+		// silently dropped.
+		//
 		// Only initialiasing the minimum number of modules required for
 		// the tests.
 		//
@@ -44,6 +55,8 @@ public:
 		// runs in 3 seconds instead of 13).
 		//
 		DOSBOX_InitModuleConfigsAndMessages();
+
+		control->ParseConfigFiles(config_path);
 
 		DOSBOX_Init();
 		CPU_Init();
@@ -65,8 +78,7 @@ public:
 	}
 
 private:
-	const char* arg_c_str;
-	const char* argv[1];
+	const char* argv[5];
 
 	CommandLine command_line;
 	ConfigPtr config;
