@@ -1,56 +1,46 @@
 # Code of conduct
 
-In order to foster a welcoming, positive, and rewarding experience, we as
-community members pledge to uphold this code of conduct.
+## TLDR
 
-*Isn't decent behavior already expected?* We want to bring our best to each
-other as peers, and explicitly documenting our expectations lets us set a high
-bar for ourselves.
+Our project follows internet netiquette as described in RFC 1855. Behave 
+accordingly in our community.
 
-## Be excellent to each other
+Do not police yourself; report, block, move on.
 
-"Excellent" means we:
+## Code of Conduct, in detail
 
-- **are wholly inclusive** to existing members and newcomers looking to
-  learn or participate. Some may raise questions that have been addressed
-  before. Kindly point them to existing discussions. Everyone was new to a
-  project once.
-- **respect** your abilities, interests, and personal differences.  Our
-  different talents documenting, testing, coding, reviewing, reporting, and/or
-  evangelizing are all valuable to the project.
-- **make concise and actionable points** to respect your time as a volunteer.
-  We respect each other's time by keeping the signal-to-noise ratio high,
-  staying on-topic, and being a good house-guest: every visit we strive to
-  leave the place in better shape than when we arrived.
-- **are kind** and **assume positive intent**, even when we disagree while
-  working towards consensus and achieving the project's technical goals.
-- **educate and illuminate** others with something we know more about. We were
-  all beginners once, and can teach and learn through feedback and sharing.
-- **are open to feedback** from others, be it technical points, interpersonal
-  tips, or language/wording suggestions.
-- **accept responsibility** by apologizing to those affected by our mistakes
-  and graciously accept apologies knowing that mistakes are part of the
-  process.
-- **use words carefully**, because we may not understand irony or negative
-  sarcasm. We communicate plainly, and we justify our positions objectively and
-  explicitly.
-- **leave with class**, without drama or bitterness, when resigning for any
-  reason. We champion your rights under the terms of the GPL to fork the code
-  and create a new project, just as we stand on the shoulders of those who gave
-  us the right to create this project.
+Our code of conduct is the internet etiquette described in RFC 1855 / FYI 28
+(October 1995 revision, see https://www.rfc-editor.org/info/rfc1855/).
+
+The following rules from our Discord server, as of 2026-07-03
+are to be followed as well in communication and interaction:
+
+- No piracy links. This is a preservation project. Bring your own copy. 
+  Don't post download links, don't ask for ROMs or disk images that are not 
+  freeware or shareware.
+
+- Stay on topic. automation, security, gaming, game preservation, 
+  launcher integration, (DOS) emulation, related tech. Tangents 
+  happen - that's fine, as long as they return to topic.
+
+- Treat everyone with respect. Absolutely no harassment, witch hunting, 
+  sexism, racism or hate speech will be tolerated.
+
+- No politics and religious topics. This is neutral ground - no 
+  political discussions, no culture war, no activism, no tribalism, no 
+  religious or ideological crusades. Not a venue for ideological debates 
+  of any kind. There are other more appropriate places for that.
+
+- No age-restricted or obscene content. This includes text, images or links 
+  featuring nudity, sex, hard violence or other disturbing graphic content.
 
 ## Reporting issues
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by contacting the project team (see below). All complaints will be
-reviewed and investigated and will result in a response that is deemed
-necessary and appropriate to the circumstances. The project team is obligated
-to maintain confidentiality with regard to the reporter of an incident. Further
-details of specific enforcement policies may be posted separately.
+Someone else breaking the rules does not deputize you. There are no
+self-appointed sheriffs here: do not police other users, do not run
+campaigns against them, and do not act on behalf of people who never asked
+you to. Doing any of that is itself a breach of this code of conduct and
+will be handled accordingly.
 
-The project team can be contacted [via Discord](https://discord.gg/WwAg3Xf).
+Report the issue to us, block the perceived offender and move on.
 
-## License and acknowledgement
-
-This text is shared under the [CC0 - No Rights Reserved
-license](https://creativecommons.org/share-your-work/public-domain/cc0/).

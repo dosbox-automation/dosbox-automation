@@ -5,7 +5,7 @@ ways to participate, and we appreciate all of them.
 
 - [AI usage](#ai-usage)
 - [Feature requests and bug reports](#feature-requests-and-bug-reports)
-- [Find something to work on](#find-something-to-work-on)
+- [Do something with dosbox-automation](#do-something-with-dosbox-automation)
 - [Contributing code](#contributing-code)
   - [General principles](#general-principles)
   - [Security posture](#security-posture)
@@ -33,17 +33,17 @@ contributors alike: there are no double standards, where maintainer code gets a
 pass while outside contributors face extra scrutiny for being tool assisted. One set of
 coding guidelines, documented here, applies to everyone.
 
-If you use a LLM, we prepared a set of instructions within this repository
-(`.claude/` directory). If you use another model than that, instruct yours to read them
-in. 
+If you use an LLM, we ship a set of instructions in this repository
+(`.claude/` directory). If your tooling does not pick them up automatically,
+instruct your model to read them.
 
 Those instructions reference the same rules as this document and will cause your model 
 to produce code that fits our codebase.
 
 Submissions generated with LLMs must include:
 
-- a declaration of AI use, as well as what model has been used for code generation (family and version)
-- a confirmation that the project's shipped code generation rules
+- a declaration of AI use, including which model generated the code (family and version)
+- a confirmation that the project's shipped code generation rules were followed
 
 
 ### Development process
@@ -93,7 +93,7 @@ on social media or private messages will very likely be lost.
   for everyone, who wants to play DOS games or uses it for automated usage, integration into launchers or
   other usage as an integration runtime for your own applications.
   
-  The current list of open issues is availabe [here to see](https://github.com/dosbox-automation/dosbox-automation/issues?q=is%3Aissue+is%3Aopen+label%3Abug).
+  The current list of open issues is available [here](https://github.com/dosbox-automation/dosbox-automation/issues?q=is%3Aissue+is%3Aopen+label%3Abug).
 
 
 Code contributions, which improve dosbox-automation are welcome, but please read the section [Submitting code changes](#submitting-code-changes) first.
@@ -363,11 +363,17 @@ Submit code changes via GitHub PRs. The key points:
    bisecting, and we enforce it. Run `scripts/tools/compile-commits.sh` to
    compile all commits of the PR you're working on.
 
+3. New source files written for this project get our two-line license
+   header (see any file under `src/lua/` or `src/webserver/` for the
+   format). Files inherited from DOSBox Staging keep their existing SPDX
+   headers as they are; do not convert between the two styles.
+
 
 #### Commit messages
 
 Read [How to Write a Git Commit Message]. Then read it again, and follow
-the seven rules.
+the seven rules. One deviation from that guide: we do not capitalize the
+subject line.
 
 No commit prefixes. Just say what changed. The first line is a short summary,
 the body explains the why if it's not obvious from the change itself.
@@ -407,44 +413,14 @@ For an example of a commit that followed all of these rules, see commit
 
 ## Documentation
 
-These rules apply to files under `website/`.
+The user manual and the website at [dosbox-automation.org](https://dosbox-automation.org)
+live in a separate project, not in this repository. This repository only
+carries developer-facing documentation as plain Markdown under `docs/`.
 
-After any docs or website change, run both before submitting:
-
-1. `cd website && mkdocs build` (zero warnings required)
-2. `cd website && ../scripts/linting/verify-markdown.sh` (zero warnings required)
-
-Guidelines:
-
-- Before adding new formatting or markup patterns, find an existing example in
-  the docs and match it.
-- Most manual pages are divided into two parts: a conversational guide, and a
-  reference section (under "Configuration settings").
-- We document configuration sections topically; settings from the same config
-  section may be documented in different chapters.
-- The "Configuration settings" section must copy the setting's description from
-  the code verbatim as a baseline, then add further information as needed.
-- Look for opportunities to create cross-references across chapters.
-- Look for opportunities to include interesting trivia, e.g. games that use a
-  given feature (use web search for research). If you add trivia, fact-check
-  it: at least 2-3 sources must confirm it.
-- All referenced games must be linked to a valid PCGamingWiki page.
-- Target audience is regular users, not developers. Don't write in a
-  condescending or nannying tone. Explain in plain, understandable language
-  without insulting knowledgeable readers.
-
-### SASS
-
-If editing SASS files, regenerate CSS from `extra-scss/extra.scss` and commit
-both `.scss` and `.css`.
-
-### Version bumps in docs
-
-Update all of these together:
-- Rename `website/docs/<old>/` directories
-- `website/docs/versions.json`
-- `mkdocs.yml`: nav paths, redirect targets, exclude globs
-- `hooks/offline.py`: `DUMMY_INDEX_PAGES`
+If a code change alters user-visible behavior, a config setting, an API
+route, or a Lua function, say so in your PR description so the manual can
+be updated to match. Setting descriptions in the manual are copied verbatim
+from the code, so changing a setting's help text is a manual change too.
 
 
 ## Writing style

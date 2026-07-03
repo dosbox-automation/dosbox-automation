@@ -1,6 +1,6 @@
 # Translation workflow
 
-DOSBox Staging stores the translations in a `gettext` compatible file format,
+dosbox-automation stores the translations in a `gettext` compatible file format,
 but it does not use the `gettext` library. You can edit them with your favorite
 `*.po` file editor, but please follow the workflow described here instead of
 using tools like `xgettext`.
@@ -28,7 +28,7 @@ Since the `PO` file format is widespread, several dedicated editors exist, i.e.:
 - **Gtranslator**, a GNOME tool for Linux
 - [Loco](https://localise.biz/free/poeditor), web-based
 
-For DOSBox Staging translation files, it is best to configure the editor to use
+For our translation files, it is best to configure the editor to use
 a monospaced (non-proportional) font:
 
 - **Poedit**\
@@ -42,7 +42,7 @@ hamburger&nbsp;menu -> _Preferences_ -> _Editor_ -> _Font_
 
 ## Adding new translation
 
-To start a new translation, execute the following commands in DOSBox Staging:
+To start a new translation, execute the following commands in dosbox-automation:
 
 ```bat
 config -set language=en
@@ -69,8 +69,8 @@ translating.
 ## Updating existing translation
 
 Before you start editing any current `PO` file, you'll need to refresh its
-content. Execute the following commands inside the current alpha build of
-DOSBox Staging:
+content. Execute the following commands inside a current build of
+dosbox-automation:
 
 ```bat
 config -set language=xx
@@ -91,7 +91,7 @@ The `PO` file format is described in detail on the
 web page; this chapter only provides a brief introduction.
 
 The file consists of entries of roughly the same layout, separated by empty
-lines. DOSBox Staging needs the file to be saved as UTF-8 — don't change the
+lines. dosbox-automation needs the file to be saved as UTF-8 — don't change the
 encoding, otherwise the file won't work correctly.
 
 ### Standard metadata entry
@@ -103,17 +103,17 @@ always contains an empty English string (`msgid`); the translated string
 ```po
 msgid ""
 msgstr ""
-"Project-Id-Version: dosbox-staging\n"
-"Report-Msgid-Bugs-To: https://github.com/dosbox-staging/dosbox-staging/issues\n"
+"Project-Id-Version: dosbox-automation\n"
+"Report-Msgid-Bugs-To: https://github.com/dosbox-automation/dosbox-automation/issues\n"
 ...
 ```
 
 If you are editing the file by hand, using an ASCII editor, don't change this
 entry.
 
-### DOSBox Staging metadata entries
+### dosbox-automation metadata entries
 
-DOSBox Staging needs some additional, non-standard metadata marked with the
+dosbox-automation needs some additional, non-standard metadata marked with the
 `#METADATA` keyword in both the the context (`msgctxt`) and location (`#:`)
 fields, for example:
 
@@ -130,8 +130,8 @@ msgid ""
 msgstr ""
 ```
 
-This particular entry tells DOSBox Staging what writing script is used by the
-target language; this helps Staging determine which DOS code pages are
+This particular entry tells dosbox-automation what writing script is used by the
+target language; this helps the emulator determine which DOS code pages are
 compatible with the translation.
 
 The `fuzzy` flag (the list of flags starts with `#,`) tells us this entry needs
@@ -181,12 +181,12 @@ source code — it is updated every time you write the translation file.
 Some `PO` file editors can open the relevant source code if you configure the
 root path to the project.
 - The `msgctxt` (a context according to gettext terminology) is a unique message
-identifier used by DOSBox Staging. Never ever change it, or the emulator won't
+identifier used by dosbox-automation. Never ever change it, or the emulator won't
 be able to use the entry!
 - The `msgid` contains an English message — as above, don't change it!
 - The `msgstr` contains a translated message, empty if the translation is
 missing. This is the part you need to update :)
-- The `fuzzy` flag we have already seen, is set by  DOSBox Staging to tell you
+- The `fuzzy` flag we have already seen, is set by dosbox-automation to tell you
 this particular entry needs your attention. This might be a missing translation,
 an outdated translation (these are detected by comparing `msgid` to the current
 English message in the code), or any other reason — see the warning logs when
@@ -250,7 +250,7 @@ The `c-format` flag notes that the message can contain a C-style format string.
 Some dedicated `PO` editors might offer format string syntax highlighting or
 even error checking.
 
-If DOSBox Staging detects a mismatched (incompatible) format string, it refuses
+If dosbox-automation detects a mismatched (incompatible) format string, it refuses
 to use the translation for that particular message, prints out a warning log,
 and marks the message as `fuzzy` the next time the `PO` file is saved.
 
@@ -261,17 +261,17 @@ There are still a couple of things to do after you are done with editing the
 
 UTF-8 can store the same exact text in several different ways. There are some
 standard ones, however, called _normalized forms_. Although
-DOSBox Staging should be able to handle non-normalized translation files, and
+dosbox-automation should be able to handle non-normalized translation files, and
 normally text editors save normalized files already, it is still highly
 recommended to normalize the updated `PO` file.
 
 In the `extras/translations` directory, you'll find two scripts: `normalize.sh`
 (for Linux and macOS) and `normalize.bat` (for Windows). The scripts convert
 the translation files in the `resources/translations` directory to the
-NFC-normalized form (recommended by DOSBox Staging and used by default by most
+NFC-normalized form (recommended and used by default by most
 UTF-8 capable text editors), with Unix line endings. 
 
-Now you'll need to clean up the file. Once again, start DOSBox Staging (this
+Now you'll need to clean up the file. Once again, start dosbox-automation (this
 time with your updated `PO` file) and execute the following commands:
 
 ```bat
@@ -279,23 +279,22 @@ config -set language=xx
 config -wl xx.po
 ```
 
-This will write the `PO` file again, using the standard DOSBox Staging
+This will write the `PO` file again, using the standard
 formatting style. This is especially important if you used a dedicated `PO` file
 editor.
 
 > [!IMPORTANT]
 >
 > Don't try to convert the `PO` file to the binary `MO` format, it is not
-> supported by DOSBox Staging.
+> supported.
 
 Once you've done these steps and you've tested your translations (see the last
-chapter for some tips), you can submit the updated translation for inclusion
-into DOSBox Staging.
+chapter for some tips), you can submit the updated translation as a pull request.
 
 ## Language-specific remarks
 
 Sometimes the DOS code page does not contain all the characters needed by the
-translation. Contrary to most Unicode engines, the DOSBox Staging internal one
+translation. Contrary to most Unicode engines, the internal Unicode engine
 was specially designed to be able to replace the missing characters with sane
 alternatives (if it does not work correctly for your language — let us know,
 the rules can be tweaked to some extent).

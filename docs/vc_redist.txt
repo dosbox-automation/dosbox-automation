@@ -1,7 +1,7 @@
-The DOSBox Staging Windows release packages contain Visual C++ Redistributable
+The dosbox-automation Windows release packages contain Visual C++ Redistributable
 DLL files (e.g., the ones starting with `msvcp` in their name).
 
-These files are NOT covered by the DOSBox Staging license.
+These files are NOT covered by the dosbox-automation license.
 
 These are Microsoft Windows components, and we provide them for convenience so
 our users don't need to install Visual Studio or download these Visual C++

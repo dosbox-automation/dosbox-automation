@@ -1,5 +1,12 @@
 # Building on macOS
 
+> [!WARNING]
+> These instructions are taken verbatim from upstream DOSBox Staging and
+> have not been tested with dosbox-automation. Nobody on the project
+> currently builds on macOS. They should work, since the build system is
+> shared with upstream, but you are in untested territory - reports and
+> fixes are welcome.
+
 macOS builds can be created using the CMake build tool, compiled using the
 Clang compiler, and provided with dependencies using the Homebrew or MacPorts
 package managers.

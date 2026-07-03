@@ -1,84 +1,57 @@
 # Resources
 
-Starting with version 0.79, DOSBox Staging needs access to bundled resource
-files.
+dosbox-automation needs its bundled resource files at runtime: the DOS
+utilities on the Y: drive, translations, code pages, the SoundFont, and
+similar data. Release packages already contain them next to the binary.
+If you build from source, you can run the executable straight from the
+build directory and everything is found. This document is for packagers
+and for anyone moving a binary out of its build tree: the `resources`
+directory has to come along.
 
-If you're using one of the project-provided install packages (zip, dmg, Windows
-installer) - then there is no action necessary; read on if you're curious
-though.
+## Lookup order
 
-If you build from source or are a developer, then you can simply run your
-executable directly from your build area, with no further action needed (feel
-free to use an alias or symlink to make that easier).
+At startup the executable checks these locations for a `resources`
+directory, first hit wins (see `get_resource_parent_paths()` in
+`src/misc/support.cpp`):
 
-If you plan to install or move DOSBox Staging from its build area, then the
-`"resources"` directory needs to come along with the binary.
+1. The current working directory: `./resources`.
+2. Next to the executable: `<exe-dir>/resources`, then one level up,
+   `<exe-dir>/../resources` (the "one up" variant is what lets unit
+   tests find resources from the build tree). On macOS the bundle
+   layout `<exe-dir>/../Resources` is used instead.
+3. The data directory set at compile time:
+   `${CMAKE_INSTALL_FULL_DATADIR}/dosbox-automation`
+   (typically `/usr/local/share/dosbox-automation`).
+4. On Linux and the BSDs: `$XDG_DATA_HOME/dosbox-automation`, then each
+   entry of `$XDG_DATA_DIRS/dosbox-automation`.
+5. On Linux and the BSDs: `<exe-dir>/../share/dosbox-automation`, a
+   deliberate executable-relative fallback so a `--prefix`-style
+   install tree stays portable when moved.
+6. As a last resort, the user's configuration directory (the same one
+   holding `dosbox-automation.conf`).
 
-## How to bundle the resources
+Mind item 1: the working directory wins over everything, including the
+resources shipped next to the binary. That is convenient during
+development and a trap during packaging tests. A release binary or
+AppImage started from a source checkout will silently use the checkout's
+`resources` instead of its own. When validating a package, run it from a
+neutral directory.
 
-The `"resources"` can be provided in two ways:
+## Packaging
 
-1. Along-side the executable, as a portable package:
+Two sane layouts:
 
-    Visual Studio both populates the build area with the compiled
-    `"dosbox"` executable (plus DLLs on Windows) and the `"resources"`
-    directory relative to it, which together form a stand-alone and portable
-    application.
+1. Portable package: put `resources` next to the executable and ship
+   the pair as one unit (zip, installer payload, AppImage internals).
+   This is how the project packages are built and the layout to prefer
+   for wrapped formats.
+2. System install: put the resources into the compile-time data dir or
+   an XDG data path, named `dosbox-automation`.
 
-    This group can be zipped or moved together, and is how we ship the Linux,
-    Windows, and macOS packages built by the CI systems.
+## Why not embed the resources in the executable?
 
-2. Pointed to by the `XDG_DATA_HOME` or `XDG_DATA_DIRS` paths.
-
-
-## How the resources are found during runtime
-
-At runtime, the executable will check the following paths for the resources, in
-the following priority order:
-
-1. Beside the executable:
-
-    `dosbox` (executable) `"resources"subdirs/...` (on
-    macOS:`../Resources/subdirs/...`)
-
-    This first instance should also be the prefered packaging layout for wrapped
-    formats like FlatPak, Snap, AppImage, etc.
-
-2. Up one directory from the executable (which allows unit tests to access
-   resources):
-
-    `dosbox` `../`"resources"`subdirs/...` (on macOS:
-    `../../Resources/subdirs/...`)
-
-3. In `XDG_DATA_HOME` followed by the `XDG_DATA_DIRS` paths, where:
-
-    `${XDG_DATA}/dosbox-staging/subdirs/...`
-
-4. In the user's configuration path:
-
-    `home/<user>/.config/dosbox/subdirs/...` (or the Windows configuration path)
-
-## FAQ
-
-Q: Why can't these be embedded inside the executable?
-
-A1: Encoding binary data into the project's source tree as massive hex strings
-is a form of obfuscation that makes it harder to understand what they contain.
-
-With raw files, anyone can use those files as intended by 3rd party software,
-diff or compare them, notify the project when they become outdated, and more
-importantly can maintain them without needing to setup a development
-environment.
-
-A2: Turning binary files into source involves placing tens of thousands of lines
-of hex values into the code base.
-
-These get parsed and become a persistent carrying "load" for source editors and
-development IDEs. They generate false-positives when grepping the source for
-number patterns, so much so that they often flood the screen and need extra
-effort to filter them out.
-
-Q: How are the `"resources"` deployed into the build area by Visual Studio?
-
-A: Search the vcxproj files for `"contrib\resources"`. These snippets perform
-the recursive copying.
+Raw files stay inspectable: anyone can diff them, use them with third
+party tools, or update them without a development environment. Encoding
+them as source would bury tens of thousands of hex lines in the tree,
+where they slow editors and pollute every grep. The files are the
+better source of truth.

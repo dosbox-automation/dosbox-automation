@@ -17,7 +17,7 @@ To create a distro package, use the [system libraries](#building-using-system-li
 build method. Pass the `-DOPT_TESTS=OFF` option to CMake when configuring the
 project to skip building unit tests and get rid of the GTest dependency.
 
-DOSBox Staging ships with some binary files as a part of its assets:
+dosbox-automation ships with some binary files as a part of its assets:
 
 - `resources/drives/y` — important DOS commands which are not yet
   implemented internally.
@@ -26,7 +26,7 @@ DOSBox Staging ships with some binary files as a part of its assets:
   exotic today (like the OpenWatcom compiler), that's why they are not being
   compiled at build time.
   If shipping such binaries is against your distro policy, feel free to strip
-  them away. DOSBox Staging will continue to work normally - the only real
+  them away. dosbox-automation will continue to work normally - the only real
   disadvantage for the end users is that they will have to provide them by
   themselves to run some game/software installers.
 
@@ -37,7 +37,7 @@ DOSBox Staging ships with some binary files as a part of its assets:
   exists for them).
   Probably all the other DOSBox forks use such files in some form; it's just
   most store them as an array of binary data, like [original DOSBox does](https://sourceforge.net/p/dosbox/code-0/HEAD/tree/dosbox/tags/RELEASE_0_74_3/src/dos/dos_codepages.h).
-  Running DOSBox Staging without these files is completely unsupported; even if
+  Running dosbox-automation without these files is completely unsupported; even if
   it seems to work for you, the internationalization features will malfunction.
 
 - `resources/freedos-keyboard` — DOS keyboard layout definitions.
@@ -48,7 +48,7 @@ DOSBox Staging ships with some binary files as a part of its assets:
   `KEYB200S.ZIP`, `KEYB200X.ZIP`, `KC200S.ZIP`, and `KC200X.ZIP` files.
   Probably all the other DOSBox forks use such files in some form; it's just
   most store them as an array of binary data, like [original DOSBox does](https://sourceforge.net/p/dosbox/code-0/HEAD/tree/dosbox/tags/RELEASE_0_74_3/src/dos/dos_keyboard_layout_data.h).
-  Running DOSBox Staging without these files is completely unsupported; even if
+  Running dosbox-automation without these files is completely unsupported; even if
   it seems to work for you, the internationalization features will malfunction.
 
 ## Building using system libraries
@@ -81,10 +81,10 @@ These are generic, distro-independent building instructions.
 - SpeexDSP
 - zlib-nG
 
-### Clone DOSBox Staging
+### Clone dosbox-automation
 
 ```bash
-git clone https://github.com/dosbox-staging/dosbox-staging.git
+git clone https://github.com/dosbox-automation/dosbox-automation.git
 ```
 
 ### Configure and build
@@ -92,7 +92,7 @@ git clone https://github.com/dosbox-staging/dosbox-staging.git
 To create the debug build:
 
 ```bash
-cd dosbox-staging
+cd dosbox-automation
 cmake --preset=debug-linux
 cmake --build --preset=debug-linux
 ```
@@ -100,14 +100,14 @@ cmake --build --preset=debug-linux
 To create the optimised release build:
 
 ```bash
-cd dosbox-staging
+cd dosbox-automation
 cmake --preset=release-linux
 cmake --build --preset=release-linux
 ```
 
-### Start DOSBox Staging
+### Start dosbox-automation
 
-Once built, you can launch DOSBox Staging with the following commands.
+Once built, you can launch dosbox-automation with the following commands.
 
 Debug build:
 
@@ -156,11 +156,11 @@ cd vcpkg
 export VCPKG_ROOT=$HOME/vcpkg
 ```
 
-### Clone DOSBox Staging
+### Clone dosbox-automation
 
 ```bash
 cd ~
-git clone https://github.com/dosbox-staging/dosbox-staging.git
+git clone https://github.com/dosbox-automation/dosbox-automation.git
 ```
 
 ### Configure and build
@@ -168,7 +168,7 @@ git clone https://github.com/dosbox-staging/dosbox-staging.git
 To create the debug build:
 
 ```bash
-cd dosbox-staging
+cd dosbox-automation
 cmake --preset=debug-linux-vcpkg
 cmake --build --preset=debug-linux-vcpkg
 ```
@@ -176,14 +176,14 @@ cmake --build --preset=debug-linux-vcpkg
 To create the optimised release build:
 
 ```bash
-cd dosbox-staging
+cd dosbox-automation
 cmake --preset=release-linux-vcpkg
 cmake --build --preset=release-linux-vcpkg
 ```
 
-### Start DOSBox Staging
+### Start dosbox-automation
 
-Once built, you can launch DOSBox Staging with the following commands.
+Once built, you can launch dosbox-automation with the following commands.
 
 Debug build:
 
@@ -254,7 +254,7 @@ test cases in the `DOS_FilesTest` suite with names starting with
 ctest -j 8 --preset debug-linux -R "DOS_FilesTest.DOS_MakeName_*"
 ```
 
-Pass in the `-V` option to see the DOSBox Staging log output:
+Pass in the `-V` option to see the dosbox-automation log output:
 
 ```bash
 ctest -j 8 --preset debug-linux -R DOS_FilesTest.DOS_MakeName_Basic_Failures -V
@@ -270,105 +270,6 @@ build/debug-linux/tests/dosbox_tests --gtest_filter=DOS_FilesTest.DOS_MakeName_B
 
 See the [ctest documentation](https://cmake.org/cmake/help/v3.31/manual/ctest.1.html)
 for the full list of available options.
-
-
-## Offline documentation
-
-Self-contained offline HTML documentation can optionally be built as part of
-the CMake build. The output appears in the build directory at
-`build/<preset>/resources/docs/` — this is the same documentation bundled
-with the release packages.
-
-Documentation building is **off by default**. To enable it:
-
-```bash
-cmake --preset=debug-linux -DOPT_DOCUMENTATION=ON
-cmake --build --preset=debug-linux
-```
-
-To rebuild just the documentation after editing content:
-
-```bash
-cmake --build --preset debug-linux --target rebuild_documentation
-```
-
-### Prerequisites
-
-Python 3 with the `venv` module is required. On Debian and Ubuntu, the `venv`
-module is shipped in a separate package that may not be installed by default:
-
-```bash
-sudo apt-get install python3-venv
-```
-
-No other manual setup is needed — the build automatically creates a Python
-virtual environment in the build directory and installs all MkDocs dependencies
-into it.
-
-### Best-effort
-
-If Python is not available or is missing required modules (`venv`, `ensurepip`),
-the build proceeds normally without documentation — a warning is shown during
-CMake configuration, but the build is **never aborted**.
-
-### Caching
-
-There are two independent cache layers that make successive builds fast:
-
-1. **Python venv and pip packages** — stored in the build directory at
-   `_mkdocs_venv/`. The virtual environment is created once per build directory.
-   pip only re-runs when `extras/documentation/mkdocs-package-requirements.txt`
-   is modified.
-
-2. **Downloaded external assets** — the mkdocs-material privacy plugin caches
-   downloaded web fonts, images, and scripts in `website/.cache/` in the source
-   tree (this directory is git-ignored). Because it lives outside the build
-   directory, it persists across clean builds and across different build
-   configurations (debug, release, etc.).
-
-> [!IMPORTANT]
-> The privacy plugin only downloads assets from a small set of trusted
-> sources: **Google Fonts** (fonts.googleapis.com, fonts.gstatic.com),
-> **www.dosbox-staging.org** (our GitHub Pages website, completely under our
-> control), and a few well-known CDNs used by the MkDocs Material theme
-> (cdn.jsdelivr.net, unpkg.com, mirrors.creativecommons.org). No content from
-> untrusted origins is ever fetched. The build uses the system CA certificate
-> bundle instead of Python's built-in certifi bundle, so VPNs that perform
-> SSL inspection work without issues. If the build fails with certificate
-> errors, set the `SSL_CERT_FILE` environment variable to your
-> organisation's CA bundle path.
-
-### Rebuilding after documentation changes
-
-Changes to markdown files under `website/docs/` do not automatically trigger a
-rebuild — globbing hundreds of files into CMake's dependency tracking would be
-impractical. To rebuild after editing documentation content:
-
-```bash
-# Option 1: Use the dedicated rebuild target
-cmake --build --preset debug-linux --target rebuild_documentation
-
-# Option 2: Invalidate the build stamp (triggers rebuild on next normal build)
-touch website/mkdocs.yml
-```
-
-### Forcing a full rebuild
-
-To rebuild documentation from scratch, delete the build stamp from the build
-directory:
-
-```bash
-rm build/debug-linux/_mkdocs_build_stamp
-```
-
-### Cleaning all documentation caches
-
-To remove all MkDocs caches from the source tree (`website/.cache`,
-`website/__pycache__`, `website/site`):
-
-```bash
-cmake --build --preset debug-linux --target clean-manual
-```
 
 
 ## Sanitizer build
