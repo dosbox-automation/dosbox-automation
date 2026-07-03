@@ -1977,6 +1977,13 @@ const std::optional<ScreenFont> get_patched_screen_font(const uint16_t code_page
 static void set_screen_font(const ScreenFont& screen_font,
                             const ScreenFont& fallback_font = {})
 {
+	if (int10.rom.font_16 == 0) {
+		// No INT 10h ROM font area to write into; going ahead would
+		// corrupt the DOS data area through the null font pointers
+		LOG_WARNING("LOCALE: No ROM font area, not loading screen font");
+		return;
+	}
+
 	auto set_font_8x16 = [](const ScreenFont& screen_font) {
 		auto font = screen_font.font_8x16;
 		font.resize(ScreenFont::FullSize_8x16, 0);
@@ -2138,7 +2145,13 @@ static void load_default_screen_font()
 
 bool DOS_CanLoadScreenFonts()
 {
-	return is_machine_ega_or_better();
+	// The ROM font pointers are only valid once INT10_SetupRomMemory
+	// has run; without video BIOS init (minimal test environments)
+	// they are null and font writes would land at the bottom of
+	// memory, trampling the DOS data area.
+	const bool rom_font_area_exists = (int10.rom.font_16 != 0);
+
+	return is_machine_ega_or_better() && rom_font_area_exists;
 }
 
 KeyboardLayoutResult DOS_LoadScreenFont(const uint16_t code_page,

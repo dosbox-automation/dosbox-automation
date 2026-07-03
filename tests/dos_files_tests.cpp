@@ -26,6 +26,7 @@
 #include <gtest/gtest.h>
 
 #include "config/config.h"
+#include "dos/dos_keyboard_layout.h"
 #include "dos/dos_system.h"
 #include "dos/drives.h"
 #include "shell/shell.h"
@@ -317,6 +318,22 @@ TEST_F(DOS_FilesTest, DOS_FindFirst_FindFile_Nonexistant)
 	dos.errorcode = DOSERR_NONE;
 	EXPECT_FALSE(DOS_FindFirst("Z:\\AUTOEXEC.NO", 0, false));
 	EXPECT_EQ(dos.errorcode, DOSERR_NO_MORE_FILES);
+}
+
+TEST_F(DOS_FilesTest, DOS_FindFirst_SurvivesCodePageLoad)
+{
+	// Loading a real code page in this minimal environment (no video
+	// BIOS init) used to write the screen font through the null INT
+	// 10h ROM pointers, trampling the DOS data area at the bottom of
+	// memory. The device chain head lives there, and DOS_FindFirst
+	// walked the corrupt chain forever. This is what 'auto' layout
+	// detection does on a German-locale host.
+	uint16_t code_page = 850;
+	DOS_LoadKeyboardLayout("de", code_page, {}, false);
+
+	dos.errorcode = DOSERR_NONE;
+	EXPECT_TRUE(DOS_FindFirst("Z:\\AUTOEXEC.BAT", 0, false));
+	EXPECT_EQ(dos.errorcode, DOSERR_NONE);
 }
 
 TEST_F(DOS_FilesTest, DOS_DTAExtendName_Space_Pads)

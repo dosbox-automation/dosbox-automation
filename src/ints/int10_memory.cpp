@@ -344,6 +344,12 @@ void INT10_SetupRomMemory()
 
 void INT10_ReloadRomFonts(void)
 {
+	// Font pointers are only valid once INT10_SetupRomMemory has run;
+	// writing through them earlier would hit the bottom of memory
+	if (int10.rom.font_16 == 0) {
+		return;
+	}
+
 	// 16x8 font
 	PhysPt font16pt = RealToPhysical(int10.rom.font_16);
 	for (Bitu i = 0; i < 256 * 16; i++) {
