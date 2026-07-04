@@ -485,6 +485,29 @@ static void init_config_settings(SectionProp& section)
 	        "(script running, recording, replay, injected input). Enabled by\n"
 	        "default so it is always clear when the machine is under remote\n"
 	        "control. Set to false to hide the overlay.");
+
+	// The mount policy reads these two settings straight from the primary
+	// config file (mount_policy.cpp) so that -conf files and command line
+	// overrides cannot widen the mount roots. They are registered here so
+	// the config system knows them: otherwise every config parse logs an
+	// unknown-setting warning, and they would be missing from the
+	// generated config and the setting documentation.
+	auto mount_bases = section.AddString("mount_allowed_bases", OnlyAtStart, "");
+	mount_bases->SetHelp(
+	        "Additional base directories that MOUNT may expose to the guest, as\n"
+	        "a semicolon-separated list (unset by default). Paths with symlink\n"
+	        "components are rejected. For security, this setting is only honored\n"
+	        "in the primary config file; -conf files and command line overrides\n"
+	        "are ignored.");
+
+	auto mount_image_roots = section.AddString("mount_allowed_image_roots",
+	                                           OnlyAtStart,
+	                                           "");
+	mount_image_roots->SetHelp(
+	        "Directories that floppy and CD images may be mounted or swapped\n"
+	        "from, as a semicolon-separated list (unset by default). Follows the\n"
+	        "same rules as mount_allowed_bases: only the primary config file is\n"
+	        "honored.");
 }
 
 } // namespace Webserver
