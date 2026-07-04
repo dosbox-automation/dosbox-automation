@@ -11,6 +11,10 @@ vcpkg_from_github(
     # Remove when vcpkg finally updates this port.
     # Latest version is 260.1 vcpkg is about a year behind on 257.8.
     glibc-const.patch
+    # Newer glibc defines EFSBADCRC/EFSCORRUPTED as errno aliases; the
+    # generated errno table then has duplicate initializers and
+    # -Werror=override-init kills the build. Gone in newer systemd.
+    disable-werror-override-init.patch
 )
 
 set(static false)
