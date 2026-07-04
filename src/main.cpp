@@ -373,7 +373,7 @@ static void maybe_write_primary_config(const CommandLineArguments& args)
 constexpr char version_msg[] =
         R"(%s, version %s
 
-Copyright (C) 2020-2026 The DOSBox Staging Team
+Copyright (C) 2026 The dosbox-automation Team
 License: GNU GPL-2.0-or-later <https://www.gnu.org/licenses/gpl-2.0.html>
 
 This is free software, and you are welcome to change and redistribute it under
