@@ -344,10 +344,10 @@ private:
 
 Check out these files for further examples:
 
-- [src/audio/clap/*](https://github.com/dosbox-automation/dosbox-automation/tree/main/src/audio/clap) (all files)
-- [src/midi/midi_soundcanvas.cpp](https://github.com/dosbox-automation/dosbox-automation/blob/main/src/midi/midi_soundcanvas.cpp)
-- [src/midi/midi_soundcanvas.h](https://github.com/dosbox-automation/dosbox-automation/blob/main/src/midi/midi_soundcanvas.h)
-- [src/capture/image/*](https://github.com/dosbox-automation/dosbox-automation/tree/main/src/capture/image) (all files)
+- [src/audio/clap/*](https://github.com/dosbox-automation/dosbox-automation/tree/dosbox-automation/src/audio/clap) (all files)
+- [src/midi/midi_soundcanvas.cpp](https://github.com/dosbox-automation/dosbox-automation/blob/dosbox-automation/src/midi/midi_soundcanvas.cpp)
+- [src/midi/midi_soundcanvas.h](https://github.com/dosbox-automation/dosbox-automation/blob/dosbox-automation/src/midi/midi_soundcanvas.h)
+- [src/capture/image/*](https://github.com/dosbox-automation/dosbox-automation/tree/dosbox-automation/src/capture/image) (all files)
 
 
 ### Submitting code changes
