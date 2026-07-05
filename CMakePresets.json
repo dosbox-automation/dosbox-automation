@@ -150,7 +150,8 @@
         "CMAKE_FIND_PACKAGE_PREFER_CONFIG" : "ON",
         "CMAKE_BUILD_TYPE": "Debug",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
-        "VCPKG_HOST_TRIPLET": "x64-windows"
+        "VCPKG_HOST_TRIPLET": "x64-windows",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
       },
       "environment": {
         "UseMultiToolTask": "true",
@@ -170,7 +171,8 @@
         "CMAKE_FIND_PACKAGE_PREFER_CONFIG" : "ON",
         "CMAKE_BUILD_TYPE": "Release",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
-        "VCPKG_HOST_TRIPLET": "x64-windows"
+        "VCPKG_HOST_TRIPLET": "x64-windows",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
       },
       "environment": {
         "UseMultiToolTask": "true",
@@ -190,7 +192,8 @@
         "CMAKE_FIND_PACKAGE_PREFER_CONFIG" : "ON",
         "CMAKE_BUILD_TYPE": "Debug",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
-        "VCPKG_HOST_TRIPLET": "x64-windows"
+        "VCPKG_HOST_TRIPLET": "x64-windows",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
       },
       "environment": {
         "UseMultiToolTask": "true",
@@ -210,7 +213,8 @@
         "CMAKE_FIND_PACKAGE_PREFER_CONFIG" : "ON",
         "CMAKE_BUILD_TYPE": "Release",
         "VCPKG_TARGET_TRIPLET": "x64-windows-static",
-        "VCPKG_HOST_TRIPLET": "x64-windows"
+        "VCPKG_HOST_TRIPLET": "x64-windows",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
       },
       "environment": {
         "UseMultiToolTask": "true",
