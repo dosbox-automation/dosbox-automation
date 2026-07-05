@@ -11122,7 +11122,7 @@ msgstr ""
 "auf lokalen Laufwerken zu verwenden."
 
 #: src/shell/shell.cpp:712
-#, fuzzy, c-format, no-wrap
+#, c-format, no-wrap
 msgctxt "SHELL_STARTUP_BEGIN"
 msgid ""
 "[bgcolor=blue][color=white]╔═══════════════════════════════════════════════════════════════════════╗\n"
@@ -11136,14 +11136,13 @@ msgid ""
 "║                                                                       ║\n"
 msgstr ""
 "[bgcolor=blue][color=white]╔═════════════════════════════════════════════════════════════════════╗\n"
-"║ [color=light-green]Willkommen zu dosbox-automation %-39s[color=white]║\n"
+"║ [color=light-green]Willkommen zu dosbox-automation %-36s[color=white]║\n"
 "║                                                                     ║\n"
-"║ Für eine kurze Einführung für neue Benutzer tippe: [color=yellow]INTRO[color=white]            ║\n"
-"║ Für unterstützte Shell-Befehle tippe: [color=yellow]HELP[color=white]                          ║\n"
+"║ Für den [color=yellow]Einsteiger-Leitfaden[color=white] für neue Benutzer tippe: [color=light-green]GUIDE[color=white]         ║\n"
+"║ Für das [color=yellow]Benutzerhandbuch[color=white] tippe: [color=light-green]MANUAL[color=white]                              ║\n"
 "║                                                                     ║\n"
 "║ Emulierte CPU-Geschwindigkeit anpassen mit [color=light-red]%s+F11[color=white] und [color=light-red]%s+F12[color=white].%s%s   ║\n"
 "║ Aktiviere den Keymapper mit [color=light-red]%s+F1[color=white].%s                                ║\n"
-"║ Weitere Informationen in der [color=light-cyan]README[color=white] Datei im DOSBox Verzeichnis.    ║\n"
 "║                                                                     ║\n"
 
 #: src/shell/shell.cpp:723
@@ -11156,7 +11155,7 @@ msgid ""
 msgstr ""
 "║ DOSBox unterstützt den Composite CGA Modus.                         ║\n"
 "║ Verwende [color=light-red]F12[color=white], um Composite-Ausgabe auf ON, OFF oder AUTO zu setzen. ║\n"
-"║ [color=light-red]F10[color=white] wählt eine CGA Einstellung [color=light-red](%s+)F11[color=white] ändert sie.                ║\n"
+"║ [color=light-red]F10[color=white] wählt eine CGA Einstellung [color=light-red](%s+)F11[color=white] ändert sie.               ║\n"
 "║                                                                     ║\n"
 
 #: src/shell/shell.cpp:728
@@ -11168,7 +11167,7 @@ msgid ""
 "║                                                                       ║\n"
 msgstr ""
 "║ Benutze [color=light-red]F11[color=white], zum Umschalten der Farben des CGA-Modus,               ║\n"
-"║ und [color=light-red]%s+F11[color=white], um die Kontrast-/Helligkeitseinstellungen zu ändern.   ║\n"
+"║ und [color=light-red]%s+F11[color=white], um die Kontrast-/Helligkeitseinstellungen zu ändern.  ║\n"
 
 #: src/shell/shell.cpp:733
 #, c-format, no-wrap
@@ -11187,7 +11186,7 @@ msgid ""
 "║ Press [color=light-red]%s+Pause[color=white] to enter the debugger or start the exe with [color=light-green]DEBUG[color=white].    ║\n"
 "║                                                                       ║\n"
 msgstr ""
-"║ Drücke [color=light-red]%s+Pause[color=white] um Debugger zu starten oder starte ihn mit [color=yellow]DEBUG[color=white].  ║\n"
+"║ Drücke [color=light-red]%s+Pause[color=white] um Debugger zu starten oder starte ihn mit [color=yellow]DEBUG[color=white]. ║\n"
 "║                                                                     ║\n"
 
 #: src/shell/shell.cpp:741
@@ -11198,8 +11197,8 @@ msgid ""
 "╚═══════════════════════════════════════════════════════════════════════╝[reset]\n"
 "\n"
 msgstr ""
-"║ [color=yellow]https://dosbox-automation.org[color=white]                                         ║\n"
-"╚═══════════════════════════════════════════════════════════════════════╝[reset]\n"
+"║ [color=yellow]https://dosbox-automation.org[color=white]                                       ║\n"
+"╚═════════════════════════════════════════════════════════════════════╝[reset]\n"
 "\n"
 
 #: src/shell/shell.cpp:746
