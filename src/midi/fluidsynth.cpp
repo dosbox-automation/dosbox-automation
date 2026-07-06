@@ -104,6 +104,9 @@ constexpr ReverbParameters Trevor0402_Sc55ReverbParameters = {
 
 // clang-format on
 
+// Our bundled SoundFont (resources/soundfonts/), also the setting default
+constexpr auto DefaultSoundFontName = "FluidR3_GM.sf2";
+
 #if defined(WIN32)
 
 static std::vector<std_fs::path> get_platform_data_dirs()
@@ -686,7 +689,19 @@ MidiDeviceFluidSynth::MidiDeviceFluidSynth()
 
 	// Load the requested SoundFont or quit if none provided
 	const auto sf_name = section->GetString("soundfont");
-	const auto sf_path = find_sf_file(sf_name);
+	auto sf_path       = find_sf_file(sf_name);
+
+	// Configs written by older builds and by upstream DOSBox Staging pin
+	// 'default.sf2', which rarely exists as a file. Fall back to the
+	// bundled SoundFont instead of losing MIDI output to a stale entry.
+	if (sf_path.empty() && sf_name == "default.sf2") {
+		sf_path = find_sf_file(DefaultSoundFontName);
+		if (!sf_path.empty()) {
+			LOG_WARNING("FSYNTH: SoundFont 'default.sf2' not found, "
+			            "using bundled '%s'",
+			            DefaultSoundFontName);
+		}
+	}
 
 	constexpr auto ResetPresets = true;
 	if (fluid_synth_sfload(fluid_synth.get(),
@@ -1221,7 +1236,7 @@ static void init_fluidsynth_config_settings(SectionProp& secprop)
 
 	// FluidR3_GM is our bundled SoundFont (resources/soundfonts/).
 	// Falls back to 'default.sf2' if not found (system-installed).
-	auto str_prop = secprop.AddString("soundfont", WhenIdle, "FluidR3_GM.sf2");
+	auto str_prop = secprop.AddString("soundfont", WhenIdle, DefaultSoundFontName);
 	str_prop->SetHelp(
 	        "Name or path of SoundFont file to use ('FluidR3_GM.sf2' by default). The SoundFont\n"
 	        "will be looked up in the following locations in order:\n"
