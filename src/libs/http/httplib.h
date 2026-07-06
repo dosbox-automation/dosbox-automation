@@ -8,8 +8,8 @@
 #ifndef CPPHTTPLIB_HTTPLIB_H
 #define CPPHTTPLIB_HTTPLIB_H
 
-#define CPPHTTPLIB_VERSION "0.48.0"
-#define CPPHTTPLIB_VERSION_NUM "0x003000"
+#define CPPHTTPLIB_VERSION "0.49.0"
+#define CPPHTTPLIB_VERSION_NUM "0x003100"
 
 #ifdef _WIN32
 #if defined(_WIN32_WINNT) && _WIN32_WINNT < 0x0A00
@@ -309,7 +309,6 @@ using socket_t = int;
 #include <array>
 #include <atomic>
 #include <cassert>
-#include <cctype>
 #include <chrono>
 #include <climits>
 #include <condition_variable>
@@ -540,6 +539,21 @@ make_unique(std::size_t n) {
   return std::unique_ptr<T>(new RT[n]);
 }
 
+// Locale-independent ASCII character classification. The <cctype>
+// counterparts (std::isalnum, std::isdigit, ...) consult the global C locale,
+// so e.g. std::isalnum(0xC5) can return true once an embedder calls
+// setlocale(). HTTP grammars are defined over ASCII, so raw bytes must be
+// classified without regard to the locale.
+inline bool is_ascii_digit(char c) { return '0' <= c && c <= '9'; }
+
+inline bool is_ascii_alpha(char c) {
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
+}
+
+inline bool is_ascii_alnum(char c) {
+  return is_ascii_digit(c) || is_ascii_alpha(c);
+}
+
 namespace case_ignore {
 
 inline unsigned char to_lower(int c) {
@@ -661,7 +675,7 @@ inline from_chars_result<T> from_chars(const char *first, const char *last,
   for (; p != last; ++p) {
     char c = *p;
     int digit = -1;
-    if ('0' <= c && c <= '9') {
+    if (is_ascii_digit(c)) {
       digit = c - '0';
     } else if ('a' <= c && c <= 'z') {
       digit = c - 'a' + 10;
@@ -733,14 +747,14 @@ inline from_chars_result<double> from_chars(const char *first, const char *last,
     return false;
   };
 
-  for (; p != last && '0' <= *p && *p <= '9'; ++p) {
+  for (; p != last && is_ascii_digit(*p); ++p) {
     seen_digit = true;
     accumulate(*p);
   }
 
   if (p != last && *p == '.') {
     ++p;
-    for (; p != last && '0' <= *p && *p <= '9'; ++p) {
+    for (; p != last && is_ascii_digit(*p); ++p) {
       seen_digit = true;
       if (frac_digits < max_frac_digits && accumulate(*p)) { ++frac_digits; }
     }
@@ -803,8 +817,8 @@ inline bool parse_url(const std::string &url, UrlComponents &uc) {
       // IPv6 host must be [a-fA-F0-9:]+ only
       if (uc.host.empty()) { return false; }
       for (auto c : uc.host) {
-        if (!((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') ||
-              (c >= '0' && c <= '9') || c == ':')) {
+        if (!(is_ascii_digit(c) || (c >= 'a' && c <= 'f') ||
+              (c >= 'A' && c <= 'F') || c == ':')) {
           return false;
         }
       }
@@ -1541,7 +1555,9 @@ public:
 
 class ThreadPool final : public TaskQueue {
 public:
-  explicit ThreadPool(size_t n, size_t max_n = 0, size_t mqr = 0);
+  explicit ThreadPool(
+      size_t n, size_t max_n = 0, size_t mqr = 0,
+      time_t idle_timeout_sec = CPPHTTPLIB_THREAD_POOL_IDLE_TIMEOUT);
   ThreadPool(const ThreadPool &) = delete;
   ~ThreadPool() override = default;
 
@@ -1556,6 +1572,7 @@ private:
   size_t base_thread_count_;
   size_t max_thread_count_;
   size_t max_queued_requests_;
+  time_t idle_timeout_sec_;
   size_t idle_thread_count_;
 
   bool shutdown_;
@@ -1679,6 +1696,35 @@ make_multipart_content_provider(const UploadFormDataItems &items,
                                 const std::string &boundary);
 
 } // namespace detail
+
+bool is_valid_multipart_boundary(const std::string &boundary);
+
+// Serializer for multipart/form-data request bodies. The boundary is owned
+// by the writer so that per-part framing and the final terminator always
+// agree. Field names and filenames are escaped following the WHATWG HTML
+// standard ('"' -> %22, CR -> %0D, LF -> %0A); CR and LF are also escaped
+// in content types.
+class MultipartFormDataWriter {
+public:
+  MultipartFormDataWriter();
+  // precondition: is_valid_multipart_boundary(boundary)
+  explicit MultipartFormDataWriter(std::string boundary);
+
+  const std::string &boundary() const;
+  std::string content_type() const;
+
+  // In-memory items -> whole body (known length)
+  std::string serialize(const UploadFormDataItems &items) const;
+  size_t content_length(const UploadFormDataItems &items) const;
+
+  // Per-part framing for streaming via a content provider
+  std::string item_begin(const UploadFormData &item) const;
+  static std::string item_end();
+  std::string finish() const;
+
+private:
+  std::string boundary_;
+};
 
 class Server {
 public:
@@ -2897,9 +2943,7 @@ template <size_t N> inline constexpr size_t str_len(const char (&)[N]) {
 }
 
 inline bool is_numeric(const std::string &str) {
-  return !str.empty() &&
-         std::all_of(str.cbegin(), str.cend(),
-                     [](unsigned char c) { return std::isdigit(c); });
+  return !str.empty() && std::all_of(str.cbegin(), str.cend(), is_ascii_digit);
 }
 
 inline size_t get_header_value_u64(const Headers &headers,
@@ -4448,7 +4492,7 @@ inline bool set_socket_opt_time(socket_t sock, int level, int optname,
 }
 
 inline bool is_hex(char c, int &v) {
-  if (isdigit(static_cast<unsigned char>(c))) {
+  if (is_ascii_digit(c)) {
     v = c - '0';
     return true;
   } else if ('A' <= c && c <= 'F') {
@@ -4665,7 +4709,11 @@ inline std::string base64_encode(const std::string &in) {
   std::string out;
   out.reserve(in.size());
 
-  auto val = 0;
+  // Unsigned: the accumulator is never masked, so with a signed int the
+  // `val << 8` below overflows once enough bytes are folded in (undefined
+  // behaviour before C++20). Only the low bits are ever emitted, so the
+  // wrap-around of an unsigned accumulator does not affect the output.
+  uint32_t val = 0;
   auto valb = -6;
 
   for (auto c : in) {
@@ -7857,8 +7905,7 @@ inline bool parse_range_header(const std::string &s, Ranges &ranges) {
 inline bool parse_range_header(const std::string &s, Ranges &ranges) try {
 #endif
   auto is_valid = [](const std::string &str) {
-    return std::all_of(str.cbegin(), str.cend(),
-                       [](unsigned char c) { return std::isdigit(c); });
+    return std::all_of(str.cbegin(), str.cend(), is_ascii_digit);
   };
 
   if (s.size() > 7 && s.compare(0, 6, "bytes=") == 0) {
@@ -8306,7 +8353,7 @@ inline bool is_multipart_boundary_chars_valid(const std::string &boundary) {
   auto valid = true;
   for (size_t i = 0; i < boundary.size(); i++) {
     auto c = boundary[i];
-    if (!std::isalnum(static_cast<unsigned char>(c)) && c != '-' && c != '_') {
+    if (!is_ascii_alnum(c) && c != '-' && c != '_') {
       valid = false;
       break;
     }
@@ -8314,18 +8361,47 @@ inline bool is_multipart_boundary_chars_valid(const std::string &boundary) {
   return valid;
 }
 
+// Escape a multipart field name/filename following the WHATWG HTML standard
+// ("escape a multipart form-data name"), which is what browsers send:
+// '"' -> %22, CR -> %0D, LF -> %0A
+// With escape_quote = false, only CR and LF are escaped; this is for header
+// values outside a quoted-string (e.g. Content-Type), where '"' is legal.
+inline std::string escape_multipart_field(const std::string &s,
+                                          bool escape_quote = true) {
+  std::string result;
+  result.reserve(s.size());
+  for (auto c : s) {
+    switch (c) {
+    case '"':
+      if (escape_quote) {
+        result += "%22";
+      } else {
+        result += c;
+      }
+      break;
+    case '\r': result += "%0D"; break;
+    case '\n': result += "%0A"; break;
+    default: result += c; break;
+    }
+  }
+  return result;
+}
+
 template <typename T>
 inline std::string
 serialize_multipart_formdata_item_begin(const T &item,
                                         const std::string &boundary) {
   std::string body = "--" + boundary + "\r\n";
-  body += "Content-Disposition: form-data; name=\"" + item.name + "\"";
+  body += "Content-Disposition: form-data; name=\"" +
+          escape_multipart_field(item.name) + "\"";
   if (!item.filename.empty()) {
-    body += "; filename=\"" + item.filename + "\"";
+    body += "; filename=\"" + escape_multipart_field(item.filename) + "\"";
   }
   body += "\r\n";
   if (!item.content_type.empty()) {
-    body += "Content-Type: " + item.content_type + "\r\n";
+    body +=
+        "Content-Type: " + escape_multipart_field(item.content_type, false) +
+        "\r\n";
   }
   body += "\r\n";
 
@@ -8791,10 +8867,9 @@ private:
 namespace fields {
 
 inline bool is_token_char(char c) {
-  return std::isalnum(static_cast<unsigned char>(c)) || c == '!' || c == '#' ||
-         c == '$' || c == '%' || c == '&' || c == '\'' || c == '*' ||
-         c == '+' || c == '-' || c == '.' || c == '^' || c == '_' || c == '`' ||
-         c == '|' || c == '~';
+  return is_ascii_alnum(c) || c == '!' || c == '#' || c == '$' || c == '%' ||
+         c == '&' || c == '\'' || c == '*' || c == '+' || c == '-' ||
+         c == '.' || c == '^' || c == '_' || c == '`' || c == '|' || c == '~';
 }
 
 inline bool is_token(const std::string &s) {
@@ -8843,7 +8918,8 @@ inline bool is_field_value(const std::string &s) { return is_field_content(s); }
 } // namespace fields
 
 inline bool perform_websocket_handshake(Stream &strm, const std::string &host,
-                                        int port, const std::string &path,
+                                        int port, bool is_ssl,
+                                        const std::string &path,
                                         const Headers &headers,
                                         std::string &selected_subprotocol) {
   // Validate path and host
@@ -8869,7 +8945,7 @@ inline bool perform_websocket_handshake(Stream &strm, const std::string &host,
 
   // Build upgrade request
   std::string req_str = "GET " + path + " HTTP/1.1\r\n";
-  req_str += "Host: " + host + ":" + std::to_string(port) + "\r\n";
+  req_str += "Host: " + make_host_and_port_string(host, port, is_ssl) + "\r\n";
   req_str += "Upgrade: websocket\r\n";
   req_str += "Connection: Upgrade\r\n";
   req_str += "Sec-WebSocket-Key: " + client_key + "\r\n";
@@ -9569,9 +9645,8 @@ inline std::string encode_uri_component(const std::string &value) {
   escaped << std::hex;
 
   for (auto c : value) {
-    if (std::isalnum(static_cast<uint8_t>(c)) || c == '-' || c == '_' ||
-        c == '.' || c == '!' || c == '~' || c == '*' || c == '\'' || c == '(' ||
-        c == ')') {
+    if (detail::is_ascii_alnum(c) || c == '-' || c == '_' || c == '.' ||
+        c == '!' || c == '~' || c == '*' || c == '\'' || c == '(' || c == ')') {
       escaped << c;
     } else {
       escaped << std::uppercase;
@@ -9590,10 +9665,10 @@ inline std::string encode_uri(const std::string &value) {
   escaped << std::hex;
 
   for (auto c : value) {
-    if (std::isalnum(static_cast<uint8_t>(c)) || c == '-' || c == '_' ||
-        c == '.' || c == '!' || c == '~' || c == '*' || c == '\'' || c == '(' ||
-        c == ')' || c == ';' || c == '/' || c == '?' || c == ':' || c == '@' ||
-        c == '&' || c == '=' || c == '+' || c == '$' || c == ',' || c == '#') {
+    if (detail::is_ascii_alnum(c) || c == '-' || c == '_' || c == '.' ||
+        c == '!' || c == '~' || c == '*' || c == '\'' || c == '(' || c == ')' ||
+        c == ';' || c == '/' || c == '?' || c == ':' || c == '@' || c == '&' ||
+        c == '=' || c == '+' || c == '$' || c == ',' || c == '#') {
       escaped << c;
     } else {
       escaped << std::uppercase;
@@ -9654,7 +9729,8 @@ inline std::string encode_path_component(const std::string &component) {
     auto c = static_cast<unsigned char>(component[i]);
 
     // Unreserved characters per RFC 3986: ALPHA / DIGIT / "-" / "." / "_" / "~"
-    if (std::isalnum(c) || c == '-' || c == '.' || c == '_' || c == '~') {
+    if (detail::is_ascii_alnum(static_cast<char>(c)) || c == '-' || c == '.' ||
+        c == '_' || c == '~') {
       result += static_cast<char>(c);
     }
     // Path-safe sub-delimiters: "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" /
@@ -9727,7 +9803,8 @@ inline std::string encode_query_component(const std::string &component,
     auto c = static_cast<unsigned char>(component[i]);
 
     // Unreserved characters per RFC 3986
-    if (std::isalnum(c) || c == '-' || c == '.' || c == '_' || c == '~') {
+    if (detail::is_ascii_alnum(static_cast<char>(c)) || c == '-' || c == '.' ||
+        c == '_' || c == '~') {
       result += static_cast<char>(c);
     }
     // Space handling
@@ -9980,6 +10057,48 @@ inline size_t MultipartFormData::get_file_count(const std::string &key) const {
   return static_cast<size_t>(std::distance(r.first, r.second));
 }
 
+// Multipart FormData writer implementation
+inline bool is_valid_multipart_boundary(const std::string &boundary) {
+  return detail::is_multipart_boundary_chars_valid(boundary);
+}
+
+inline MultipartFormDataWriter::MultipartFormDataWriter()
+    : boundary_(detail::make_multipart_data_boundary()) {}
+
+inline MultipartFormDataWriter::MultipartFormDataWriter(std::string boundary)
+    : boundary_(std::move(boundary)) {}
+
+inline const std::string &MultipartFormDataWriter::boundary() const {
+  return boundary_;
+}
+
+inline std::string MultipartFormDataWriter::content_type() const {
+  return detail::serialize_multipart_formdata_get_content_type(boundary_);
+}
+
+inline std::string
+MultipartFormDataWriter::serialize(const UploadFormDataItems &items) const {
+  return detail::serialize_multipart_formdata(items, boundary_);
+}
+
+inline size_t MultipartFormDataWriter::content_length(
+    const UploadFormDataItems &items) const {
+  return detail::get_multipart_content_length(items, boundary_);
+}
+
+inline std::string
+MultipartFormDataWriter::item_begin(const UploadFormData &item) const {
+  return detail::serialize_multipart_formdata_item_begin(item, boundary_);
+}
+
+inline std::string MultipartFormDataWriter::item_end() {
+  return detail::serialize_multipart_formdata_item_end();
+}
+
+inline std::string MultipartFormDataWriter::finish() const {
+  return detail::serialize_multipart_formdata_finish(boundary_);
+}
+
 // Response implementation
 inline size_t Response::get_header_value_u64(const std::string &key, size_t def,
                                              size_t id) const {
@@ -10199,8 +10318,10 @@ inline ssize_t detail::BodyReader::read(char *buf, size_t len) {
 }
 
 // ThreadPool implementation
-inline ThreadPool::ThreadPool(size_t n, size_t max_n, size_t mqr)
-    : base_thread_count_(n), max_queued_requests_(mqr), idle_thread_count_(0),
+inline ThreadPool::ThreadPool(size_t n, size_t max_n, size_t mqr,
+                              time_t idle_timeout_sec)
+    : base_thread_count_(n), max_queued_requests_(mqr),
+      idle_timeout_sec_(idle_timeout_sec), idle_thread_count_(0),
       shutdown_(false) {
 #ifndef CPPHTTPLIB_NO_EXCEPTIONS
   if (max_n != 0 && max_n < n) {
@@ -10310,9 +10431,9 @@ inline void ThreadPool::worker(bool is_dynamic) {
       idle_thread_count_++;
 
       if (is_dynamic) {
-        auto has_work = cond_.wait_for(
-            lock, std::chrono::seconds(CPPHTTPLIB_THREAD_POOL_IDLE_TIMEOUT),
-            [&] { return !jobs_.empty() || shutdown_; });
+        auto has_work =
+            cond_.wait_for(lock, std::chrono::seconds(idle_timeout_sec_),
+                           [&] { return !jobs_.empty() || shutdown_; });
         if (!has_work) {
           // Timed out with no work - exit this dynamic thread
           idle_thread_count_--;
@@ -13657,9 +13778,18 @@ inline bool ClientImpl::write_request(Stream &strm, Request &req,
 
     if (!query_part.empty()) {
       // Normalize the query string (decode then re-encode) while preserving
-      // the original parameter order.
-      auto normalized = detail::normalize_query_string(query_part);
-      if (!normalized.empty()) { path_with_query += '?' + normalized; }
+      // the original parameter order. When path encoding is disabled the
+      // caller has supplied an already-encoded target and expects the exact
+      // bytes to be sent on the wire, so skip normalization for the query
+      // too. Normalizing here would decode-then-re-encode the query and
+      // corrupt pre-encoded binary payloads (e.g. turning `%20` into `+`,
+      // which a strict RFC 3986 server decodes back as `+`, not a space).
+      if (path_encode_) {
+        auto normalized = detail::normalize_query_string(query_part);
+        if (!normalized.empty()) { path_with_query += '?' + normalized; }
+      } else {
+        path_with_query += '?' + query_part;
+      }
 
       // Still populate req.params for handlers/users who read them.
       detail::parse_query_text(query_part, req.params);
@@ -16488,7 +16618,7 @@ inline bool is_ipv4_address(const std::string &str) {
   for (char c : str) {
     if (c == '.') {
       dots++;
-    } else if (!isdigit(static_cast<unsigned char>(c))) {
+    } else if (!detail::is_ascii_digit(c)) {
       return false;
     }
   }
@@ -16505,7 +16635,7 @@ inline bool parse_ipv4(const std::string &str, unsigned char *out) {
     }
     int val = 0;
     int digits = 0;
-    while (*p >= '0' && *p <= '9') {
+    while (detail::is_ascii_digit(*p)) {
       val = val * 10 + (*p - '0');
       if (val > 255) { return false; }
       p++;
@@ -20457,9 +20587,15 @@ inline bool WebSocketClient::connect() {
     return false;
   }
 
+#ifdef CPPHTTPLIB_SSL_ENABLED
+  auto is_ssl = is_ssl_;
+#else
+  auto is_ssl = false;
+#endif
+
   std::string selected_subprotocol;
-  if (!detail::perform_websocket_handshake(*strm, host_, port_, path_, headers_,
-                                           selected_subprotocol)) {
+  if (!detail::perform_websocket_handshake(*strm, host_, port_, is_ssl, path_,
+                                           headers_, selected_subprotocol)) {
     shutdown_and_close();
     return false;
   }
