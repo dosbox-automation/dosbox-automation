@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-The [`dosbox-automation` branch](https://github.com/dosbox-automation/dosbox-automation/tree/dosbox-automation)
+The [`main` branch](https://github.com/dosbox-automation/dosbox-automation/tree/main)
 and the [latest release](https://github.com/dosbox-automation/dosbox-automation/releases)
 are supported with security updates.
 
