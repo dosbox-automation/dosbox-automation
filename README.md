@@ -44,4 +44,4 @@ dosbox-automation is licensed under GNU GPL v2+, based on DOSBox Staging.
 [gpl-badge]: https://img.shields.io/badge/license-GPL--2.0--or--later-blue
 
 ---
-Built with AI-assisted development, using industry-standard software engineering practices. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for exactly what that means.
+Built with AI-assisted development. See [CONTRIBUTING.md](docs/CONTRIBUTING.md).
