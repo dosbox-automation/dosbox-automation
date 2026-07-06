@@ -18,7 +18,9 @@ SF2_SHA256="74594e8f4250680adf590507a306655a299935343583256f3b722c48a1bc1cb0"
 DEB_URL="https://deb.debian.org/debian/pool/main/f/fluid-soundfont/fluid-soundfont-gm_3.1-5.3_all.deb"
 DEB_PATH_IN_PKG="./usr/share/sounds/sf2/FluidR3_GM.sf2"
 
-DEST_DIR="$(cd "$(dirname "$0")" && pwd)"
+# The script lives in extras/scripts/; the SoundFont belongs in
+# resources/soundfonts/ where builds and packaging pick it up.
+DEST_DIR="$(cd "$(dirname "$0")/../../resources/soundfonts" && pwd)"
 DEST="$DEST_DIR/$SF2_NAME"
 
 checksum_ok() {
