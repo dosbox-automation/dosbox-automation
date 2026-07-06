@@ -208,13 +208,13 @@ def start_dosbox_instance(work_dir, autoexec_lines=None, extra_sets=None,
         "[webserver]\n" + "\n".join(primary_lines) + "\n"
     )
 
-    # When running visible, force texture output (OSD needs SDL_Renderer)
-    # and disable joystick (Stadia controller bug).
+    # When running visible, disable joystick (Stadia controller bug).
+    # The OSD draws on every output backend since the GL draw path
+    # landed, so no output override is needed anymore.
     visible = os.environ.get("DOSBOX_VISIBLE")
     if visible:
         if settings is None:
             settings = {}
-        settings.setdefault("output", "texture")
         settings.setdefault("joysticktype", "none")
 
     # Write a config file with settings and autoexec.

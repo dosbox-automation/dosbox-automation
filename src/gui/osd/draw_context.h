@@ -2,12 +2,10 @@
 // License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
 //
 
-#ifndef DOSBOX_GUI_OSD_SDL_SHIM_H
-#define DOSBOX_GUI_OSD_SDL_SHIM_H
+#ifndef DOSBOX_GUI_OSD_DRAW_CONTEXT_H
+#define DOSBOX_GUI_OSD_DRAW_CONTEXT_H
 
 #include <cstdint>
-
-struct SDL_Renderer;
 
 namespace OSD {
 
@@ -31,23 +29,27 @@ Color ColorYellow();
 Color ColorRed();
 Color ColorCyan();
 
-// Acquires the SDL_Renderer from GFX_GetWindow(). Returns nullptr
-// when no SDL_Renderer is available (OpenGL backend).
-SDL_Renderer* AcquireRenderer();
+// Backend-neutral draw target for the OSD. The whole OSD is drawn as
+// filled rectangles (glyphs are expanded from the VGA ROM font bitmap),
+// so this is the entire contract a render backend has to satisfy.
+class DrawContext {
+public:
+	virtual ~DrawContext() = default;
 
-void DrawFilledRect(SDL_Renderer* r, const Rect& rect, const Color& color);
+	virtual void FillRect(const Rect& rect, const Color& color) = 0;
+
+	// Size of the drawable window area in pixels.
+	virtual int OutputWidth()  = 0;
+	virtual int OutputHeight() = 0;
+};
 
 // Render a single VGA 8x16 glyph scaled by the given factor.
 // Returns the pixel width consumed (8 * scale).
-int DrawGlyph(SDL_Renderer* r, int x, int y, char ch, const Color& color, int scale);
+int DrawGlyph(DrawContext& ctx, int x, int y, char ch, const Color& color, int scale);
 
 // Render a string of VGA 8x16 glyphs. Returns total pixel width.
-int DrawText(SDL_Renderer* r, int x, int y, const char* text,
+int DrawText(DrawContext& ctx, int x, int y, const char* text,
              const Color& color, int scale);
-
-// Screen dimensions of the current render target.
-int OutputWidth(SDL_Renderer* r);
-int OutputHeight(SDL_Renderer* r);
 
 } // namespace OSD
 

@@ -72,14 +72,14 @@ void OsdManager::PruneExpired(const uint64_t frame_number)
 	               overlays.end());
 }
 
-void OsdManager::RenderOverlays(SDL_Renderer* r, const uint64_t frame_number)
+void OsdManager::RenderOverlays(DrawContext& ctx, const uint64_t frame_number)
 {
 	if (overlays.empty()) {
 		return;
 	}
 
-	const int screen_w = OutputWidth(r);
-	const int screen_h = OutputHeight(r);
+	const int screen_w = ctx.OutputWidth();
+	const int screen_h = ctx.OutputHeight();
 
 	constexpr int padding = 8;
 
@@ -128,15 +128,15 @@ void OsdManager::RenderOverlays(SDL_Renderer* r, const uint64_t frame_number)
 
 		Color bg     = {0, 0, 0, 96};
 		Rect bg_rect = {x - 2, y - 2, text_w + 4, glyph_h + 4};
-		DrawFilledRect(r, bg_rect, bg);
+		ctx.FillRect(bg_rect, bg);
 
-		DrawText(r, x, y, o.text.c_str(), o.color, scale);
+		DrawText(ctx, x, y, o.text.c_str(), o.color, scale);
 	}
 }
 
-void OsdManager::RenderIcons(SDL_Renderer* r, const uint64_t frame_number)
+void OsdManager::RenderIcons(DrawContext& ctx, const uint64_t frame_number)
 {
-	const int screen_w = OutputWidth(r);
+	const int screen_w = ctx.OutputWidth();
 
 	constexpr int icon_size      = 12;
 	constexpr int gap            = 4;
@@ -169,15 +169,14 @@ void OsdManager::RenderIcons(SDL_Renderer* r, const uint64_t frame_number)
 			}
 
 			Rect rect = {x, padding, icon_size, icon_size};
-			DrawFilledRect(r, rect, color);
+			ctx.FillRect(rect, color);
 		}
 
 		x -= (icon_size + gap);
 	}
 }
 
-void OsdManager::ShowCommand(const std::string& command,
-                             const uint64_t current_frame)
+void OsdManager::ShowCommand(const std::string& command, const uint64_t current_frame)
 {
 	TextOverlay overlay;
 	overlay.text         = command;
@@ -199,27 +198,22 @@ bool OsdManager::IsEnabled() const
 	return enabled;
 }
 
-void OsdManager::Render(const uint64_t frame_number)
+void OsdManager::Render(const uint64_t frame_number, DrawContext& ctx)
 {
 	if (!enabled) {
 		return;
 	}
 
-	auto* r = AcquireRenderer();
-	if (!r) {
-		return;
-	}
-
 	PruneExpired(frame_number);
-	RenderOverlays(r, frame_number);
-	RenderIcons(r, frame_number);
+	RenderOverlays(ctx, frame_number);
+	RenderIcons(ctx, frame_number);
 }
 
 } // namespace OSD
 
-void OSD_Render(const uint64_t frame_number)
+void OSD_Render(const uint64_t frame_number, OSD::DrawContext& ctx)
 {
-	OSD::OsdManager::Instance().Render(frame_number);
+	OSD::OsdManager::Instance().Render(frame_number, ctx);
 }
 
 void OSD_ShowCommand(const std::string& command, const uint64_t frame)

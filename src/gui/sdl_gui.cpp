@@ -54,7 +54,6 @@ void ReplayDispatchFrame(uint64_t);
 }
 
 void LuaDispatchFrame(uint64_t);
-void OSD_Render(uint64_t);
 
 // #define DEBUG_WINDOW_EVENTS
 

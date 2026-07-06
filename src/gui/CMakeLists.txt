@@ -4,8 +4,10 @@ target_sources(dosboxcommon PRIVATE
   sdl_gui.cpp
   titlebar.cpp
 
+  osd/draw_context.cpp
+  osd/gl_draw.cpp
   osd/osd.cpp
-  osd/sdl_shim.cpp
+  osd/sdl_draw.cpp
 
   render/auto_image_adjustments.cpp
   render/auto_shader_switcher.cpp

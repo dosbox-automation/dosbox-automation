@@ -5,7 +5,7 @@
 #ifndef DOSBOX_GUI_OSD_H
 #define DOSBOX_GUI_OSD_H
 
-#include "gui/osd/sdl_shim.h"
+#include "gui/osd/draw_context.h"
 
 #include <cstdint>
 #include <string>
@@ -52,7 +52,7 @@ public:
 	void SetEnabled(bool on);
 	bool IsEnabled() const;
 
-	void Render(uint64_t frame_number);
+	void Render(uint64_t frame_number, DrawContext& ctx);
 
 private:
 	OsdManager() = default;
@@ -77,8 +77,8 @@ private:
                 {IconId::ProgrammaticInput, false, false},
         };
 
-	void RenderOverlays(SDL_Renderer* r, uint64_t frame_number);
-	void RenderIcons(SDL_Renderer* r, uint64_t frame_number);
+	void RenderOverlays(DrawContext& ctx, uint64_t frame_number);
+	void RenderIcons(DrawContext& ctx, uint64_t frame_number);
 	void PruneExpired(uint64_t frame_number);
 
 	OsdManager(const OsdManager&)            = delete;
@@ -87,7 +87,7 @@ private:
 
 } // namespace OSD
 
-void OSD_Render(uint64_t frame_number);
+void OSD_Render(uint64_t frame_number, OSD::DrawContext& ctx);
 void OSD_ShowCommand(const std::string& command, uint64_t frame);
 void OSD_ClearCommand();
 

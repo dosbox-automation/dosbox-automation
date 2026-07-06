@@ -13,6 +13,7 @@
 #include "config/config.h"
 #include "config/setup.h"
 #include "gui/osd/osd.h"
+#include "gui/osd/sdl_draw.h"
 #include "misc/video.h"
 #include "utils/checks.h"
 #include "utils/math_utils.h"
@@ -420,7 +421,8 @@ void SdlRenderer::PresentFrame()
 
 	// After the capture so the OSD stays out of recordings, before the
 	// present so the clear above doesn't wipe it.
-	OSD_Render(GFX_GetRenderedFrameCount());
+	OSD::SdlDrawContext osd_ctx(renderer);
+	OSD_Render(GFX_GetRenderedFrameCount(), osd_ctx);
 
 	SDL_RenderPresent(renderer);
 }

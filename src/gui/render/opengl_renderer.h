@@ -9,6 +9,7 @@
 #if C_OPENGL
 
 #include <array>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -17,6 +18,7 @@
 #include "private/shader_pipeline.h"
 
 #include "dosbox_config.h"
+#include "gui/osd/gl_draw.h"
 #include "misc/video.h"
 #include "utils/rect.h"
 
@@ -151,6 +153,11 @@ private:
 	VideoMode curr_video_mode          = {};
 
 	std::unique_ptr<ShaderPipeline> shader_pipeline = {};
+
+	// Draws the OSD over the presented frame; the SDL backend draws it
+	// through its SDL_Renderer, which this backend has none of. Null
+	// when the overlay shader failed to build (OSD off, not fatal).
+	std::unique_ptr<OSD::OpenGlDrawContext> osd_draw_context = {};
 };
 
 #endif // C_OPENGL

@@ -238,6 +238,12 @@ bool OpenGlRenderer::InitRenderer()
 
 	shader_pipeline = std::make_unique<ShaderPipeline>();
 
+	osd_draw_context = std::make_unique<OSD::OpenGlDrawContext>();
+	if (!osd_draw_context->IsValid()) {
+		LOG_ERR("OPENGL: OSD overlay unavailable");
+		osd_draw_context = {};
+	}
+
 	return true;
 }
 
@@ -253,9 +259,10 @@ OpenGlRenderer::~OpenGlRenderer()
 		input_texture.texture = 0;
 	}
 
-	// ShaderPipeline destructor makes some gl calls.
-	// Do that here before we delete the context.
-	shader_pipeline = {};
+	// ShaderPipeline and OpenGlDrawContext destructors make some gl
+	// calls. Do that here before we delete the context.
+	shader_pipeline  = {};
+	osd_draw_context = {};
 
 	if (context) {
 		SDL_GL_DestroyContext(context);
@@ -509,9 +516,14 @@ void OpenGlRenderer::PresentFrame()
 	}
 
 	// Same hook point as the SDL backend: after capture, before present.
-	// No-ops today because the OSD shim draws via SDL_Renderer, which the
-	// GL backend has none of; the SDL3 port adds the GL drawing path.
-	OSD_Render(GFX_GetRenderedFrameCount());
+	if (osd_draw_context) {
+		const auto canvas_size_px = GetCanvasSizeInPixels();
+
+		osd_draw_context->BeginFrame(iroundf(canvas_size_px.w),
+		                             iroundf(canvas_size_px.h));
+		OSD_Render(GFX_GetRenderedFrameCount(), *osd_draw_context);
+		osd_draw_context->EndFrame();
+	}
 
 	// Present frame
 	SDL_GL_SwapWindow(window);
