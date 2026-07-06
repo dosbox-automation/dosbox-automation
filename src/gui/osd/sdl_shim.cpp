@@ -4,7 +4,7 @@
 
 #include "gui/osd/sdl_shim.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include "gui/private/common.h"
 
@@ -50,7 +50,11 @@ void DrawFilledRect(SDL_Renderer* r, const Rect& rect, const Color& color)
 	}
 	SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 	SDL_SetRenderDrawColor(r, color.r, color.g, color.b, color.a);
-	SDL_Rect sdl_rect = {rect.x, rect.y, rect.w, rect.h};
+	// SDL3 render geometry is float
+	SDL_FRect sdl_rect = {static_cast<float>(rect.x),
+	                      static_cast<float>(rect.y),
+	                      static_cast<float>(rect.w),
+	                      static_cast<float>(rect.h)};
 	SDL_RenderFillRect(r, &sdl_rect);
 }
 
@@ -70,10 +74,10 @@ int DrawGlyph(SDL_Renderer* r, const int x, const int y, const char ch,
 		const uint8_t bits = bitmap[row];
 		for (int col = 0; col < 8; ++col) {
 			if (bits & (0x80 >> col)) {
-				SDL_Rect pixel = {x + col * scale,
-				                  y + row * scale,
-				                  scale,
-				                  scale};
+				SDL_FRect pixel = {static_cast<float>(x + col * scale),
+				                   static_cast<float>(y + row * scale),
+				                   static_cast<float>(scale),
+				                   static_cast<float>(scale)};
 				SDL_RenderFillRect(r, &pixel);
 			}
 		}
@@ -105,7 +109,7 @@ int OutputWidth(SDL_Renderer* r)
 	}
 	int w = 0;
 	int h = 0;
-	SDL_GetRendererOutputSize(r, &w, &h);
+	SDL_GetCurrentRenderOutputSize(r, &w, &h);
 	return w;
 }
 
@@ -116,7 +120,7 @@ int OutputHeight(SDL_Renderer* r)
 	}
 	int w = 0;
 	int h = 0;
-	SDL_GetRendererOutputSize(r, &w, &h);
+	SDL_GetCurrentRenderOutputSize(r, &w, &h);
 	return h;
 }
 

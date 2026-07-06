@@ -25,7 +25,7 @@ project(dosbox-automation
   VERSION 0.84.0
 )
 
-set(DOSBOX_VERSION ${PROJECT_VERSION}-da1)
+set(DOSBOX_VERSION ${PROJECT_VERSION}-da2)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -342,6 +342,7 @@ endif()
 option(OPT_MT32EMU "Enable Roland MT-32 emulation support" ON)
 if (OPT_MT32EMU)
   set(C_MT32EMU ON)
+  find_package(MT32Emu REQUIRED)
 endif()
 
 if (OPT_DEBUGGER)
@@ -445,7 +446,8 @@ set(version      "${PROJECT_VERSION}")
 find_package(PkgConfig REQUIRED)
 
 # Plain zlib for the ZMBV video codec. zlib-ng is not worth the extra
-# dependency here; ZMBV compression is not a bottleneck.
+# dependency here; ZMBV compression is not a bottleneck. C_ZLIB_NG stays
+# unset, so the upstream zmbv.h conditional resolves to the zlib API.
 find_package(ZLIB REQUIRED)
 set(ZMBV_ZLIB_TARGET ZLIB::ZLIB)
 
@@ -465,12 +467,11 @@ endif()
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 
 # Find common external dependencies
-find_package(SDL2 CONFIG REQUIRED)
-find_package(SDL2_image CONFIG REQUIRED)
+find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
+find_package(SDL3_image CONFIG REQUIRED)
 find_package(iir REQUIRED)
 find_package(PNG REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(MT32Emu REQUIRED)
 find_package(FluidSynth REQUIRED CONFIG)
 if (C_ALSA)
   find_package(ALSA REQUIRED)
@@ -550,8 +551,7 @@ target_link_libraries(dosboxcommon PRIVATE
 
 target_link_libraries(dosbox PRIVATE
   dosboxcommon
-  $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
-  $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+  SDL3::Headers
 )
 
 # Export dynamic symbols so loguru's stack traces can resolve names

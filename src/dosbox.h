@@ -26,6 +26,9 @@
 // Copyright string
 #define DOSBOX_COPYRIGHT "(C) " DOSBOX_TEAM
 
+// Website URL
+#define DOSBOX_WEBSITE "https://www.dosbox-automation.org"
+
 // Address to report bugs
 #define DOSBOX_BUGS_TO "https://github.com/dosbox-automation/dosbox-automation/issues"
 

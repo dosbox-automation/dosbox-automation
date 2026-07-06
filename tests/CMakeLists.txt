@@ -58,7 +58,7 @@ endif()
 target_link_libraries(dosbox_tests PRIVATE
     GTest::gmock_main
     dosboxcommon
-    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+    SDL3::Headers
 )
 
 include(GoogleTest)
