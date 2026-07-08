@@ -6,8 +6,7 @@
 #define DOSBOX_LUA_COROUTINE_H
 
 #include "lua/lua_engine.h"
-
-#include "hardware/input/keyboard.h"
+#include "lua/text_input.h"
 
 #include <chrono>
 #include <cstdint>
@@ -22,13 +21,6 @@ namespace Lua {
 class DebugLog;
 
 enum class ScriptState { Idle, Loaded, Running, Yielded, Completed, Error };
-
-// One logical key stroke for paced text injection: a key plus whether Shift
-// must be held for it. Expanded to press/release events when drained.
-struct KeyStroke {
-	KBD_KEYS key = KBD_NONE;
-	bool shift   = false;
-};
 
 const char* ScriptStateName(ScriptState s);
 

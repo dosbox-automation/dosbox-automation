@@ -5,6 +5,7 @@ target_sources(dosboxcommon PRIVATE
   lua_debug_log.cpp
   lua_engine.cpp
   script_validator.cpp
+  text_input.cpp
 )
 
 target_link_libraries(dosboxcommon PRIVATE

@@ -6,6 +6,7 @@
 
 #include "lua/lua_coroutine.h"
 #include "lua/lua_debug_log.h"
+#include "lua/text_input.h"
 
 #include "capture/capture.h"
 #include "gui/osd/osd.h"
@@ -173,91 +174,6 @@ static const std::unordered_map<std::string, MouseButtonId> button_name_map = {
         {"middle", MouseButtonId::Middle},
 };
 
-// Maps single printable ASCII chars to KBD_KEYS for dosbox.type().
-// Only handles unshifted keys. Shifted variants (uppercase, symbols
-// on number keys) are sent as shift + base key.
-struct TypeMapping {
-	KBD_KEYS key = KBD_NONE;
-	bool shift   = false;
-};
-
-static TypeMapping CharToKey(const char c)
-{
-	// KBD_KEYS are in QWERTY row order, not alphabetical.
-	static constexpr KBD_KEYS alpha_keys[26] = {
-	        KBD_a, KBD_b, KBD_c, KBD_d, KBD_e, KBD_f, KBD_g, KBD_h, KBD_i,
-	        KBD_j, KBD_k, KBD_l, KBD_m, KBD_n, KBD_o, KBD_p, KBD_q, KBD_r,
-	        KBD_s, KBD_t, KBD_u, KBD_v, KBD_w, KBD_x, KBD_y, KBD_z,
-	};
-
-	// KBD_KEYS orders the digit row 1..9 then 0, so KBD_0 sits at the end
-	// of the run (right before KBD_q). Arithmetic from KBD_0 would walk
-	// into the QWERTY letters (e.g. '7' -> KBD_u), so map digits through a
-	// table too.
-	static constexpr KBD_KEYS digit_keys[10] = {
-	        KBD_0,
-	        KBD_1,
-	        KBD_2,
-	        KBD_3,
-	        KBD_4,
-	        KBD_5,
-	        KBD_6,
-	        KBD_7,
-	        KBD_8,
-	        KBD_9,
-	};
-
-	if (c >= 'a' && c <= 'z') {
-		return {alpha_keys[c - 'a'], false};
-	}
-	if (c >= 'A' && c <= 'Z') {
-		return {alpha_keys[c - 'A'], true};
-	}
-	if (c >= '0' && c <= '9') {
-		return {digit_keys[c - '0'], false};
-	}
-
-	switch (c) {
-	case ' ': return {KBD_space, false};
-	case '\n': return {KBD_enter, false};
-	case '\t': return {KBD_tab, false};
-	case '-': return {KBD_minus, false};
-	case '=': return {KBD_equals, false};
-	case '[': return {KBD_leftbracket, false};
-	case ']': return {KBD_rightbracket, false};
-	case '\\': return {KBD_backslash, false};
-	case ';': return {KBD_semicolon, false};
-	case '\'': return {KBD_quote, false};
-	case '`': return {KBD_grave, false};
-	case ',': return {KBD_comma, false};
-	case '.': return {KBD_period, false};
-	case '/': return {KBD_slash, false};
-	// Shifted symbols on US layout
-	case '!': return {KBD_1, true};
-	case '@': return {KBD_2, true};
-	case '#': return {KBD_3, true};
-	case '$': return {KBD_4, true};
-	case '%': return {KBD_5, true};
-	case '^': return {KBD_6, true};
-	case '&': return {KBD_7, true};
-	case '*': return {KBD_8, true};
-	case '(': return {KBD_9, true};
-	case ')': return {KBD_0, true};
-	case '_': return {KBD_minus, true};
-	case '+': return {KBD_equals, true};
-	case '{': return {KBD_leftbracket, true};
-	case '}': return {KBD_rightbracket, true};
-	case '|': return {KBD_backslash, true};
-	case ':': return {KBD_semicolon, true};
-	case '"': return {KBD_quote, true};
-	case '~': return {KBD_grave, true};
-	case '<': return {KBD_comma, true};
-	case '>': return {KBD_period, true};
-	case '?': return {KBD_slash, true};
-	default: return {KBD_NONE, false};
-	}
-}
-
 // ================================================================
 // Input functions
 // ================================================================
@@ -310,13 +226,7 @@ static int LuaType(lua_State* L)
 		return luaL_error(L, "type: no coroutine context");
 	}
 
-	std::vector<KeyStroke> strokes;
-	for (const char* p = text; *p; ++p) {
-		const auto mapping = CharToKey(*p);
-		if (mapping.key != KBD_NONE) {
-			strokes.push_back({mapping.key, mapping.shift});
-		}
-	}
+	auto strokes = Lua::TextToStrokes(text);
 
 	// Nothing mappable to send: return without yielding so an empty or
 	// all-unsupported string is a no-op rather than a stalled wait.
