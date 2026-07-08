@@ -39,6 +39,9 @@ add_executable(dosbox_tests
     lua_api_tests.cpp
     script_validator_tests.cpp
     text_input_tests.cpp
+    webserver_mem_search_tests.cpp
+    webserver_freeze_tests.cpp
+    webserver_dos_map_tests.cpp
     multi_prefix_tests.cpp
 )
 

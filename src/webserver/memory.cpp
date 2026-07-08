@@ -228,4 +228,75 @@ void WriteMemoryCommand::Put(const httplib::Request& req, httplib::Response& res
 	send_json(res, j);
 }
 
+// --- Memory value scan ---
+
+std::vector<uint32_t> ScanBufferForValue(const std::vector<uint8_t>& buf,
+                                         const uint32_t value, const int width)
+{
+	if (width != 1 && width != 2 && width != 4) {
+		throw std::invalid_argument("width must be 1, 2, or 4");
+	}
+	std::vector<uint32_t> hits;
+	if (buf.size() < static_cast<size_t>(width)) {
+		return hits;
+	}
+	for (uint32_t i = 0; i + width <= buf.size(); ++i) {
+		uint32_t v = 0;
+		for (int b = 0; b < width; ++b) {
+			v |= static_cast<uint32_t>(buf[i + b]) << (8 * b);
+		}
+		if (v == value) {
+			hits.push_back(i);
+		}
+	}
+	return hits;
+}
+
+void SearchMemoryCommand::Execute()
+{
+	const uint64_t mem_total = static_cast<uint64_t>(MEM_TotalPages()) *
+	                           MemPageSize;
+	if (end > mem_total || start >= end) {
+		error = "Invalid search range";
+		return;
+	}
+	const auto len = end - start;
+	std::vector<uint8_t> buf(len);
+	MEM_BlockRead(start, buf.data(), len);
+	matches = ScanBufferForValue(buf, value, width);
+	for (auto& m : matches) {
+		m += start;
+	}
+}
+
+void SearchMemoryCommand::Post(const Request& req, Response& res)
+{
+	auto j = json::parse(req.body);
+
+	const uint32_t value = j.at("value").get<uint32_t>();
+	const int width      = j.value("width", 1);
+	const uint32_t start = j.at("start").get<uint32_t>();
+	const uint32_t end   = j.at("end").get<uint32_t>();
+
+	if (width != 1 && width != 2 && width != 4) {
+		throw std::invalid_argument("width must be 1, 2, or 4");
+	}
+
+	constexpr uint32_t MaxSpan = 16 * 1024 * 1024;
+	if (end <= start || end - start > MaxSpan) {
+		throw std::invalid_argument("search span must be 1.." +
+		                            std::to_string(MaxSpan) + " bytes");
+	}
+
+	SearchMemoryCommand cmd(start, end, value, width);
+	cmd.WaitForCompletion(2000);
+	if (!cmd.error.empty()) {
+		throw std::out_of_range(cmd.error);
+	}
+
+	json result;
+	result["matches"] = cmd.Matches();
+	send_json(res, result);
+}
+
 } // namespace Webserver

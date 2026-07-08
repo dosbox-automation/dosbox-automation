@@ -12,6 +12,7 @@
 #include "private/cpu.h"
 #include "private/dos.h"
 #include "private/dosbox.h"
+#include "private/freeze.h"
 #include "private/memory.h"
 #include "video.h"
 
@@ -118,6 +119,10 @@ static void setup_api_handlers()
 
 	server.Post("/api/v1/memory/allocate", AllocMemoryCommand::Post);
 	server.Post("/api/v1/memory/free", FreeMemoryCommand::Post);
+	server.Post("/api/v1/memory/search", SearchMemoryCommand::Post);
+	server.Post("/api/v1/memory/freeze", FreezeHandlers::Post);
+	server.Get("/api/v1/memory/freeze", FreezeHandlers::Get);
+	server.Delete("/api/v1/memory/freeze", FreezeHandlers::Delete);
 	server.Get("/api/v1/memory/:offset/:len", ReadMemoryCommand::Get);
 	server.Get("/api/v1/memory/:segment/:offset/:len", ReadMemoryCommand::Get);
 	server.Put("/api/v1/memory/:offset", WriteMemoryCommand::Put);

@@ -6,6 +6,7 @@ target_sources(dosboxcommon PRIVATE
   dos.cpp
   dosbox.cpp
   drive.cpp
+  freeze.cpp
   input.cpp
   memory.cpp
   video.cpp

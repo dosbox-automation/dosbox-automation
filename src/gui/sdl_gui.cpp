@@ -51,6 +51,7 @@ CHECK_NARROWING();
 
 namespace Webserver {
 void ReplayDispatchFrame(uint64_t);
+void ApplyFreezes();
 }
 
 void LuaDispatchFrame(uint64_t);
@@ -1225,6 +1226,7 @@ void GFX_EndUpdate()
 	sdl.draw.updating_framebuffer = false;
 
 	Webserver::ReplayDispatchFrame(rendered_frame_count);
+	Webserver::ApplyFreezes();
 	LuaDispatchFrame(rendered_frame_count);
 }
 

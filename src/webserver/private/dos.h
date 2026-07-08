@@ -7,21 +7,39 @@
 
 #include "webserver/bridge.h"
 
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <vector>
+
 #include "http/http.h"
 
 namespace Webserver {
+
+struct McbBlock {
+	uint16_t segment     = 0;
+	uint8_t type         = 0;
+	uint16_t psp_segment = 0;
+	uint16_t size_paras  = 0;
+	std::string filename = {};
+	bool is_last         = false;
+};
+
+using McbReader = std::function<McbBlock(uint16_t segment)>;
+
+std::vector<McbBlock> WalkMcbChain(uint16_t start_segment,
+                                   const McbReader& reader,
+                                   int max_blocks);
 
 // Get pointers to interesting data structures, this command is just to prevent
 // breakages if these ever change and users hard-code these offsets. It's not
 // a place to pull random info that can also be read by the client from these
 // addresses directly.
 class DosInternalsCommand : public Command {
-	// Usually retrieved with int 21h, ah=0x52
-	uint16_t list_of_lists = {};
-	// Usually retrieved with int 21h ax=0x5d06
+	uint16_t list_of_lists      = {};
 	uint16_t dos_swappable_area = {};
-	// Pointer to PSP of first shell, basically start of usable memory
-	uint16_t first_shell = {};
+	uint16_t first_shell        = {};
+	std::vector<McbBlock> memory_map = {};
 
 public:
 	void Execute() override;

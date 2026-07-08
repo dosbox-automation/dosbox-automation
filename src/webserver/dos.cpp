@@ -21,11 +21,54 @@ namespace Webserver {
 
 constexpr int DosBlockSize = 16;
 
+std::vector<McbBlock> WalkMcbChain(const uint16_t start_segment,
+                                   const McbReader& reader,
+                                   const int max_blocks)
+{
+	std::vector<McbBlock> chain;
+	uint16_t seg = start_segment;
+
+	for (int i = 0; i < max_blocks; ++i) {
+		auto block = reader(seg);
+		block.segment = seg;
+
+		if (block.type == 0x5A) {
+			block.is_last = true;
+			chain.push_back(block);
+			break;
+		}
+		if (block.type != 0x4D) {
+			break;
+		}
+
+		chain.push_back(block);
+		seg = seg + block.size_paras + 1;
+	}
+	return chain;
+}
+
+static McbBlock ReadMcbFromGuest(const uint16_t segment)
+{
+	DOS_MCB mcb(segment);
+	McbBlock block = {};
+	block.segment     = segment;
+	block.type        = mcb.GetType();
+	block.psp_segment = mcb.GetPSPSeg();
+	block.size_paras  = mcb.GetSize();
+
+	char name[9] = {};
+	mcb.GetFileName(name);
+	block.filename = name;
+	return block;
+}
+
 void DosInternalsCommand::Execute()
 {
 	list_of_lists      = RealToPhysical(dos_infoblock.GetPointer());
 	dos_swappable_area = PhysicalMake(DOS_SDA_SEG, DOS_SDA_OFS);
 	first_shell        = PhysicalMake(DOS_FIRST_SHELL, 0);
+
+	memory_map = WalkMcbChain(dos.firstMCB, ReadMcbFromGuest, 1000);
 
 	LOG_DEBUG("API: DosInternalsCommand()");
 }
@@ -39,6 +82,20 @@ void DosInternalsCommand::Get(const httplib::Request&, httplib::Response& res)
 	j["listOfLists"]      = cmd.list_of_lists;
 	j["dosSwappableArea"] = cmd.dos_swappable_area;
 	j["firstShell"]       = cmd.first_shell;
+
+	json map = json::array();
+	for (const auto& b : cmd.memory_map) {
+		json entry;
+		entry["segment"]    = b.segment;
+		entry["type"]       = b.type;
+		entry["pspSegment"] = b.psp_segment;
+		entry["sizeParas"]  = b.size_paras;
+		entry["sizeBytes"]  = static_cast<uint32_t>(b.size_paras) * 16;
+		entry["filename"]   = b.filename;
+		entry["isLast"]     = b.is_last;
+		map.push_back(entry);
+	}
+	j["memoryMap"] = map;
 
 	send_json(res, j);
 }

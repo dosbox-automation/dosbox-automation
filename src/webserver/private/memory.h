@@ -8,7 +8,9 @@
 #include "webserver/bridge.h"
 #include "cpu.h"
 
+#include <cstdint>
 #include <limits>
+#include <vector>
 
 #include "http/http.h"
 
@@ -66,6 +68,34 @@ private:
 	uint32_t effective_addr = {};
 	// Only filled if expected_data was set and didn't match.
 	std::string conflict_data = {};
+};
+
+// Scan a byte buffer for little-endian matches of `value` at `width`
+// (1, 2, or 4). Returns the offsets where a match starts.
+std::vector<uint32_t> ScanBufferForValue(const std::vector<uint8_t>& buf,
+                                         uint32_t value, int width);
+
+class SearchMemoryCommand : public Command {
+public:
+	SearchMemoryCommand(uint32_t start, uint32_t end, uint32_t value, int width)
+	        : start(start), end(end), value(value), width(width)
+	{}
+
+	void Execute() override;
+	static void Post(const httplib::Request& req, httplib::Response& res);
+
+	const std::vector<uint32_t>& Matches() const
+	{
+		return matches;
+	}
+
+private:
+	uint32_t start = 0;
+	uint32_t end   = 0;
+	uint32_t value = 0;
+	int width      = 1;
+
+	std::vector<uint32_t> matches = {};
 };
 
 } // namespace Webserver

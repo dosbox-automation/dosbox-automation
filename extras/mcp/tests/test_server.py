@@ -50,3 +50,28 @@ def test_input_tools_absent_when_flag_false():
     assert "mem_read" in names
     assert "input_type" not in names
     assert "input_key" not in names
+
+
+def test_search_and_map_present_with_memory():
+    features = {"memory": True}
+    server = build_server(_make_client(), features)
+    names = server.registered_tool_names()
+    assert "mem_search" in names
+    assert "dos_memory_map" in names
+
+
+def test_freeze_tools_present_when_flag_true():
+    features = {"freeze": True}
+    server = build_server(_make_client(), features)
+    names = server.registered_tool_names()
+    assert "freeze_set" in names
+    assert "freeze_list" in names
+    assert "freeze_clear" in names
+
+
+def test_freeze_tools_absent_when_flag_false():
+    features = {"freeze": False, "memory": True}
+    server = build_server(_make_client(), features)
+    names = server.registered_tool_names()
+    assert "freeze_set" not in names
+    assert "mem_read" in names
