@@ -75,3 +75,18 @@ def test_freeze_tools_absent_when_flag_false():
     names = server.registered_tool_names()
     assert "freeze_set" not in names
     assert "mem_read" in names
+
+
+def test_port_io_tools_present_when_flag_true():
+    features = {"port_io": True}
+    server = build_server(_make_client(), features)
+    names = server.registered_tool_names()
+    assert "port_read" in names
+    assert "port_write" in names
+
+
+def test_port_io_tools_absent_when_flag_false():
+    features = {"port_io": False}
+    server = build_server(_make_client(), features)
+    names = server.registered_tool_names()
+    assert "port_read" not in names

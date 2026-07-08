@@ -13,6 +13,7 @@
 #include "private/dos.h"
 #include "private/dosbox.h"
 #include "private/freeze.h"
+#include "private/io_port.h"
 #include "private/memory.h"
 #include "video.h"
 
@@ -127,6 +128,9 @@ static void setup_api_handlers()
 	server.Get("/api/v1/memory/:segment/:offset/:len", ReadMemoryCommand::Get);
 	server.Put("/api/v1/memory/:offset", WriteMemoryCommand::Put);
 	server.Put("/api/v1/memory/:segment/:offset", WriteMemoryCommand::Put);
+
+	server.Get("/api/v1/io/port", PortReadCommand::Get);
+	server.Put("/api/v1/io/port", PortWriteCommand::Put);
 
 	server.Post("/api/v1/input/sequence", InputSequenceCommand::Post);
 	server.Post("/api/v1/input/type", InputTypeCommand::Post);

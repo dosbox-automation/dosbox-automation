@@ -42,6 +42,7 @@ add_executable(dosbox_tests
     webserver_mem_search_tests.cpp
     webserver_freeze_tests.cpp
     webserver_dos_map_tests.cpp
+    webserver_io_port_tests.cpp
     multi_prefix_tests.cpp
 )
 
