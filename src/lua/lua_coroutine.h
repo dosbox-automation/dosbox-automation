@@ -65,10 +65,7 @@ public:
 	void SetWaitForText(const std::string& pattern, bool ignorecase,
 	                    uint64_t deadline);
 
-	// Queue text as paced keystrokes. Each stroke is injected only when the
-	// keyboard buffer has room, spread over frames, so the 8-slot i8042
-	// buffer never overflows and drops keys. The script stays yielded until
-	// the queue drains; type() is async by design.
+	// Paced keystroke queue; drains across frames gated on buffer room.
 	void QueueTypeInput(std::vector<KeyStroke> strokes);
 
 	// Override the wall-clock ceiling (default 30s); tests use a short value.

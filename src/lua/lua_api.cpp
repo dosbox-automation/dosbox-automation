@@ -292,12 +292,8 @@ static int LuaKey(lua_State* L)
 }
 
 // dosbox.type(text)
-// Queues each character as a paced keystroke and yields. The coroutine drains
-// the queue across frames, gated on real keyboard-buffer headroom, so the
-// 8-slot i8042 buffer never overflows. Injecting a whole string at once would
-// overflow it and silently drop everything past the first few keys. type() is
-// therefore async: the keys land over the following frames, so a script must
-// wait_for_text or wait_frames before reading the result.
+// Async: queues paced keystrokes and yields. Keys drain across frames,
+// gated on i8042 buffer headroom. Call wait_for_text after.
 static int LuaType(lua_State* L)
 {
 	const char* text = luaL_checkstring(L, 1);

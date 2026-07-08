@@ -24,14 +24,9 @@ namespace OSD {
 bool AppendRectVertices(std::vector<float>& out, const Rect& rect, const Color& color,
                         int output_width_px, int output_height_px);
 
-// Draws the OSD on the OpenGL backend, which has no SDL_Renderer.
-// Batches all rects of a frame into one vertex buffer and draws them
-// with a minimal flat-color shader over the presented frame.
-//
-// Requires the backend's GL context to be current during construction,
-// destruction, and the BeginFrame/EndFrame bracket. Construction can
-// fail (shader compile/link); the object then stays inert and IsValid()
-// returns false.
+// OSD drawing for the GL backend (no SDL_Renderer). Batches rects into
+// one VBO per frame. GL context must be current for ctor/dtor/draw.
+// Construction failure -> IsValid() false, all draws silently skip.
 class OpenGlDrawContext final : public DrawContext {
 public:
 	OpenGlDrawContext();
@@ -39,10 +34,7 @@ public:
 
 	bool IsValid() const;
 
-	// Bracket one frame's OSD drawing between the frame capture and the
-	// buffer swap. BeginFrame records the window size; GL state is only
-	// touched once there is something to draw. EndFrame flushes and
-	// restores the state it changed.
+	// Bracket frame OSD between capture and swap.
 	void BeginFrame(int width_px, int height_px);
 	void EndFrame();
 

@@ -18,10 +18,7 @@ struct VideoHandlers {
 	static void GetFrameInfo(const httplib::Request& req, httplib::Response& res);
 };
 
-// Reads the text-mode character buffer. Runs on the emulation thread
-// because it touches guest memory; the handler marshals it through the
-// Bridge. Pairs with GetFrame: that returns the screen as pixels, this
-// returns it as characters.
+// Text-mode character buffer read (emulation thread via Bridge).
 class ScreenTextCommand : public Command {
 	bool is_text_mode = false;
 	int columns       = 0;

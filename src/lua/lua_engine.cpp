@@ -173,12 +173,8 @@ void LuaEngine::CreateState()
 	lua_pop(state, 1);
 	luaL_requiref(state, LUA_STRLIBNAME, luaopen_string, 1);
 
-	// Wrap pattern-matching functions with a complexity guard.
-	// The Lua pattern matcher runs entirely in C, invisible to
-	// both the instruction hook and the wall-clock watchdog.
-	// CheckPatternComplexity bounds quantifier count relative
-	// to subject length (the actual cost axis) and caps both
-	// subject and pattern length as secondary bounds.
+	// Pattern matcher runs in C, invisible to both instruction
+	// hook and wall-clock watchdog - bound cost before entry.
 	const char* pattern_funcs[] = {"find", "match", "gmatch", "gsub", nullptr};
 	for (const char** fn = pattern_funcs; *fn; ++fn) {
 		lua_getfield(state, -1, *fn);
@@ -200,11 +196,7 @@ void LuaEngine::CreateState()
 	luaL_requiref(state, LUA_UTF8LIBNAME, luaopen_utf8, 1);
 	lua_pop(state, 1);
 
-	// Remove dangerous functions from the base library.
-	// These allow loading arbitrary code or bytecode.
-	// String metatable escape: getmetatable('') can reach the string
-	// library's metatable, which in an insufficiently isolated sandbox
-	// could lead to _G. Block it entirely.
+	// getmetatable('') reaches the string metatable -> _G escape.
 	const char* blocked[] = {"dofile",
 	                         "loadfile",
 	                         "load",
