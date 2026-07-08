@@ -69,7 +69,7 @@ def test_dosbox_info_reports_features(dosbox):
     features = data["features"]
     for key in ("memory", "input", "cpu_registers", "port_io", "freeze"):
         assert features.get(key) is True, f"{key} should be true"
-    assert features["cpu_control"] is False
+    assert features["cpu_control"] is True
     assert features["debugger"] is False
 
 

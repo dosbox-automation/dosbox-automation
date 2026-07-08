@@ -90,3 +90,17 @@ def test_port_io_tools_absent_when_flag_false():
     server = build_server(_make_client(), features)
     names = server.registered_tool_names()
     assert "port_read" not in names
+
+
+def test_cpu_write_present_when_flag_true():
+    features = {"cpu_control": True}
+    server = build_server(_make_client(), features)
+    names = server.registered_tool_names()
+    assert "cpu_write_register" in names
+
+
+def test_cpu_write_absent_when_flag_false():
+    features = {"cpu_control": False}
+    server = build_server(_make_client(), features)
+    names = server.registered_tool_names()
+    assert "cpu_write_register" not in names

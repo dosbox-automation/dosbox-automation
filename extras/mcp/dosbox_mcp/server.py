@@ -11,7 +11,7 @@ import mcp.types as types
 from .capabilities import registered_groups
 from .client import DosboxClient
 from .config import Config
-from .tools import session, screen, input as input_tools, memory, freeze, io, media, script
+from .tools import session, screen, input as input_tools, memory, freeze, io, cpu, media, script
 
 
 def build_server(client, features):
@@ -42,6 +42,8 @@ def build_server(client, features):
         freeze.register(server, client, add_tool)
     if "port_io" in groups:
         io.register(server, client, add_tool)
+    if "cpu_control" in groups:
+        cpu.register(server, client, add_tool)
 
     @server.list_tools()
     async def list_tools():

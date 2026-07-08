@@ -131,6 +131,7 @@ static void setup_api_handlers()
 
 	server.Get("/api/v1/io/port", PortReadCommand::Get);
 	server.Put("/api/v1/io/port", PortWriteCommand::Put);
+	server.Put("/api/v1/cpu/register", WriteRegisterCommand::Put);
 
 	server.Post("/api/v1/input/sequence", InputSequenceCommand::Post);
 	server.Post("/api/v1/input/type", InputTypeCommand::Post);
@@ -427,7 +428,7 @@ static void run(const std::string addr, const int port,
 		                   {"memory", true},
 		                   {"input", true},
 		                   {"cpu_registers", true},
-		                   {"cpu_control", false},
+		                   {"cpu_control", true},
 		                   {"port_io", true},
 		                   {"freeze", true},
 		                   {"debugger", false},

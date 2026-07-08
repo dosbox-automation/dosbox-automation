@@ -7,10 +7,22 @@
 
 #include "webserver/bridge.h"
 
+#include <string>
+#include <string_view>
+
 #include "http/http.h"
 #include "json/json.h"
 
 namespace Webserver {
+
+enum class RegClass { General, Segment, Unknown };
+
+struct RegisterRef {
+	RegClass reg_class = RegClass::Unknown;
+	int index          = -1;
+};
+
+RegisterRef RegisterKind(std::string_view name);
 
 struct Registers {
 	uint32_t eax   = 0;
@@ -44,6 +56,20 @@ public:
 
 private:
 	Registers regs = {};
+};
+
+class WriteRegisterCommand : public Command {
+public:
+	WriteRegisterCommand(std::string name, uint32_t value)
+	        : name(std::move(name)), value(value)
+	{}
+
+	void Execute() override;
+	static void Put(const httplib::Request& req, httplib::Response& res);
+
+private:
+	std::string name = {};
+	uint32_t value   = 0;
 };
 
 } // namespace Webserver
