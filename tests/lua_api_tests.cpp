@@ -6,6 +6,7 @@
 #include "lua/lua_coroutine.h"
 #include "lua/lua_debug_log.h"
 #include "lua/lua_engine.h"
+#include "webserver/input.h"
 
 #include "hardware/input/keyboard.h"
 
@@ -371,6 +372,58 @@ TEST_F(LuaApiTest, WaitForTextTimesOut)
 
 	// Should complete after timeout, not error.
 	EXPECT_EQ(state, Lua::ScriptState::Completed);
+}
+
+// --- InputType expansion tests ---
+
+TEST(InputType, ExpandsShiftedCharWithWrappedShift)
+{
+	const auto events = Webserver::ExpandTextToEvents("A", 100.0);
+	ASSERT_EQ(events.size(), 4u);
+	EXPECT_EQ(events[0].key, static_cast<int>(KBD_leftshift));
+	EXPECT_TRUE(events[0].pressed);
+	EXPECT_EQ(events[1].key, static_cast<int>(KBD_a));
+	EXPECT_TRUE(events[1].pressed);
+	EXPECT_EQ(events[2].key, static_cast<int>(KBD_a));
+	EXPECT_FALSE(events[2].pressed);
+	EXPECT_EQ(events[3].key, static_cast<int>(KBD_leftshift));
+	EXPECT_FALSE(events[3].pressed);
+}
+
+TEST(InputType, UnshiftedCharIsPressRelease)
+{
+	const auto events = Webserver::ExpandTextToEvents("a", 100.0);
+	ASSERT_EQ(events.size(), 2u);
+	EXPECT_EQ(events[0].key, static_cast<int>(KBD_a));
+	EXPECT_TRUE(events[0].pressed);
+	EXPECT_FALSE(events[1].pressed);
+}
+
+TEST(InputType, TimingIncreasesByCharacter)
+{
+	const auto events = Webserver::ExpandTextToEvents("ab", 50.0);
+	EXPECT_DOUBLE_EQ(events.front().t_ms, 0.0);
+	EXPECT_DOUBLE_EQ(events.back().t_ms, 20.0);
+}
+
+TEST(InputType, EmptyTextProducesNoEvents)
+{
+	const auto events = Webserver::ExpandTextToEvents("", 30.0);
+	EXPECT_TRUE(events.empty());
+}
+
+TEST(InputType, UnmappableCharsSkipped)
+{
+	const auto events = Webserver::ExpandTextToEvents("\x01\x02", 30.0);
+	EXPECT_TRUE(events.empty());
+}
+
+TEST(InputType, ZeroCpsFallsBackToDefault)
+{
+	const auto events = Webserver::ExpandTextToEvents("ab", 0.0);
+	ASSERT_GE(events.size(), 4u);
+	EXPECT_DOUBLE_EQ(events[0].t_ms, 0.0);
+	EXPECT_NEAR(events[2].t_ms, 1000.0 / 30.0, 0.001);
 }
 
 } // namespace

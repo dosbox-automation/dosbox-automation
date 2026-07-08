@@ -12,6 +12,7 @@
 #include "hardware/input/keyboard.h" // KBD_KEYS, KEYBOARD_AddKey, keyboard_input_hook
 #include "hardware/input/mouse.h" // MOUSE_Event*, mouse_*_hook
 #include "hardware/pic.h"
+#include "lua/text_input.h"
 
 #include <algorithm>
 #include <chrono>
@@ -831,6 +832,90 @@ void ReplayDispatchFrame(uint64_t current_frame)
 		        expected_ms,
 		        wall_drift);
 	}
+}
+
+// --- Input Type (text injection over REST) ---
+
+std::vector<InputEvent> ExpandTextToEvents(const std::string_view text,
+                                           const double cps)
+{
+	const double rate_cps = (cps > 0.0) ? cps : 30.0;
+	const double step_ms  = 1000.0 / rate_cps;
+
+	std::vector<InputEvent> events;
+	double t_ms = 0;
+
+	for (const auto stroke : Lua::TextToStrokes(text)) {
+		auto push = [&](KBD_KEYS key, bool pressed) {
+			InputEvent ev = {};
+			ev.t_ms       = t_ms;
+			ev.type       = InputEvent::Type::Key;
+			ev.key        = static_cast<int>(key);
+			ev.pressed    = pressed;
+			events.push_back(ev);
+		};
+
+		if (stroke.shift) {
+			push(KBD_leftshift, true);
+		}
+		push(stroke.key, true);
+		push(stroke.key, false);
+		if (stroke.shift) {
+			push(KBD_leftshift, false);
+		}
+		t_ms += step_ms;
+	}
+	return events;
+}
+
+void InputTypeCommand::Execute()
+{
+	InputSequenceCommand seq(std::move(events), /*has_frame_data=*/false);
+	seq.Execute();
+	error = seq.error;
+}
+
+void InputTypeCommand::Post(const httplib::Request& req, httplib::Response& res)
+{
+	auto body = json::parse(req.body);
+
+	if (!body.contains("text") || !body["text"].is_string()) {
+		res.status = 400;
+		json err;
+		err["error"] = "Missing or invalid 'text' string";
+		send_json(res, err);
+		return;
+	}
+
+	const auto text = body["text"].get<std::string>();
+
+	constexpr size_t max_text = 4096;
+	if (text.size() > max_text) {
+		res.status = 400;
+		json err;
+		err["error"] = "Text too long (max " +
+		               std::to_string(max_text) + " chars)";
+		send_json(res, err);
+		return;
+	}
+
+	const double cps = body.value("cps", 30.0);
+
+	InputTypeCommand cmd(ExpandTextToEvents(text, cps));
+	cmd.WaitForCompletion(5000);
+
+	if (!cmd.error.empty()) {
+		res.status = 409;
+		json err;
+		err["error"] = cmd.error;
+		send_json(res, err);
+		return;
+	}
+
+	json result;
+	result["status"] = "ok";
+	result["chars"]  = text.size();
+	send_json(res, result);
 }
 
 } // namespace Webserver

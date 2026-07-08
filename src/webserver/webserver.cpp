@@ -124,6 +124,7 @@ static void setup_api_handlers()
 	server.Put("/api/v1/memory/:segment/:offset", WriteMemoryCommand::Put);
 
 	server.Post("/api/v1/input/sequence", InputSequenceCommand::Post);
+	server.Post("/api/v1/input/type", InputTypeCommand::Post);
 
 	server.Get("/api/v1/video/frame", VideoHandlers::GetFrame);
 	server.Get("/api/v1/video/frame/info", VideoHandlers::GetFrameInfo);

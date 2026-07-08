@@ -9,6 +9,7 @@
 #include "libs/http/http.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace Webserver {
@@ -50,6 +51,23 @@ private:
 
 	std::vector<InputEvent> events = {};
 	bool has_frame_data            = false;
+};
+
+// Expand text into timed key press/release events on the US layout,
+// paced at `cps` characters per second. Shifted characters wrap the
+// base key in a shift down/up pair. Exposed for testing.
+std::vector<InputEvent> ExpandTextToEvents(std::string_view text, double cps);
+
+class InputTypeCommand : public Command {
+public:
+	InputTypeCommand(std::vector<InputEvent> events)
+	        : events(std::move(events))
+	{}
+	void Execute() override;
+	static void Post(const httplib::Request& req, httplib::Response& res);
+
+private:
+	std::vector<InputEvent> events = {};
 };
 
 class StartRecordingCommand : public Command {
