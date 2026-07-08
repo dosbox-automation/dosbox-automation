@@ -61,6 +61,18 @@ def test_dosbox_info(dosbox):
     assert "configWebserver" not in data
 
 
+def test_dosbox_info_reports_features(dosbox):
+    r = dosbox.dosbox_info()
+    assert r.status_code == 200
+    data = r.json()
+    assert "features" in data
+    features = data["features"]
+    for key in ("memory", "input", "cpu_registers", "port_io", "freeze"):
+        assert features.get(key) is True, f"{key} should be true"
+    assert features["cpu_control"] is False
+    assert features["debugger"] is False
+
+
 # ---------------------------------------------------------------------------
 # CPU & DOS internals
 # ---------------------------------------------------------------------------

@@ -414,6 +414,15 @@ static void run(const std::string addr, const int port,
 	           [](const httplib::Request&, httplib::Response& res) {
 		           json j;
 		           j["version"] = DOSBOX_GetDetailedVersion();
+		           j["features"] = {
+		                   {"memory", true},
+		                   {"input", true},
+		                   {"cpu_registers", true},
+		                   {"cpu_control", false},
+		                   {"port_io", true},
+		                   {"freeze", true},
+		                   {"debugger", false},
+		           };
 		           send_json(res, j);
 	           });
 
