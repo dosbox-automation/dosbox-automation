@@ -109,4 +109,5 @@ cmake_test_discovery_*.json
 
 # Python
 __pycache__
+*.egg-info
 resources/soundfonts/FluidR3_GM.sf2
