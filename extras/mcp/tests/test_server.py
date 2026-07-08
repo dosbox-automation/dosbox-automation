@@ -104,3 +104,19 @@ def test_cpu_write_absent_when_flag_false():
     server = build_server(_make_client(), features)
     names = server.registered_tool_names()
     assert "cpu_write_register" not in names
+
+
+def test_debug_tools_absent_when_flag_false():
+    features = {"debugger": False}
+    server = build_server(_make_client(), features)
+    names = server.registered_tool_names()
+    assert "debug_pause" not in names
+    assert "debug_status" not in names
+
+
+def test_debug_tools_present_when_flag_true():
+    features = {"debugger": True}
+    server = build_server(_make_client(), features)
+    names = server.registered_tool_names()
+    for t in ("debug_status", "debug_pause", "debug_continue", "debug_step"):
+        assert t in names
