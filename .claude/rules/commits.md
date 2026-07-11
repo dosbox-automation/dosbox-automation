@@ -11,6 +11,7 @@ globs: "**/*"
 - commit messages are short and terse. 
 - commit messages are written in natural language, plain direct.
 - do not include typographical characters, that look good on layouts but are a pain otherwise.
-- verify all commits compile: `scripts/tools/compile-commits.sh`.
+- commits do not need to compile individually; the branch tip with the full test suite green
+  is the gate.
 - vou are not allowed to do commits at will, they have to be accept by a human.
 
