@@ -15,24 +15,62 @@
     }
   ],
   "tags": [
-    {"name": "Status", "description": "Emulator and program state."},
-    {"name": "Input", "description": "Keyboard, mouse, and wheel injection."},
-    {"name": "Recording", "description": "Capture and replay of input sequences."},
-    {"name": "Video", "description": "Frame capture and metadata."},
-    {"name": "Capture", "description": "ZMBV video recording control."},
-    {"name": "Drive", "description": "Disk image mounting and disk swaps."},
-    {"name": "Script", "description": "Lua automation scripts."},
-    {"name": "CPU", "description": "Register access."},
-    {"name": "Memory", "description": "Memory read, write, allocate, and free."},
-    {"name": "DOS", "description": "Internal DOS data structures."}
+    {
+      "name": "Status",
+      "description": "Emulator and program state."
+    },
+    {
+      "name": "Input",
+      "description": "Keyboard, mouse, and wheel injection."
+    },
+    {
+      "name": "Recording",
+      "description": "Capture and replay of input sequences."
+    },
+    {
+      "name": "Video",
+      "description": "Frame capture and metadata."
+    },
+    {
+      "name": "Capture",
+      "description": "ZMBV video recording control."
+    },
+    {
+      "name": "Drive",
+      "description": "Disk image mounting and disk swaps."
+    },
+    {
+      "name": "Script",
+      "description": "Lua automation scripts."
+    },
+    {
+      "name": "CPU",
+      "description": "Register access."
+    },
+    {
+      "name": "Memory",
+      "description": "Memory read, write, allocate, and free."
+    },
+    {
+      "name": "DOS",
+      "description": "Internal DOS data structures."
+    },
+    {
+      "name": "I/O",
+      "description": "Direct x86 I/O port access."
+    }
   ],
   "security": [
-    {"bearerAuth": []}
+    {
+      "bearerAuth": []
+    }
   ],
   "paths": {
     "/api/v1/status": {
       "get": {
-        "tags": ["Status"],
+        "tags": [
+          "Status"
+        ],
         "summary": "Overall emulator status",
         "operationId": "getStatus",
         "responses": {
@@ -40,7 +78,9 @@
             "description": "Current status.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/Status"},
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                },
                 "example": {
                   "running": true,
                   "shutdown_requested": false,
@@ -52,13 +92,17 @@
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/program/state": {
       "get": {
-        "tags": ["Status"],
+        "tags": [
+          "Status"
+        ],
         "summary": "Currently running program",
         "operationId": "getProgramState",
         "responses": {
@@ -66,7 +110,9 @@
             "description": "Running program information.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/ProgramState"},
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramState"
+                },
                 "example": {
                   "segment_name": "DOOM",
                   "canonical_name": "DOOM.EXE",
@@ -76,56 +122,120 @@
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/dosbox/info": {
       "get": {
-        "tags": ["Status"],
-        "summary": "DOSBox version",
+        "tags": [
+          "Status"
+        ],
+        "summary": "DOSBox version and capability features",
         "operationId": "getInfo",
+        "description": "Returns the version string and a map of feature flags indicating which API groups are available. MCP clients use this to discover capabilities before calling endpoints.",
         "responses": {
           "200": {
-            "description": "Version string.",
+            "description": "Version and features.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {"version": {"type": "string"}}
+                  "properties": {
+                    "version": {
+                      "type": "string"
+                    },
+                    "features": {
+                      "type": "object",
+                      "description": "Feature flags for API capability discovery.",
+                      "properties": {
+                        "memory": {
+                          "type": "boolean"
+                        },
+                        "input": {
+                          "type": "boolean"
+                        },
+                        "cpu_registers": {
+                          "type": "boolean"
+                        },
+                        "cpu_control": {
+                          "type": "boolean"
+                        },
+                        "port_io": {
+                          "type": "boolean"
+                        },
+                        "freeze": {
+                          "type": "boolean"
+                        },
+                        "debugger": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "version": "dosbox-automation 0.84-da1",
+                  "features": {
+                    "memory": true,
+                    "input": true,
+                    "cpu_registers": true,
+                    "cpu_control": true,
+                    "port_io": true,
+                    "freeze": true,
+                    "debugger": false
+                  }
                 }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/control/shutdown": {
       "post": {
-        "tags": ["Status"],
+        "tags": [
+          "Status"
+        ],
         "summary": "Request a graceful shutdown",
         "operationId": "controlShutdown",
         "responses": {
-          "200": {"description": "Shutdown requested."},
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "200": {
+            "description": "Shutdown requested."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/dosbox/shutdown": {
       "post": {
-        "tags": ["Status"],
+        "tags": [
+          "Status"
+        ],
         "summary": "Request a graceful shutdown (alias of /control/shutdown)",
         "operationId": "dosboxShutdown",
         "responses": {
-          "200": {"description": "Shutdown requested."},
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "200": {
+            "description": "Shutdown requested."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/cpu/state": {
       "get": {
-        "tags": ["CPU"],
+        "tags": [
+          "CPU"
+        ],
         "summary": "Read all CPU registers",
         "operationId": "getCpuState",
         "responses": {
@@ -136,52 +246,98 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "registers": {"$ref": "#/components/schemas/Registers"}
+                    "registers": {
+                      "$ref": "#/components/schemas/Registers"
+                    }
                   }
                 }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/dos/internals": {
       "get": {
-        "tags": ["DOS"],
-        "summary": "Pointers to internal DOS data structures",
+        "tags": [
+          "DOS"
+        ],
+        "summary": "DOS data structures and MCB memory map",
         "operationId": "getDosInternals",
+        "description": "Returns pointers to internal DOS structures and walks the MCB chain to build a memory map of all allocated blocks.",
         "responses": {
           "200": {
-            "description": "List of lists, DOS swappable area, and first shell pointers.",
+            "description": "List of lists, DOS swappable area, first shell, and MCB chain.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "listOfLists": {"type": "integer"},
-                    "dosSwappableArea": {"type": "integer"},
-                    "firstShell": {"type": "integer"}
+                    "listOfLists": {
+                      "type": "integer"
+                    },
+                    "dosSwappableArea": {
+                      "type": "integer"
+                    },
+                    "firstShell": {
+                      "type": "integer"
+                    },
+                    "memoryMap": {
+                      "type": "array",
+                      "description": "MCB chain walk. Each entry is one memory control block.",
+                      "items": {
+                        "$ref": "#/components/schemas/McbBlock"
+                      }
+                    }
                   }
+                },
+                "example": {
+                  "listOfLists": 655360,
+                  "dosSwappableArea": 720896,
+                  "firstShell": 786432,
+                  "memoryMap": [
+                    {
+                      "segment": 2064,
+                      "type": "M",
+                      "pspSegment": 8,
+                      "sizeParas": 128,
+                      "sizeBytes": 2048,
+                      "filename": "COMMAND",
+                      "isLast": false
+                    }
+                  ]
                 }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/memory/allocate": {
       "post": {
-        "tags": ["Memory"],
+        "tags": [
+          "Memory"
+        ],
         "summary": "Allocate memory",
         "operationId": "allocateMemory",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {"$ref": "#/components/schemas/MemoryAllocate"},
-              "example": {"size": 4096, "area": "CONV", "strategy": "BEST_FIT"}
+              "schema": {
+                "$ref": "#/components/schemas/MemoryAllocate"
+              },
+              "example": {
+                "size": 4096,
+                "area": "CONV",
+                "strategy": "BEST_FIT"
+              }
             }
           }
         },
@@ -192,19 +348,30 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {"addr": {"type": "integer", "description": "Physical address."}}
+                  "properties": {
+                    "addr": {
+                      "type": "integer",
+                      "description": "Physical address."
+                    }
+                  }
                 }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "503": {"description": "Allocation failed."}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "503": {
+            "description": "Allocation failed."
+          }
         }
       }
     },
     "/api/v1/memory/free": {
       "post": {
-        "tags": ["Memory"],
+        "tags": [
+          "Memory"
+        ],
         "summary": "Free allocated memory",
         "operationId": "freeMemory",
         "requestBody": {
@@ -213,140 +380,249 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["addr"],
-                "properties": {"addr": {"type": "integer", "description": "Physical address."}}
+                "required": [
+                  "addr"
+                ],
+                "properties": {
+                  "addr": {
+                    "type": "integer",
+                    "description": "Physical address."
+                  }
+                }
               },
-              "example": {"addr": 1048576}
+              "example": {
+                "addr": 1048576
+              }
             }
           }
         },
         "responses": {
-          "200": {"description": "Freed."},
-          "400": {"$ref": "#/components/responses/BadRequest"},
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "200": {
+            "description": "Freed."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/memory/{offset}/{len}": {
       "get": {
-        "tags": ["Memory"],
+        "tags": [
+          "Memory"
+        ],
         "summary": "Read memory at an offset",
         "operationId": "readMemory",
         "description": "Reads `len` bytes from the given address. Parameters accept hex strings when prefixed with `0x`. The default response is raw binary; send `Accept: application/json` to get the data Base64-encoded in JSON.",
         "parameters": [
-          {"$ref": "#/components/parameters/MemoryOffset"},
-          {"$ref": "#/components/parameters/MemoryLen"}
+          {
+            "$ref": "#/components/parameters/MemoryOffset"
+          },
+          {
+            "$ref": "#/components/parameters/MemoryLen"
+          }
         ],
         "responses": {
           "200": {
             "description": "Memory contents.",
             "content": {
-              "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {"data": {"type": "string", "description": "Base64-encoded bytes."}}
+                  "properties": {
+                    "data": {
+                      "type": "string",
+                      "description": "Base64-encoded bytes."
+                    }
+                  }
                 }
               }
             }
           },
-          "400": {"$ref": "#/components/responses/BadRequest"},
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/memory/{segment}/{offset}/{len}": {
       "get": {
-        "tags": ["Memory"],
+        "tags": [
+          "Memory"
+        ],
         "summary": "Read memory at a segment:offset",
         "operationId": "readMemorySegmented",
         "description": "Same as the unsegmented read. The segment may be a segment register name or a number.",
         "parameters": [
-          {"$ref": "#/components/parameters/MemorySegment"},
-          {"$ref": "#/components/parameters/MemoryOffset"},
-          {"$ref": "#/components/parameters/MemoryLen"}
+          {
+            "$ref": "#/components/parameters/MemorySegment"
+          },
+          {
+            "$ref": "#/components/parameters/MemoryOffset"
+          },
+          {
+            "$ref": "#/components/parameters/MemoryLen"
+          }
         ],
         "responses": {
           "200": {
             "description": "Memory contents.",
             "content": {
-              "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": {"data": {"type": "string", "description": "Base64-encoded bytes."}}
+                  "properties": {
+                    "data": {
+                      "type": "string",
+                      "description": "Base64-encoded bytes."
+                    }
+                  }
                 }
               }
             }
           },
-          "400": {"$ref": "#/components/responses/BadRequest"},
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/memory/{offset}": {
       "put": {
-        "tags": ["Memory"],
+        "tags": [
+          "Memory"
+        ],
         "summary": "Write memory at an offset",
         "operationId": "writeMemory",
         "description": "Writes to the given address. Accepts raw bytes with `Content-Type: application/octet-stream` or a JSON object with a Base64 `data` field. The `If-Match` header (Base64) performs an atomic compare-and-swap and returns 412 when the current bytes do not match.",
         "parameters": [
-          {"$ref": "#/components/parameters/MemoryOffset"},
-          {"$ref": "#/components/parameters/IfMatch"}
+          {
+            "$ref": "#/components/parameters/MemoryOffset"
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {"data": {"type": "string", "description": "Base64-encoded bytes."}}
+                "properties": {
+                  "data": {
+                    "type": "string",
+                    "description": "Base64-encoded bytes."
+                  }
+                }
               }
             }
           }
         },
         "responses": {
-          "200": {"description": "Written."},
-          "400": {"$ref": "#/components/responses/BadRequest"},
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "412": {"description": "If-Match precondition failed."}
+          "200": {
+            "description": "Written."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "412": {
+            "description": "If-Match precondition failed."
+          }
         }
       }
     },
     "/api/v1/memory/{segment}/{offset}": {
       "put": {
-        "tags": ["Memory"],
+        "tags": [
+          "Memory"
+        ],
         "summary": "Write memory at a segment:offset",
         "operationId": "writeMemorySegmented",
         "parameters": [
-          {"$ref": "#/components/parameters/MemorySegment"},
-          {"$ref": "#/components/parameters/MemoryOffset"},
-          {"$ref": "#/components/parameters/IfMatch"}
+          {
+            "$ref": "#/components/parameters/MemorySegment"
+          },
+          {
+            "$ref": "#/components/parameters/MemoryOffset"
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
-            "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            },
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {"data": {"type": "string", "description": "Base64-encoded bytes."}}
+                "properties": {
+                  "data": {
+                    "type": "string",
+                    "description": "Base64-encoded bytes."
+                  }
+                }
               }
             }
           }
         },
         "responses": {
-          "200": {"description": "Written."},
-          "400": {"$ref": "#/components/responses/BadRequest"},
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "412": {"description": "If-Match precondition failed."}
+          "200": {
+            "description": "Written."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "412": {
+            "description": "If-Match precondition failed."
+          }
         }
       }
     },
     "/api/v1/input/sequence": {
       "post": {
-        "tags": ["Input"],
+        "tags": [
+          "Input"
+        ],
         "summary": "Inject a sequence of input events",
         "operationId": "postInputSequence",
         "description": "Events with `t > 0` are scheduled via the PIC timer for cycle-accurate delivery. Returns 400 for unknown key names, event types, or button names.",
@@ -354,14 +630,37 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {"$ref": "#/components/schemas/InputSequence"},
+              "schema": {
+                "$ref": "#/components/schemas/InputSequence"
+              },
               "example": {
                 "events": [
-                  {"t": 0, "type": "key", "key": "KBD_enter", "pressed": true},
-                  {"t": 50, "type": "key", "key": "KBD_enter", "pressed": false},
-                  {"type": "mouse_move", "x_rel": 5.0, "y_rel": -3.0},
-                  {"type": "mouse_button", "button": "left", "pressed": true},
-                  {"type": "mouse_wheel", "delta": 1.0}
+                  {
+                    "t": 0,
+                    "type": "key",
+                    "key": "KBD_enter",
+                    "pressed": true
+                  },
+                  {
+                    "t": 50,
+                    "type": "key",
+                    "key": "KBD_enter",
+                    "pressed": false
+                  },
+                  {
+                    "type": "mouse_move",
+                    "x_rel": 5.0,
+                    "y_rel": -3.0
+                  },
+                  {
+                    "type": "mouse_button",
+                    "button": "left",
+                    "pressed": true
+                  },
+                  {
+                    "type": "mouse_wheel",
+                    "delta": 1.0
+                  }
                 ]
               }
             }
@@ -375,46 +674,75 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "status": {"type": "string"},
-                    "events_scheduled": {"type": "integer"}
+                    "status": {
+                      "type": "string"
+                    },
+                    "events_scheduled": {
+                      "type": "integer"
+                    }
                   }
                 },
-                "example": {"status": "ok", "events_scheduled": 5}
+                "example": {
+                  "status": "ok",
+                  "events_scheduled": 5
+                }
               }
             }
           },
-          "400": {"$ref": "#/components/responses/BadRequest"},
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/input/record/start": {
       "post": {
-        "tags": ["Recording"],
+        "tags": [
+          "Recording"
+        ],
         "summary": "Start recording input",
         "operationId": "recordStart",
         "responses": {
-          "200": {"description": "Recording started."},
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "409": {"description": "Already recording."}
+          "200": {
+            "description": "Recording started."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "Already recording."
+          }
         }
       }
     },
     "/api/v1/input/record/pause": {
       "post": {
-        "tags": ["Recording"],
+        "tags": [
+          "Recording"
+        ],
         "summary": "Toggle pause on the active recording",
         "operationId": "recordPause",
         "responses": {
-          "200": {"description": "Pause toggled."},
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "409": {"description": "Not recording."}
+          "200": {
+            "description": "Pause toggled."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "Not recording."
+          }
         }
       }
     },
     "/api/v1/input/record/stop": {
       "post": {
-        "tags": ["Recording"],
+        "tags": [
+          "Recording"
+        ],
         "summary": "Stop recording and return captured events",
         "operationId": "recordStop",
         "description": "The returned events can be replayed via /api/v1/input/sequence.",
@@ -423,25 +751,38 @@
             "description": "Captured events.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/RecordingResult"},
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingResult"
+                },
                 "example": {
                   "event_count": 42,
                   "duration_ms": 5234.5,
                   "events": [
-                    {"t": 0.0, "type": "key", "key": "KBD_a", "pressed": true}
+                    {
+                      "t": 0.0,
+                      "type": "key",
+                      "key": "KBD_a",
+                      "pressed": true
+                    }
                   ]
                 }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "409": {"description": "Not recording."}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "Not recording."
+          }
         }
       }
     },
     "/api/v1/input/record/status": {
       "get": {
-        "tags": ["Recording"],
+        "tags": [
+          "Recording"
+        ],
         "summary": "Query recording state",
         "operationId": "recordStatus",
         "responses": {
@@ -449,7 +790,9 @@
             "description": "Recording state.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/RecordingStatus"},
+                "schema": {
+                  "$ref": "#/components/schemas/RecordingStatus"
+                },
                 "example": {
                   "recording": true,
                   "paused": false,
@@ -459,13 +802,17 @@
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/video/frame": {
       "get": {
-        "tags": ["Video"],
+        "tags": [
+          "Video"
+        ],
         "summary": "Capture the current video frame",
         "operationId": "getFrame",
         "description": "Returns the current rendered frame. The format is chosen by the `format` query parameter or the `Accept` header. This is the clean emulator output and does not include the on-screen automation overlay (OSD). Returns 503 if no frame has been rendered yet.\n\nThe raw format is a binary header (uint32 width, uint32 height, int32 pitch, uint8 pixel_format, uint16 palette_count) followed by palette data when paletted, then the image data.",
@@ -473,32 +820,66 @@
           {
             "name": "format",
             "in": "query",
-            "schema": {"type": "string", "enum": ["jpeg", "png", "raw"], "default": "jpeg"}
+            "schema": {
+              "type": "string",
+              "enum": [
+                "jpeg",
+                "png",
+                "raw"
+              ],
+              "default": "jpeg"
+            }
           },
           {
             "name": "quality",
             "in": "query",
             "description": "JPEG quality, 1 to 100.",
-            "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 98}
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 98
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "Encoded frame.",
             "content": {
-              "image/jpeg": {"schema": {"type": "string", "format": "binary"}},
-              "image/png": {"schema": {"type": "string", "format": "binary"}},
-              "application/octet-stream": {"schema": {"type": "string", "format": "binary"}}
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "503": {"description": "No frame available yet."}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "503": {
+            "description": "No frame available yet."
+          }
         }
       }
     },
     "/api/v1/video/frame/info": {
       "get": {
-        "tags": ["Video"],
+        "tags": [
+          "Video"
+        ],
         "summary": "Frame metadata without image data",
         "operationId": "getFrameInfo",
         "responses": {
@@ -506,7 +887,9 @@
             "description": "Frame metadata.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/FrameInfo"},
+                "schema": {
+                  "$ref": "#/components/schemas/FrameInfo"
+                },
                 "example": {
                   "width": 720,
                   "height": 400,
@@ -517,14 +900,20 @@
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "503": {"description": "No frame available yet."}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "503": {
+            "description": "No frame available yet."
+          }
         }
       }
     },
     "/api/v1/video/text": {
       "get": {
-        "tags": ["Video"],
+        "tags": [
+          "Video"
+        ],
         "summary": "Text-mode screen contents as characters",
         "operationId": "getScreenText",
         "description": "Reads the text-mode character buffer and returns it as UTF-8, with CP437 box-drawing and shade glyphs preserved. Empty text with is_text_mode false in a graphics mode. Use this to drive installers by screen state instead of fixed timings.",
@@ -533,7 +922,9 @@
             "description": "Screen text and geometry.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/ScreenText"},
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenText"
+                },
                 "example": {
                   "is_text_mode": true,
                   "bios_mode": 3,
@@ -545,13 +936,17 @@
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/drive/swap": {
       "post": {
-        "tags": ["Drive"],
+        "tags": [
+          "Drive"
+        ],
         "summary": "Mount or swap a disk image on a drive",
         "operationId": "driveSwap",
         "description": "Mount or swap a floppy or hard disk image on a drive letter. For multi-disk installs, call this when the installer prompts for the next disk.",
@@ -559,8 +954,13 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {"$ref": "#/components/schemas/DriveSwap"},
-              "example": {"drive": "A", "image": "/path/to/disk2.img"}
+              "schema": {
+                "$ref": "#/components/schemas/DriveSwap"
+              },
+              "example": {
+                "drive": "A",
+                "image": "/path/to/disk2.img"
+              }
             }
           }
         },
@@ -572,23 +972,38 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "status": {"type": "string"},
-                    "drive": {"type": "string"}
+                    "status": {
+                      "type": "string"
+                    },
+                    "drive": {
+                      "type": "string"
+                    }
                   }
                 },
-                "example": {"status": "ok", "drive": "A"}
+                "example": {
+                  "status": "ok",
+                  "drive": "A"
+                }
               }
             }
           },
-          "400": {"$ref": "#/components/responses/BadRequest"},
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "403": {"description": "Mount blocked by policy (mounts locked or path not allowed)."}
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Mount blocked by policy (mounts locked or path not allowed)."
+          }
         }
       }
     },
     "/api/v1/mount/lock": {
       "post": {
-        "tags": ["Drive"],
+        "tags": [
+          "Drive"
+        ],
         "summary": "Lock mounting",
         "operationId": "mountLock",
         "responses": {
@@ -596,16 +1011,29 @@
             "description": "Locked.",
             "content": {
               "application/json": {
-                "schema": {"type": "object", "properties": {"status": {"type": "string"}}},
-                "example": {"status": "locked"}
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "locked"
+                }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       },
       "get": {
-        "tags": ["Drive"],
+        "tags": [
+          "Drive"
+        ],
         "summary": "Query mount lock state",
         "operationId": "mountLockStatus",
         "responses": {
@@ -613,18 +1041,31 @@
             "description": "Lock state.",
             "content": {
               "application/json": {
-                "schema": {"type": "object", "properties": {"locked": {"type": "boolean"}}},
-                "example": {"locked": false}
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "locked": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "locked": false
+                }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/script/load": {
       "post": {
-        "tags": ["Script"],
+        "tags": [
+          "Script"
+        ],
         "summary": "Load a Lua automation script",
         "operationId": "scriptLoad",
         "description": "The request body is the Lua source. Loading replaces any previously loaded script.",
@@ -633,26 +1074,34 @@
             "name": "name",
             "in": "query",
             "description": "A name for the script, used in status and logs.",
-            "schema": {"type": "string"}
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "seed",
             "in": "query",
             "description": "Optional PRNG seed for deterministic runs.",
-            "schema": {"type": "integer"}
+            "schema": {
+              "type": "integer"
+            }
           },
           {
             "name": "debug",
             "in": "query",
             "description": "Enable trace logging for this script.",
-            "schema": {"type": "boolean"}
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "text/plain": {
-              "schema": {"type": "string"},
+              "schema": {
+                "type": "string"
+              },
               "example": "dosbox.type('dir')\ndosbox.key('KBD_enter', true)\ndosbox.key('KBD_enter', false)\n"
             }
           }
@@ -665,22 +1114,35 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "status": {"type": "string"},
-                    "name": {"type": "string"}
+                    "status": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
                   }
                 },
-                "example": {"status": "loaded", "name": "demo"}
+                "example": {
+                  "status": "loaded",
+                  "name": "demo"
+                }
               }
             }
           },
-          "400": {"$ref": "#/components/responses/BadRequest"},
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/script/start": {
       "post": {
-        "tags": ["Script"],
+        "tags": [
+          "Script"
+        ],
         "summary": "Start the loaded script",
         "operationId": "scriptStart",
         "responses": {
@@ -688,19 +1150,34 @@
             "description": "Started.",
             "content": {
               "application/json": {
-                "schema": {"type": "object", "properties": {"status": {"type": "string"}}},
-                "example": {"status": "started"}
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "started"
+                }
               }
             }
           },
-          "400": {"description": "No script loaded, or already running."},
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "400": {
+            "description": "No script loaded, or already running."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/script/stop": {
       "post": {
-        "tags": ["Script"],
+        "tags": [
+          "Script"
+        ],
         "summary": "Stop the running script",
         "operationId": "scriptStop",
         "responses": {
@@ -708,18 +1185,31 @@
             "description": "Stopped.",
             "content": {
               "application/json": {
-                "schema": {"type": "object", "properties": {"status": {"type": "string"}}},
-                "example": {"status": "stopped"}
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "stopped"
+                }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/script/status": {
       "get": {
-        "tags": ["Script"],
+        "tags": [
+          "Script"
+        ],
         "summary": "Script state and output",
         "operationId": "scriptStatus",
         "responses": {
@@ -727,18 +1217,28 @@
             "description": "Script state. `output` mirrors the script's dosbox.output table when present.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/ScriptStatus"},
-                "example": {"state": "running", "frame": 120, "name": "demo"}
+                "schema": {
+                  "$ref": "#/components/schemas/ScriptStatus"
+                },
+                "example": {
+                  "state": "running",
+                  "frame": 120,
+                  "name": "demo"
+                }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
     "/api/v1/capture/video/start": {
       "post": {
-        "tags": ["Capture"],
+        "tags": [
+          "Capture"
+        ],
         "summary": "Start ZMBV video capture",
         "operationId": "captureStart",
         "responses": {
@@ -746,19 +1246,66 @@
             "description": "Recording.",
             "content": {
               "application/json": {
-                "schema": {"type": "object", "properties": {"status": {"type": "string"}}},
-                "example": {"status": "recording"}
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "raw",
+                        "rendered"
+                      ]
+                    }
+                  }
+                },
+                "example": {
+                  "status": "recording",
+                  "mode": "raw"
+                }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "500": {"description": "Capture could not start."}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "description": "Capture could not start."
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "raw",
+                      "rendered"
+                    ],
+                    "default": "raw",
+                    "description": "What feeds the encoder: 'raw' captures the emulator framebuffer at native resolution, 'rendered' captures the post-shader output at window resolution as shown on screen."
+                  }
+                }
+              },
+              "example": {
+                "mode": "raw"
+              }
+            }
+          }
         }
       }
     },
     "/api/v1/capture/video/stop": {
       "post": {
-        "tags": ["Capture"],
+        "tags": [
+          "Capture"
+        ],
         "summary": "Stop ZMBV video capture",
         "operationId": "captureStop",
         "responses": {
@@ -766,19 +1313,34 @@
             "description": "Stopped.",
             "content": {
               "application/json": {
-                "schema": {"type": "object", "properties": {"status": {"type": "string"}}},
-                "example": {"status": "stopped"}
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "stopped"
+                }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"},
-          "500": {"description": "Capture could not stop."}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "description": "Capture could not stop."
+          }
         }
       }
     },
     "/api/v1/capture/video/status": {
       "get": {
-        "tags": ["Capture"],
+        "tags": [
+          "Capture"
+        ],
         "summary": "Query capture state",
         "operationId": "captureStatus",
         "responses": {
@@ -786,12 +1348,556 @@
             "description": "Capture state.",
             "content": {
               "application/json": {
-                "schema": {"type": "object", "properties": {"capturing": {"type": "boolean"}}},
-                "example": {"capturing": true}
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "capturing": {
+                      "type": "boolean"
+                    },
+                    "last_stop_reason": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "clean",
+                        "write_error",
+                        "disk_space_low"
+                      ],
+                      "description": "Why the most recent video capture ended. 'none' means no capture has ended yet; 'write_error' covers failed writes and a failed final flush; 'disk_space_low' means the recording was stopped cleanly before the capture drive ran out of space (capture_min_free_space_mb setting)."
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "raw",
+                        "rendered"
+                      ],
+                      "description": "Capture mode of the running recording, or of the most recently started one."
+                    }
+                  }
+                },
+                "example": {
+                  "capturing": true,
+                  "mode": "raw",
+                  "last_stop_reason": "none"
+                }
               }
             }
           },
-          "401": {"$ref": "#/components/responses/Unauthorized"}
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/input/type": {
+      "post": {
+        "tags": [
+          "Input"
+        ],
+        "summary": "Type a string with paced key injection",
+        "operationId": "postInputType",
+        "description": "Translates each character to its key equivalent and injects them paced to avoid overflowing the keyboard buffer. The optional cps parameter controls characters per second. Maximum 4096 characters per call.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "text"
+                ],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 4096,
+                    "description": "The string to type."
+                  },
+                  "cps": {
+                    "type": "number",
+                    "default": 30.0,
+                    "description": "Characters per second."
+                  }
+                }
+              },
+              "example": {
+                "text": "dir /w\r",
+                "cps": 30
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Typed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "chars": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "ok",
+                  "chars": 6
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "Injection failed (e.g. another type in progress)."
+          }
+        }
+      }
+    },
+    "/api/v1/memory/search": {
+      "post": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Scan memory for a value",
+        "operationId": "searchMemory",
+        "description": "Scans a memory range for all occurrences of a value. The width selects byte (1), word (2), or dword (4) matching. Maximum scan span is 16 MB.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemorySearch"
+              },
+              "example": {
+                "value": 100,
+                "width": 2,
+                "start": 0,
+                "end": 655360
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching addresses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "matches": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "description": "Physical addresses where the value was found."
+                    }
+                  }
+                },
+                "example": {
+                  "matches": [
+                    65536,
+                    131072
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/memory/freeze": {
+      "post": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Set a trainer-style value freeze",
+        "operationId": "setFreeze",
+        "description": "Pins a memory location to a fixed value. The value is rewritten every emulation frame. Calling again with the same address updates the frozen value.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FreezeRequest"
+              },
+              "example": {
+                "address": 65536,
+                "value": 99,
+                "width": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Freeze set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": "integer"
+                    },
+                    "value": {
+                      "type": "integer"
+                    },
+                    "width": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "ok",
+                  "address": 65536,
+                  "value": 99,
+                  "width": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "Freeze limit reached."
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "List active value freezes",
+        "operationId": "listFreezes",
+        "responses": {
+          "200": {
+            "description": "Active freezes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "freezes": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FreezeEntry"
+                      }
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "example": {
+                  "freezes": [
+                    {
+                      "address": 65536,
+                      "value": 99,
+                      "width": 1
+                    }
+                  ],
+                  "count": 1
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Memory"
+        ],
+        "summary": "Remove freezes",
+        "operationId": "deleteFreezes",
+        "description": "With no body or without an address field, clears all freezes. With an address field, removes only that one.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "address": {
+                    "type": "integer",
+                    "description": "Remove only this freeze. Omit to clear all."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Removed or cleared.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "address": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "No freeze at that address."
+          }
+        }
+      }
+    },
+    "/api/v1/io/port": {
+      "get": {
+        "tags": [
+          "I/O"
+        ],
+        "summary": "Read an x86 I/O port",
+        "operationId": "readPort",
+        "description": "Reads a byte or word from an I/O port. The port number accepts hex with a 0x prefix.",
+        "parameters": [
+          {
+            "name": "port",
+            "in": "query",
+            "required": true,
+            "description": "Port number (0x0000..0xFFFF). Hex with 0x prefix accepted.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "width",
+            "in": "query",
+            "description": "1 for byte (default), 2 for word.",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                2
+              ],
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Port value.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "port": {
+                      "type": "integer"
+                    },
+                    "width": {
+                      "type": "integer"
+                    },
+                    "value": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "example": {
+                  "port": 961,
+                  "width": 1,
+                  "value": 255
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "I/O"
+        ],
+        "summary": "Write an x86 I/O port",
+        "operationId": "writePort",
+        "description": "Writes a byte or word to an I/O port.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "port",
+                  "value"
+                ],
+                "properties": {
+                  "port": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 65535
+                  },
+                  "value": {
+                    "type": "integer"
+                  },
+                  "width": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      2
+                    ],
+                    "default": 1
+                  }
+                }
+              },
+              "example": {
+                "port": 968,
+                "value": 15,
+                "width": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "integer"
+                    },
+                    "width": {
+                      "type": "integer"
+                    },
+                    "value": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "ok",
+                  "port": 968,
+                  "value": 15,
+                  "width": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/cpu/register": {
+      "put": {
+        "tags": [
+          "CPU"
+        ],
+        "summary": "Write a CPU register",
+        "operationId": "writeRegister",
+        "description": "Sets a general-purpose or segment register. General registers: eax, ebx, ecx, edx, esi, edi, esp, ebp. Segment registers: cs, ds, es, ss, fs, gs (values must be 0..0xFFFF).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "register",
+                  "value"
+                ],
+                "properties": {
+                  "register": {
+                    "type": "string",
+                    "description": "Register name (lowercase)."
+                  },
+                  "value": {
+                    "type": "integer",
+                    "description": "Value to set."
+                  }
+                }
+              },
+              "example": {
+                "register": "eax",
+                "value": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "register": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "example": {
+                  "status": "ok",
+                  "register": "eax",
+                  "value": 0
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     }
@@ -810,28 +1916,36 @@
         "in": "path",
         "required": true,
         "description": "Segment register name or a number. Hex allowed with a 0x prefix.",
-        "schema": {"type": "string"}
+        "schema": {
+          "type": "string"
+        }
       },
       "MemoryOffset": {
         "name": "offset",
         "in": "path",
         "required": true,
         "description": "Address offset. Hex allowed with a 0x prefix.",
-        "schema": {"type": "string"}
+        "schema": {
+          "type": "string"
+        }
       },
       "MemoryLen": {
         "name": "len",
         "in": "path",
         "required": true,
         "description": "Number of bytes to read. Hex allowed with a 0x prefix.",
-        "schema": {"type": "string"}
+        "schema": {
+          "type": "string"
+        }
       },
       "IfMatch": {
         "name": "If-Match",
         "in": "header",
         "required": false,
         "description": "Base64-encoded expected current bytes for an atomic compare-and-swap.",
-        "schema": {"type": "string"}
+        "schema": {
+          "type": "string"
+        }
       }
     },
     "responses": {
@@ -839,7 +1953,9 @@
         "description": "Missing or invalid bearer token.",
         "content": {
           "application/json": {
-            "schema": {"$ref": "#/components/schemas/Error"}
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
           }
         }
       },
@@ -847,7 +1963,9 @@
         "description": "Invalid request parameters or body.",
         "content": {
           "application/json": {
-            "schema": {"$ref": "#/components/schemas/Error"}
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
           }
         }
       }
@@ -855,134 +1973,313 @@
     "schemas": {
       "Error": {
         "type": "object",
-        "properties": {"error": {"type": "string"}}
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
       },
       "Status": {
         "type": "object",
         "properties": {
-          "running": {"type": "boolean"},
-          "shutdown_requested": {"type": "boolean"},
-          "is_booted": {"type": "boolean"},
-          "is_shell": {"type": "boolean"},
-          "program": {"type": "string"},
-          "canonical_name": {"type": "string"}
+          "running": {
+            "type": "boolean"
+          },
+          "shutdown_requested": {
+            "type": "boolean"
+          },
+          "is_booted": {
+            "type": "boolean"
+          },
+          "is_shell": {
+            "type": "boolean"
+          },
+          "program": {
+            "type": "string"
+          },
+          "canonical_name": {
+            "type": "string"
+          }
         }
       },
       "ProgramState": {
         "type": "object",
         "properties": {
-          "segment_name": {"type": "string"},
-          "canonical_name": {"type": "string"},
-          "is_shell": {"type": "boolean"},
-          "is_booted": {"type": "boolean"}
+          "segment_name": {
+            "type": "string"
+          },
+          "canonical_name": {
+            "type": "string"
+          },
+          "is_shell": {
+            "type": "boolean"
+          },
+          "is_booted": {
+            "type": "boolean"
+          }
         }
       },
       "Registers": {
         "type": "object",
         "description": "32-bit general registers, EIP, flags, and 16-bit segment registers.",
         "properties": {
-          "eax": {"type": "integer"},
-          "ebx": {"type": "integer"},
-          "ecx": {"type": "integer"},
-          "edx": {"type": "integer"},
-          "esi": {"type": "integer"},
-          "edi": {"type": "integer"},
-          "esp": {"type": "integer"},
-          "ebp": {"type": "integer"},
-          "eip": {"type": "integer"},
-          "flags": {"type": "integer"},
-          "cs": {"type": "integer"},
-          "ds": {"type": "integer"},
-          "es": {"type": "integer"},
-          "ss": {"type": "integer"},
-          "fs": {"type": "integer"},
-          "gs": {"type": "integer"}
+          "eax": {
+            "type": "integer"
+          },
+          "ebx": {
+            "type": "integer"
+          },
+          "ecx": {
+            "type": "integer"
+          },
+          "edx": {
+            "type": "integer"
+          },
+          "esi": {
+            "type": "integer"
+          },
+          "edi": {
+            "type": "integer"
+          },
+          "esp": {
+            "type": "integer"
+          },
+          "ebp": {
+            "type": "integer"
+          },
+          "eip": {
+            "type": "integer"
+          },
+          "flags": {
+            "type": "integer"
+          },
+          "cs": {
+            "type": "integer"
+          },
+          "ds": {
+            "type": "integer"
+          },
+          "es": {
+            "type": "integer"
+          },
+          "ss": {
+            "type": "integer"
+          },
+          "fs": {
+            "type": "integer"
+          },
+          "gs": {
+            "type": "integer"
+          }
         }
       },
       "MemoryAllocate": {
         "type": "object",
-        "required": ["size", "area", "strategy"],
+        "required": [
+          "size",
+          "area",
+          "strategy"
+        ],
         "properties": {
-          "size": {"type": "integer", "description": "Bytes to allocate."},
-          "area": {"type": "string", "enum": ["CONV", "UMA", "XMS"]},
+          "size": {
+            "type": "integer",
+            "description": "Bytes to allocate."
+          },
+          "area": {
+            "type": "string",
+            "enum": [
+              "CONV",
+              "UMA",
+              "XMS"
+            ]
+          },
           "strategy": {
             "type": "string",
-            "enum": ["BEST_FIT", "FIRST_FIT", "LAST_FIT"],
+            "enum": [
+              "BEST_FIT",
+              "FIRST_FIT",
+              "LAST_FIT"
+            ],
             "description": "The XMS allocator only supports BEST_FIT."
           }
         }
       },
       "InputEvent": {
         "type": "object",
-        "description": "One input event. `type` selects which fields apply.",
+        "description": "One input event. Unknown fields are rejected with a 400 naming the allowed fields for the event type.",
         "properties": {
-          "t": {"type": "integer", "description": "Delay in milliseconds before delivery. 0 is immediate."},
-          "type": {"type": "string", "enum": ["key", "mouse_move", "mouse_button", "mouse_wheel"]},
-          "key": {"type": "string", "description": "Key name, e.g. KBD_enter. Used by key events."},
-          "pressed": {"type": "boolean", "description": "Press (true) or release (false). Used by key and mouse_button events."},
-          "x_rel": {"type": "number", "description": "Relative X motion. Used by mouse_move."},
-          "y_rel": {"type": "number", "description": "Relative Y motion. Used by mouse_move."},
-          "button": {"type": "string", "enum": ["left", "right", "middle"], "description": "Used by mouse_button."},
-          "delta": {"type": "number", "description": "Wheel delta. Used by mouse_wheel."}
+          "t": {
+            "type": "integer",
+            "description": "Absolute position on the sequence timeline in milliseconds (recording format). Mutually exclusive with 'delay_ms'."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "key",
+              "mouse_move",
+              "mouse_button",
+              "mouse_wheel"
+            ]
+          },
+          "key": {
+            "type": "string",
+            "description": "Key name, e.g. KBD_enter. Used by key events."
+          },
+          "pressed": {
+            "type": "boolean",
+            "description": "Press (true) or release (false). Used by key and mouse_button events."
+          },
+          "x_rel": {
+            "type": "number",
+            "description": "Horizontal mouse delta in pixels, positive right (mouse_move events). Mouse movement is relative only; there is no absolute positioning."
+          },
+          "y_rel": {
+            "type": "number",
+            "description": "Relative Y motion. Used by mouse_move."
+          },
+          "button": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right",
+              "middle"
+            ],
+            "description": "Used by mouse_button."
+          },
+          "delta": {
+            "type": "number",
+            "description": "Wheel delta. Used by mouse_wheel."
+          },
+          "delay_ms": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Wait this many milliseconds after the previous event before firing (relative timing; the natural form for hand-written sequences). Mutually exclusive with 't'."
+          },
+          "frame": {
+            "type": "integer",
+            "description": "Frame number for frame-locked replay (recording format)."
+          },
+          "x_abs": {
+            "type": "number",
+            "description": "Recording metadata; not used for injection."
+          },
+          "y_abs": {
+            "type": "number",
+            "description": "Recording metadata; not used for injection."
+          }
         }
       },
       "InputSequence": {
         "type": "object",
-        "required": ["events"],
+        "required": [
+          "events"
+        ],
         "properties": {
           "events": {
             "type": "array",
-            "items": {"$ref": "#/components/schemas/InputEvent"}
+            "items": {
+              "$ref": "#/components/schemas/InputEvent"
+            }
           }
         }
       },
       "RecordingResult": {
         "type": "object",
         "properties": {
-          "event_count": {"type": "integer"},
-          "duration_ms": {"type": "number"},
+          "event_count": {
+            "type": "integer"
+          },
+          "duration_ms": {
+            "type": "number"
+          },
           "events": {
             "type": "array",
-            "items": {"$ref": "#/components/schemas/InputEvent"}
+            "items": {
+              "$ref": "#/components/schemas/InputEvent"
+            }
           }
         }
       },
       "RecordingStatus": {
         "type": "object",
         "properties": {
-          "recording": {"type": "boolean"},
-          "paused": {"type": "boolean"},
-          "event_count": {"type": "integer"},
-          "duration_ms": {"type": "number"}
+          "recording": {
+            "type": "boolean"
+          },
+          "paused": {
+            "type": "boolean"
+          },
+          "event_count": {
+            "type": "integer"
+          },
+          "duration_ms": {
+            "type": "number"
+          }
         }
       },
       "FrameInfo": {
         "type": "object",
         "properties": {
-          "width": {"type": "integer"},
-          "height": {"type": "integer"},
-          "pixel_format": {"type": "string"},
-          "pitch": {"type": "integer"},
-          "is_paletted": {"type": "boolean"}
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "pixel_format": {
+            "type": "string"
+          },
+          "pitch": {
+            "type": "integer"
+          },
+          "is_paletted": {
+            "type": "boolean"
+          }
         }
       },
       "ScreenText": {
         "type": "object",
         "properties": {
-          "is_text_mode": {"type": "boolean", "description": "False in graphics modes; text is empty then."},
-          "bios_mode": {"type": "integer", "description": "BIOS video mode number."},
-          "columns": {"type": "integer", "description": "Live column count from the BIOS data area."},
-          "rows": {"type": "integer"},
-          "page": {"type": "integer", "description": "Active display page."},
-          "text": {"type": "string", "description": "Screen contents, rows separated by newlines, CP437 converted to UTF-8."}
+          "is_text_mode": {
+            "type": "boolean",
+            "description": "False in graphics modes; text is empty then."
+          },
+          "bios_mode": {
+            "type": "integer",
+            "description": "BIOS video mode number."
+          },
+          "columns": {
+            "type": "integer",
+            "description": "Live column count from the BIOS data area."
+          },
+          "rows": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer",
+            "description": "Active display page."
+          },
+          "text": {
+            "type": "string",
+            "description": "Screen contents, rows separated by newlines, CP437 converted to UTF-8."
+          }
         }
       },
       "DriveSwap": {
         "type": "object",
-        "required": ["drive", "image"],
+        "required": [
+          "drive",
+          "image"
+        ],
         "properties": {
-          "drive": {"type": "string", "description": "Drive letter, e.g. A."},
-          "image": {"type": "string", "description": "Path to the disk image."}
+          "drive": {
+            "type": "string",
+            "description": "Drive letter, e.g. A."
+          },
+          "image": {
+            "type": "string",
+            "description": "Path to the disk image."
+          }
         }
       },
       "ScriptStatus": {
@@ -990,12 +2287,137 @@
         "properties": {
           "state": {
             "type": "string",
-            "enum": ["idle", "loaded", "running", "yielded", "completed", "error", "unknown"]
+            "enum": [
+              "idle",
+              "loaded",
+              "running",
+              "yielded",
+              "completed",
+              "error",
+              "unknown"
+            ]
           },
-          "frame": {"type": "integer"},
-          "name": {"type": "string"},
-          "error": {"type": "string", "description": "Present only when the script errored."},
-          "output": {"type": "object", "description": "The script's dosbox.output table, when set."}
+          "frame": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string",
+            "description": "Present only when the script errored."
+          },
+          "output": {
+            "type": "object",
+            "description": "The script's dosbox.output table, when set."
+          }
+        }
+      },
+      "MemorySearch": {
+        "type": "object",
+        "required": [
+          "value",
+          "start",
+          "end"
+        ],
+        "properties": {
+          "value": {
+            "type": "integer",
+            "description": "Value to search for."
+          },
+          "width": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              4
+            ],
+            "default": 1,
+            "description": "Match width: 1 byte, 2 word, 4 dword."
+          },
+          "start": {
+            "type": "integer",
+            "description": "Physical start address of the scan range."
+          },
+          "end": {
+            "type": "integer",
+            "description": "Physical end address (exclusive). Max span 16 MB."
+          }
+        }
+      },
+      "FreezeRequest": {
+        "type": "object",
+        "required": [
+          "address",
+          "value"
+        ],
+        "properties": {
+          "address": {
+            "type": "integer",
+            "description": "Physical address to freeze."
+          },
+          "value": {
+            "type": "integer",
+            "description": "Value to pin."
+          },
+          "width": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              4
+            ],
+            "default": 1,
+            "description": "Width: 1 byte, 2 word, 4 dword."
+          }
+        }
+      },
+      "FreezeEntry": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "integer"
+          },
+          "value": {
+            "type": "integer"
+          },
+          "width": {
+            "type": "integer"
+          }
+        }
+      },
+      "McbBlock": {
+        "type": "object",
+        "description": "One DOS Memory Control Block from the MCB chain.",
+        "properties": {
+          "segment": {
+            "type": "integer",
+            "description": "Segment address of this MCB."
+          },
+          "type": {
+            "type": "string",
+            "description": "M for middle, Z for last block."
+          },
+          "pspSegment": {
+            "type": "integer",
+            "description": "PSP segment of the owning process."
+          },
+          "sizeParas": {
+            "type": "integer",
+            "description": "Block size in 16-byte paragraphs."
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "description": "Block size in bytes."
+          },
+          "filename": {
+            "type": "string",
+            "description": "Owner filename from the MCB header."
+          },
+          "isLast": {
+            "type": "boolean",
+            "description": "True if this is the last block in the chain."
+          }
         }
       }
     }
