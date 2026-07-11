@@ -140,13 +140,14 @@ protected:
 		                  "    INDEX 01 00:00:00\n");
 	}
 
-	// Write a 1.44M floppy image (all zeroes, correct size)
-	fs::path CreateFloppyImage(const std::string& name)
+	// Write a floppy image of the given size (all zeroes, no boot
+	// signature - like early-80s self-booting game disks)
+	fs::path CreateFloppyImage(const std::string& name, std::size_t size = 1474560)
 	{
 		const auto path = tmp_dir / name;
 		fs::create_directories(path.parent_path());
 		auto out = std::ofstream(path, std::ios::binary);
-		auto buf = std::vector<char>(1474560, '\0');
+		auto buf = std::vector<char>(size, '\0');
 		out.write(buf.data(), static_cast<std::streamsize>(buf.size()));
 		return path;
 	}
@@ -307,6 +308,27 @@ TEST_F(MountPolicyTest, FloppyImagePasses)
 {
 	const auto img = CreateFloppyImage("floppy.img");
 	EXPECT_TRUE(MountPolicy::ValidateDiskImageStructure(img));
+}
+
+TEST_F(MountPolicyTest, EarlyPcFloppySizesPass)
+{
+	// Pre-DOS-2.0 formats: 160K SS8, 180K SS9, 320K DS8. Self-booting
+	// game disks of that era carry no FAT boot signature, so only the
+	// size check can admit them (found via Wizardry I 1984 master disk).
+	EXPECT_TRUE(MountPolicy::ValidateDiskImageStructure(
+	        CreateFloppyImage("ss8.img", 163840)));
+	EXPECT_TRUE(MountPolicy::ValidateDiskImageStructure(
+	        CreateFloppyImage("ss9.img", 184320)));
+	EXPECT_TRUE(MountPolicy::ValidateDiskImageStructure(
+	        CreateFloppyImage("ds8.img", 327680)));
+}
+
+TEST_F(MountPolicyTest, OddSizeUnsignedImageRejects)
+{
+	// A size just off the known table with no boot signature must
+	// still be rejected - the size gate must not become a wildcard.
+	EXPECT_FALSE(MountPolicy::ValidateDiskImageStructure(
+	        CreateFloppyImage("odd.img", 327681)));
 }
 
 TEST_F(MountPolicyTest, RandomFileRejectsAsImage)
