@@ -393,7 +393,9 @@ std::vector<VideoModeBlock> ModeList_OTHER = {
 };
 
 std::vector<VideoModeBlock> Hercules_Mode = {
-	{0x007, M_TEXT, 640, 350, 80, 25, 8, 14, 1, 0xB0000, 0x1000, 97, 25, 80, 25, 0},
+	// MDA/HGC text renders 9-pixel character cells (720 pixel raster),
+	// same width as Hercules graphics, so mode switches don't resize
+	{0x007, M_TEXT, 720, 350, 80, 25, 9, 14, 1, 0xB0000, 0x1000, 97, 25, 80, 25, 0},
 };
 
 palette_t palette;

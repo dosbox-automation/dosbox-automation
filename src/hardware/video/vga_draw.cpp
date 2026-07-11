@@ -895,9 +895,11 @@ static uint8_t* VGA_TEXT_Draw_Line(Bitu vidstart, Bitu line)
 
 static uint8_t* VGA_TEXT_Herc_Draw_Line(Bitu vidstart, Bitu line)
 {
-	uint16_t i = 0;
-
 	const uint8_t* vidmem = VGA_Text_Memwrap(vidstart);
+
+	// 9 bytes (pixels) per character cell; not uint32-aligned, so the
+	// 8 font pixels go out as two unaligned dwords plus a 9th byte
+	uint8_t* draw = TempLine;
 
 	for (Bitu cx = 0; cx < vga.draw.blocks; ++cx) {
 		Bitu chr    = vidmem[cx * 2];
@@ -905,8 +907,9 @@ static uint8_t* VGA_TEXT_Herc_Draw_Line(Bitu vidstart, Bitu line)
 
 		if (!(attrib & 0x77)) {
 			// 00h, 80h, 08h, 88h produce black space
-			write_unaligned_uint32_at(TempLine, i++, 0);
-			write_unaligned_uint32_at(TempLine, i++, 0);
+			write_unaligned_uint32(draw, 0);
+			write_unaligned_uint32(draw + 4, 0);
+			draw[8] = 0;
 
 		} else {
 			uint32_t bg, fg;
@@ -948,14 +951,21 @@ static uint8_t* VGA_TEXT_Herc_Draw_Line(Bitu vidstart, Bitu line)
 				        FontMask[attrib >> 7];
 			}
 
-			write_unaligned_uint32_at(TempLine,
-			                          i++,
-			                          (fg & mask1) | (bg & ~mask1));
+			write_unaligned_uint32(draw, (fg & mask1) | (bg & ~mask1));
+			write_unaligned_uint32(draw + 4, (fg & mask2) | (bg & ~mask2));
 
-			write_unaligned_uint32_at(TempLine,
-			                          i++,
-			                          (fg & mask2) | (bg & ~mask2));
+			// The MDA character generator replicates column 8 into
+			// column 9 for the box-drawing range C0h-DFh so
+			// horizontal lines stay continuous; underline spans the
+			// full cell too. Everything else gets background there.
+			if (underline || (chr >= 0xc0 && chr <= 0xdf)) {
+				draw[8] = draw[7];
+			} else {
+				draw[8] = static_cast<uint8_t>(bg);
+			}
 		}
+
+		draw += PixelsPerChar::Nine;
 	}
 
 	if (SkipCursor(vidstart, line)) {
@@ -965,7 +975,7 @@ static uint8_t* VGA_TEXT_Herc_Draw_Line(Bitu vidstart, Bitu line)
 	const Bitu font_addr = (vga.draw.cursor.address - vidstart) >> 1;
 
 	if (font_addr < vga.draw.blocks) {
-		auto draw = (uint32_t*)&TempLine[font_addr * 8];
+		uint8_t* cursor_draw = TempLine + font_addr * PixelsPerChar::Nine;
 
 		uint8_t attr = vga.tandy.draw_base[vga.draw.cursor.address + 1];
 		uint32_t cg;
@@ -978,8 +988,10 @@ static uint8_t* VGA_TEXT_Herc_Draw_Line(Bitu vidstart, Bitu line)
 			cg = TXT_FG_Table[0x7];
 		}
 
-		*draw++ = cg;
-		*draw++ = cg;
+		// The cursor fills the full 9-dot cell
+		write_unaligned_uint32(cursor_draw, cg);
+		write_unaligned_uint32(cursor_draw + 4, cg);
+		cursor_draw[8] = static_cast<uint8_t>(cg);
 	}
 
 	return TempLine;
@@ -1986,13 +1998,18 @@ static VgaTimings calculate_vga_timings()
 			        8;
 			break;
 
-		case MachineType::Hercules:
+		case MachineType::Hercules: {
+			// The HGC runs off a 16.257 MHz crystal; the character
+			// clock divides it by 16 in graphics mode and by 9 in
+			// text mode (9-dot cells), giving the 18.43 kHz / ~50 Hz
+			// MDA raster
+			constexpr auto herc_crystal_hz = 16257000;
 			if (vga.herc.mode_control & 0x2) {
-				clock = 16000000 / 16;
+				clock = herc_crystal_hz / 16;
 			} else {
-				clock = 16000000 / 8;
+				clock = herc_crystal_hz / 9;
 			}
-			break;
+		} break;
 
 		default: clock = CgaPixelClockHz; break;
 		}
@@ -3113,7 +3130,11 @@ ImageInfo setup_drawing()
 
 		vga.draw.blocks = horiz_end;
 
-		video_mode.width  = horiz_end * 8;
+		// The MDA/HGC character generator emits 9-dot cells for a
+		// 720-pixel raster, matching the Hercules graphics width
+		vga.draw.pixels_per_character = PixelsPerChar::Nine;
+
+		video_mode.width = horiz_end * vga.draw.pixels_per_character;
 		video_mode.height = vert_end;
 
 		render_width  = video_mode.width;
