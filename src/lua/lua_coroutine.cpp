@@ -229,6 +229,8 @@ ScriptState LuaCoroutine::ResumeWith(const int nargs)
 
 	state = ScriptState::Running;
 
+	engine.MarkResumeStart();
+
 	int nresults      = 0;
 	const auto status = lua_resume(coroutine, nullptr, nargs, &nresults);
 

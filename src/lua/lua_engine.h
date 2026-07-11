@@ -44,6 +44,7 @@ public:
 
 	void Reset();
 	void ResetTimers();
+	void MarkResumeStart();
 	void SetInstructionLimit(int64_t max_instructions);
 	void SetWallClockLimit(int64_t max_ms);
 	void SeedRandom(int64_t seed);

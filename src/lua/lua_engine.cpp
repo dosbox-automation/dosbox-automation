@@ -301,6 +301,14 @@ void LuaEngine::ResetTimers()
 	exec_start            = Clock::now();
 }
 
+// The wall clock bounds one continuous execution slice on the emulation
+// thread. Yielded time must not count, so each resume restarts the clock;
+// the per-lifetime instruction budget is untouched.
+void LuaEngine::MarkResumeStart()
+{
+	exec_start = Clock::now();
+}
+
 void LuaEngine::SeedRandom(const int64_t seed)
 {
 	if (!state) {

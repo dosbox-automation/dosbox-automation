@@ -253,6 +253,42 @@ TEST_F(LuaCoroutineTest, ReapDoesNotTouchWaitFrames)
 	EXPECT_EQ(coroutine.ReapStalledWaits(), Lua::ScriptState::Yielded);
 }
 
+TEST_F(LuaCoroutineTest, WallClockIgnoresYieldedTime)
+{
+	// The wall clock bounds one continuous execution slice on the
+	// emulation thread, not script lifetime. A script that sits
+	// yielded past the limit and then does a short burst of work
+	// (enough instructions to fire the count hook) must complete.
+	engine.SetWallClockLimit(100);
+	engine.LoadScript(
+	        "dosbox.wait_frames(1)\n"
+	        "local acc = 0\n"
+	        "for i = 1, 2000 do acc = acc + i end\n",
+	        "yield-then-burst");
+	coroutine.Start();
+
+	EXPECT_EQ(coroutine.DispatchFrame(1), Lua::ScriptState::Yielded);
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+	EXPECT_EQ(coroutine.DispatchFrame(2), Lua::ScriptState::Completed)
+	        << coroutine.ErrorMessage();
+}
+
+TEST_F(LuaCoroutineTest, WallClockStopsLongRunningResume)
+{
+	// The ceiling must still fire when a single resume really does
+	// execute past the limit. The instruction budget is raised out of
+	// the way so the wall clock is the limit that trips.
+	engine.SetInstructionLimit(1'000'000'000'000);
+	engine.SetWallClockLimit(50);
+	engine.LoadScript("for i = 1, 1000000000 do end\n", "busy-loop");
+	coroutine.Start();
+
+	EXPECT_EQ(coroutine.DispatchFrame(1), Lua::ScriptState::Error);
+	EXPECT_EQ(coroutine.ErrorMessage(), "wall-clock time limit exceeded");
+}
+
 TEST_F(LuaCoroutineTest, ScriptStateNames)
 {
 	EXPECT_STREQ(Lua::ScriptStateName(Lua::ScriptState::Idle), "idle");
