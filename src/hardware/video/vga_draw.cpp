@@ -1999,15 +1999,16 @@ static VgaTimings calculate_vga_timings()
 			break;
 
 		case MachineType::Hercules: {
-			// The HGC runs off a 16.257 MHz crystal; the character
-			// clock divides it by 16 in graphics mode and by 9 in
-			// text mode (9-dot cells), giving the 18.43 kHz / ~50 Hz
-			// MDA raster
-			constexpr auto herc_crystal_hz = 16257000;
+			// The HGC oscillator is 16.000 MHz, not the MDA's
+			// 16.257 MHz crystal: the character clock is 0.5625 us
+			// in text mode (9-dot cells, /9) and 1 us in bit-mapped
+			// mode (16-dot cells, /16), per the Hercules GB101
+			// Owner's Manual, ch. 2 "Display Interface", note iii
+			constexpr auto herc_oscillator_hz = 16000000;
 			if (vga.herc.mode_control & 0x2) {
-				clock = herc_crystal_hz / 16;
+				clock = herc_oscillator_hz / 16;
 			} else {
-				clock = herc_crystal_hz / 9;
+				clock = herc_oscillator_hz / 9;
 			}
 		} break;
 
