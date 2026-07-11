@@ -8,8 +8,11 @@
 #include "video/zmbv.h"
 
 #include <cassert>
+#include <cerrno>
 #include <cmath>
+#include <cstring>
 
+#include "gui/osd/osd.h"
 #include "hardware/memory.h"
 #include "misc/support.h"
 #include "utils/math_utils.h"
@@ -20,6 +23,10 @@ static constexpr auto SampleFrameSize  = 4;
 static constexpr auto NumAudioChannels = 2;
 
 static constexpr auto AviHeaderSize = 500;
+
+// Free disk space is re-checked after this much additional output, not
+// per frame; a keyframe at rendered resolutions is single-digit MB
+static constexpr uint32_t SpaceCheckIntervalBytes = 1024 * 1024;
 
 static struct {
 	FILE* handle = nullptr;
@@ -37,6 +44,12 @@ static struct {
 	std::vector<uint8_t> index = {};
 	uint32_t index_used        = 0;
 
+	// Set on the first failed write; later writes short-circuit so a
+	// dead file isn't hammered and the first errno is preserved
+	bool write_error         = false;
+	int write_errno          = 0;
+	uint32_t next_space_check = 0;
+
 	struct {
 		int16_t buf[NumSampleFramesInBuffer][NumAudioChannels] = {};
 
@@ -45,6 +58,66 @@ static struct {
 		uint32_t bytes_written   = 0;
 	} audio = {};
 } video = {};
+
+static auto end_reason = VideoCaptureEndReason::NotEnded;
+
+static struct {
+	std_fs::path capture_dir = {};
+	uint32_t min_free_mb     = 0;
+} free_space_limit = {};
+
+void capture_video_set_free_space_limit(const std_fs::path& capture_dir,
+                                        const uint32_t min_free_mb)
+{
+	free_space_limit.capture_dir = capture_dir;
+	free_space_limit.min_free_mb = min_free_mb;
+}
+
+VideoCaptureEndReason CAPTURE_GetVideoCaptureEndReason()
+{
+	return end_reason;
+}
+
+static const char* OsdNoticeTag = "capture-notice";
+
+// A recording that ends abnormally must be impossible to miss: stderr
+// for the log reader, the OSD for whoever watches the window (no expiry;
+// it stays until the next capture starts), and the end reason for the
+// capture status endpoint.
+static void notify_capture_ended_abnormally(const std::string& log_message,
+                                            const std::string& osd_message)
+{
+	LOG_WARNING("CAPTURE: %s", log_message.c_str());
+
+	OSD::TextOverlay overlay;
+	overlay.text     = osd_message;
+	overlay.tag      = OsdNoticeTag;
+	overlay.color    = OSD::ColorRed();
+	overlay.position = OSD::Position::TopLeft;
+
+	OSD::OsdManager::Instance().ShowText(std::move(overlay));
+}
+
+// All AVI output funnels through here so every write is checked; disk
+// full, I/O errors, and device disappearance all surface as a short
+// write. The first failure latches and stops the recording.
+static bool write_bytes(const void* data, const size_t num_bytes)
+{
+	if (video.write_error) {
+		return false;
+	}
+	if (num_bytes == 0) {
+		return true;
+	}
+	assert(data && video.handle);
+
+	if (fwrite(data, 1, num_bytes, video.handle) != num_bytes) {
+		video.write_error = true;
+		video.write_errno = errno;
+		return false;
+	}
+	return true;
+}
 
 static ZMBV_FORMAT to_zmbv_format(const PixelFormat format)
 {
@@ -94,10 +167,14 @@ static void add_avi_chunk(const char* tag, const uint32_t size,
 	host_writed(&chunk[4], size);
 
 	// Write the actual data
-	fwrite(chunk, 1, 8, video.handle);
+	if (!write_bytes(chunk, 8)) {
+		return;
+	}
 
 	auto writesize = (size + 1) & ~1;
-	fwrite(data, 1, writesize, video.handle);
+	if (!write_bytes(data, writesize)) {
+		return;
+	}
 
 	auto pos = video.written + 4;
 	video.written += writesize + 8;
@@ -274,14 +351,48 @@ void capture_video_finalise()
 	// First add the index table to the end
 	memcpy(video.index.data(), "idx1", 4);
 	host_writed(video.index.data() + 4, video.index_used - 8);
-	fwrite(video.index.data(), 1, video.index_used, video.handle);
+	write_bytes(video.index.data(), video.index_used);
 
-	fseek(video.handle, 0, SEEK_SET);
-	fwrite(&avi_header, 1, AviHeaderSize, video.handle);
+	// Attempted even after a write error: the header bytes at offset 0
+	// were preallocated at creation, so this rewrite usually survives
+	// a full disk and leaves a truncated but still playable file
+	const bool header_written =
+	        (fseek(video.handle, 0, SEEK_SET) == 0) &&
+	        (fwrite(&avi_header, 1, AviHeaderSize, video.handle) ==
+	         AviHeaderSize);
 
-	fclose(video.handle);
+	// fclose flushes; a failure here means the tail of the recording
+	// never reached the disk
+	const bool close_ok = (fclose(video.handle) == 0);
+
+	if (!header_written || !close_ok) {
+		if (video.write_errno == 0) {
+			video.write_errno = errno;
+		}
+		video.write_error = true;
+	}
+
 	delete video.codec;
+	video.codec  = nullptr;
 	video.handle = nullptr;
+
+	// Classify how this capture ended, unless the frame path already
+	// did (low disk space is decided and reported there)
+	if (end_reason == VideoCaptureEndReason::NotEnded) {
+		end_reason = video.write_error
+		                   ? VideoCaptureEndReason::WriteError
+		                   : VideoCaptureEndReason::CleanStop;
+	}
+
+	if (end_reason == VideoCaptureEndReason::WriteError) {
+		const auto detail = std::string(
+		        video.write_errno ? strerror(video.write_errno)
+		                          : "short write");
+		notify_capture_ended_abnormally(
+		        "Video recording stopped after a write error (" +
+		                detail + "); the file may be truncated",
+		        "REC STOPPED: WRITE ERROR (" + detail + ")");
+	}
 }
 
 void capture_video_add_audio_data(const uint32_t sample_rate,
@@ -310,8 +421,22 @@ static void create_avi_file(const uint16_t width, const uint16_t height,
 {
 	video.handle = CAPTURE_CreateFile(CaptureType::Video);
 	if (!video.handle) {
+		end_reason = VideoCaptureEndReason::WriteError;
+		notify_capture_ended_abnormally(
+		        "Could not create the video recording file",
+		        "REC FAILED: CANNOT CREATE FILE");
 		return;
 	}
+
+	// A new capture starts with a clean slate: no latched write error,
+	// no stale end reason, no leftover notice on the OSD
+	video.write_error      = false;
+	video.write_errno      = 0;
+	video.next_space_check = 0;
+	end_reason             = VideoCaptureEndReason::NotEnded;
+
+	OSD::OsdManager::Instance().ClearByTag(OsdNoticeTag);
+
 	video.codec = new VideoCodec();
 	if (!video.codec->SetupCompress(width, height)) {
 		return;
@@ -328,8 +453,26 @@ static void create_avi_file(const uint16_t width, const uint16_t height,
 	video.pixel_format      = pixel_format;
 	video.frames_per_second = frames_per_second;
 
-	for (auto i = 0; i < AviHeaderSize; ++i) {
-		fputc(0, video.handle);
+	// Preallocate the header area; it is rewritten with real values on
+	// finalise. Failing this early means the target is unwritable, so
+	// don't start the recording at all.
+	const uint8_t zeroed_header[AviHeaderSize] = {};
+	if (!write_bytes(zeroed_header, AviHeaderSize)) {
+		fclose(video.handle);
+		video.handle = nullptr;
+		delete video.codec;
+		video.codec = nullptr;
+
+		end_reason = VideoCaptureEndReason::WriteError;
+
+		const auto detail = std::string(
+		        video.write_errno ? strerror(video.write_errno)
+		                          : "short write");
+		notify_capture_ended_abnormally(
+		        "Could not start video recording, writing failed (" +
+		                detail + ")",
+		        "REC FAILED: WRITE ERROR (" + detail + ")");
+		return;
 	}
 
 	video.frames                = 0;
@@ -372,6 +515,14 @@ static void compress_raw_frame(const RenderedImage& image)
 	const auto raw_height = (src.height / (src.rendered_double_scan ? 2 : 1));
 	const auto src_pitch = (image.pitch * (src.rendered_double_scan ? 2 : 1));
 
+	// OpenGL readbacks are bottom-up (the image saver flips them too);
+	// walk the rows in reverse so the encoder sees them top-down
+	auto row_advance = static_cast<int64_t>(src_pitch);
+	if (image.is_flipped_vertically) {
+		src_row += static_cast<int64_t>(src_pitch) * (raw_height - 1);
+		row_advance = -row_advance;
+	}
+
 	// To reconstruct the raw image, we must skip every second pixel
 	// when dealing with "baked-in" pixel doubling.
 	const auto raw_width = (src.width / (src.rendered_pixel_doubling ? 2 : 1));
@@ -392,7 +543,7 @@ static void compress_raw_frame(const RenderedImage& image)
 	const auto can_use_src_directly = (src_bpp == dest_bpp &&
 	                                   pixel_skip_count == 0);
 	if (can_use_src_directly) {
-		for (auto i = 0; i < raw_height; ++i, src_row += src_pitch) {
+		for (auto i = 0; i < raw_height; ++i, src_row += row_advance) {
 			compress_row(src_row);
 		}
 		return;
@@ -410,7 +561,7 @@ static void compress_raw_frame(const RenderedImage& image)
 
 	const auto src_advance = src_bpp * (pixel_skip_count + 1);
 
-	for (auto i = 0; i < raw_height; ++i, src_row += src_pitch) {
+	for (auto i = 0; i < raw_height; ++i, src_row += row_advance) {
 		auto src_pixel  = src_row;
 		auto dest_pixel = dest_row.data();
 
@@ -422,10 +573,55 @@ static void compress_raw_frame(const RenderedImage& image)
 	}
 }
 
+// Stop the recording cleanly before the filesystem runs dry, so the
+// file stays intact and the machine keeps running. Checked once per
+// SpaceCheckIntervalBytes of output, not per frame.
+static void maybe_stop_recording_on_low_disk_space()
+{
+	if (free_space_limit.min_free_mb == 0) {
+		return;
+	}
+	if (video.written < video.next_space_check) {
+		return;
+	}
+	video.next_space_check = video.written + SpaceCheckIntervalBytes;
+
+	std::error_code ec           = {};
+	const auto space             = std_fs::space(free_space_limit.capture_dir, ec);
+	if (ec) {
+		// Being unable to measure free space is no reason to kill a
+		// recording; the write error path catches an actual full disk
+		return;
+	}
+
+	constexpr uint64_t bytes_per_mb = 1024 * 1024;
+	const auto min_free_bytes = free_space_limit.min_free_mb * bytes_per_mb;
+
+	if (space.available >= min_free_bytes) {
+		return;
+	}
+
+	const auto available_mb = space.available / bytes_per_mb;
+
+	end_reason = VideoCaptureEndReason::DiskSpaceLow;
+	notify_capture_ended_abnormally(
+	        "Video recording stopped, free space on the capture drive is down to " +
+	                std::to_string(available_mb) + " MB (limit " +
+	                std::to_string(free_space_limit.min_free_mb) +
+	                " MB, 'capture_min_free_space_mb' setting)",
+	        "REC STOPPED: DISK SPACE LOW (" + std::to_string(available_mb) +
+	                " MB LEFT)");
+	CAPTURE_StopVideoCapture();
+}
+
 void capture_video_add_frame(const RenderedImage& image, const float frames_per_second)
 {
 	const auto& src = image.params;
-	assert(src.width <= ScalerMaxWidth);
+
+	// Raw frames are bounded by ScalerMaxWidth; rendered frames by the
+	// window size, so only sanity-bound the dimensions here
+	assert(src.width > 0 && src.width <= 16384);
+	assert(src.height > 0 && src.height <= 16384);
 
 	// To reconstruct the raw image, we must skip every second row when
 	// dealing with "baked-in" double scanning.
@@ -454,6 +650,9 @@ void capture_video_add_frame(const RenderedImage& image, const float frames_per_
 		                zmbv_format);
 	}
 	if (!video.handle) {
+		// The recording could not start (already reported); stop the
+		// capture state machine instead of retrying every frame
+		CAPTURE_StopVideoCapture();
 		return;
 	}
 
@@ -499,4 +698,14 @@ void capture_video_add_frame(const RenderedImage& image, const float frames_per_
 		                            SampleFrameSize;
 		video.audio.buf_frames_used = 0;
 	}
+
+	// A failed chunk write ends the recording; finalise still tries to
+	// leave a playable truncated file and reports what happened
+	if (video.write_error) {
+		end_reason = VideoCaptureEndReason::WriteError;
+		CAPTURE_StopVideoCapture();
+		return;
+	}
+
+	maybe_stop_recording_on_low_disk_space();
 }

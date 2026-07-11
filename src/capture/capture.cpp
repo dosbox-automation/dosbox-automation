@@ -4,8 +4,10 @@
 
 #include "capture.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cerrno>
+#include <cinttypes>
 #include <cstdio>
 #include <mutex>
 
@@ -39,6 +41,12 @@ static struct {
 		std::atomic<CaptureState> video = {};
 	} state = {};
 
+	VideoCaptureMode video_capture_mode = VideoCaptureMode::Raw;
+
+	// The rendered frame count at the last captured present; 0 means
+	// no frame captured yet in this recording
+	uint64_t last_rendered_frame_count = 0;
+
 	struct {
 		int32_t audio              = 1;
 		int32_t midi               = 1;
@@ -56,6 +64,8 @@ static struct {
 		state.audio = CaptureState::Off;
 		state.midi = CaptureState::Off;
 		state.video = CaptureState::Off;
+		video_capture_mode = VideoCaptureMode::Raw;
+		last_rendered_frame_count = 0;
 		next_index = {};
 	}
 } capture = {};
@@ -349,10 +359,13 @@ FILE* CAPTURE_CreateFile(const CaptureType type,
 	return handle;
 }
 
-void CAPTURE_StartVideoCapture()
+void CAPTURE_StartVideoCapture(const VideoCaptureMode mode)
 {
 	switch (capture.state.video) {
 	case CaptureState::Off:
+		capture.video_capture_mode        = mode;
+		capture.last_rendered_frame_count = 0;
+
 		capture.state.video = CaptureState::Pending;
 		TITLEBAR_NotifyVideoCaptureStatus(true);
 		break;
@@ -360,6 +373,64 @@ void CAPTURE_StartVideoCapture()
 	case CaptureState::InProgress:
 		LOG_WARNING("CAPTURE: Already capturing video output");
 		break;
+	}
+}
+
+VideoCaptureMode CAPTURE_GetVideoCaptureMode()
+{
+	return capture.video_capture_mode;
+}
+
+bool CAPTURE_IsCapturingRenderedVideo()
+{
+	return capture.state.video != CaptureState::Off &&
+	       capture.video_capture_mode == VideoCaptureMode::Rendered;
+}
+
+void CAPTURE_AddRenderedVideoFrame(const RenderedImage& image,
+                                   const float frames_per_second,
+                                   const uint64_t rendered_frame_count)
+{
+	if (!CAPTURE_IsCapturingRenderedVideo()) {
+		return;
+	}
+	if (capture.state.video == CaptureState::Pending) {
+		capture.state.video = CaptureState::InProgress;
+	}
+
+	// Pace the constant-frame-rate output from the presentation
+	// cadence: presents may repeat an emulated frame (write nothing)
+	// or lag behind several (pad with duplicates, which ZMBV delta
+	// compression shrinks to almost nothing)
+	uint64_t num_frames_to_write = 0;
+
+	if (capture.last_rendered_frame_count == 0) {
+		num_frames_to_write = 1;
+	} else if (rendered_frame_count > capture.last_rendered_frame_count) {
+		num_frames_to_write = rendered_frame_count -
+		                      capture.last_rendered_frame_count;
+	}
+	if (num_frames_to_write == 0) {
+		return;
+	}
+	capture.last_rendered_frame_count = rendered_frame_count;
+
+	// A long presentation gap (window hidden or minimised for a
+	// while) would stall the emulation padding thousands of frames;
+	// cap the padding at two seconds' worth and let the recording
+	// timeline skip ahead instead
+	const auto max_padding = static_cast<uint64_t>(
+	        std::max(1.0f, frames_per_second * 2.0f));
+
+	if (num_frames_to_write > max_padding) {
+		LOG_WARNING("CAPTURE: Skipping %" PRIu64
+		            " unpresented frames in the video recording",
+		            num_frames_to_write - 1);
+		num_frames_to_write = 1;
+	}
+
+	while (num_frames_to_write-- > 0 && CAPTURE_IsCapturingVideo()) {
+		capture_video_add_frame(image, frames_per_second);
 	}
 }
 
@@ -388,6 +459,12 @@ void CAPTURE_AddFrame(const RenderedImage& image, const float frames_per_second)
 {
 	if (image_capturer) {
 		image_capturer->MaybeCaptureImage(image);
+	}
+
+	// In rendered mode the video stream is fed from the present path
+	// (CAPTURE_AddRenderedVideoFrame), not from the raw framebuffer
+	if (capture.video_capture_mode == VideoCaptureMode::Rendered) {
+		return;
 	}
 
 	switch (capture.state.video) {
@@ -571,6 +648,10 @@ void CAPTURE_Init()
 		capture.path = "capture";
 	}
 
+	const auto min_free_mb = section->GetInt("capture_min_free_space_mb");
+	capture_video_set_free_space_limit(capture.path,
+	                                   check_cast<uint32_t>(min_free_mb));
+
 	const auto prefs = section->GetString("default_image_capture_formats");
 
 	image_capturer = std::make_unique<ImageCapturer>(prefs);
@@ -661,6 +742,15 @@ static void init_capture_config_settings(SectionProp& section)
 	        "Directory where the various captures are saved, such as audio, video, MIDI\n"
 	        "and screenshot captures ('capture' in the current working directory by\n"
 	        "default).");
+
+	auto* int_prop = section.AddInt("capture_min_free_space_mb", WhenIdle, 1024);
+	int_prop->SetMinMax(0, 1024 * 1024);
+	int_prop->SetHelp(
+	        "Stop video recording before the capture drive runs out of space (1024 by\n"
+	        "default). While a recording is running, the free space on the drive holding\n"
+	        "'capture_dir' is checked regularly; when it drops below this many megabytes,\n"
+	        "the recording is stopped cleanly and a notice is shown. Set to 0 to disable\n"
+	        "the check.");
 
 	auto* str_prop = section.AddString("default_image_capture_formats",
 	                                   WhenIdle,

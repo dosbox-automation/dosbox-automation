@@ -52,8 +52,37 @@ void CAPTURE_AddAudioData(const uint32_t sample_rate, const uint32_t num_sample_
 
 void CAPTURE_AddMidiData(const bool sysex, const size_t len, const uint8_t* data);
 
-void CAPTURE_StartVideoCapture();
+// What feeds the video encoder: the raw emulator framebuffer at native
+// resolution (the preservation-grade default), or the post-shader
+// rendered output at window resolution as shown on screen.
+enum class VideoCaptureMode : uint8_t { Raw, Rendered };
+
+void CAPTURE_StartVideoCapture(const VideoCaptureMode mode = VideoCaptureMode::Raw);
 void CAPTURE_StopVideoCapture();
+
+VideoCaptureMode CAPTURE_GetVideoCaptureMode();
+bool CAPTURE_IsCapturingRenderedVideo();
+
+// Feed one presented post-shader frame from the present path. The
+// rendered frame count paces the output: re-presents of the same
+// emulated frame are skipped and presentation gaps are padded with
+// duplicates, so the AVI stays constant-frame-rate at the video mode's
+// rate.
+void CAPTURE_AddRenderedVideoFrame(const RenderedImage& image,
+                                   const float frames_per_second,
+                                   const uint64_t rendered_frame_count);
+
+// Why the most recent video capture ended. NotEnded means no capture has
+// ended yet (never captured, or one is still running). WriteError covers
+// failed writes and a failed final flush; DiskSpaceLow means the capture
+// was stopped cleanly before free space ran out.
+enum class VideoCaptureEndReason : uint8_t {
+	NotEnded,
+	CleanStop,
+	WriteError,
+	DiskSpaceLow,
+};
+VideoCaptureEndReason CAPTURE_GetVideoCaptureEndReason();
 
 bool CAPTURE_IsCapturingAudio();
 bool CAPTURE_IsCapturingImage();

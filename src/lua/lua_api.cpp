@@ -754,15 +754,26 @@ static int LuaAbort(lua_State* L)
 // Capture
 // ================================================================
 
-// dosbox.capture_start() - start ZMBV video recording
+// dosbox.capture_start([mode]) - start ZMBV video recording; mode is
+// "raw" (default, native-resolution framebuffer) or "rendered"
+// (post-shader output as shown on screen)
 static int LuaCaptureStart(lua_State* L)
 {
+	auto mode = VideoCaptureMode::Raw;
+
+	const char* mode_str = luaL_optstring(L, 1, "raw");
+	if (strcmp(mode_str, "rendered") == 0) {
+		mode = VideoCaptureMode::Rendered;
+	} else if (strcmp(mode_str, "raw") != 0) {
+		return luaL_error(L, "capture_start: mode must be 'raw' or 'rendered'");
+	}
+
 	OSD_ShowCommand("capture_start", CurrentFrame(L));
-	CAPTURE_StartVideoCapture();
+	CAPTURE_StartVideoCapture(mode);
 
 	auto* dl = GetDebugLog(L);
 	if (dl && dl->IsOpen()) {
-		dl->Trace(CurrentFrame(L), "dosbox.capture_start()");
+		dl->Trace(CurrentFrame(L), "dosbox.capture_start(\"%s\")", mode_str);
 	}
 	return 0;
 }

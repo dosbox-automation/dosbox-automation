@@ -28,6 +28,7 @@
 #include "dosbox.h"
 #include "gui/mapper.h"
 #include "gui/render/opengl_renderer.h"
+#include "gui/render/render.h"
 #include "gui/render/sdl_renderer.h"
 #include "gui/titlebar.h"
 #include "hardware/input/keyboard.h"
@@ -2481,7 +2482,20 @@ void GFX_CaptureRenderedImage()
 	assert(sdl.maybe_video_mode);
 	image.params.video_mode = *sdl.maybe_video_mode;
 
-	CAPTURE_AddPostRenderImage(image);
+	// The video encoder only reads the pixels, so it goes first; the
+	// image capturer takes ownership of the buffer, so it goes last.
+	// When it isn't active, the buffer is ours to release.
+	if (CAPTURE_IsCapturingRenderedVideo()) {
+		CAPTURE_AddRenderedVideoFrame(image,
+		                              static_cast<float>(render.fps),
+		                              GFX_GetRenderedFrameCount());
+	}
+
+	if (CAPTURE_IsCapturingPostRenderImage()) {
+		CAPTURE_AddPostRenderImage(image);
+	} else {
+		image.free();
+	}
 }
 
 void GFX_MaybePresentFrame()

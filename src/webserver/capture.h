@@ -8,12 +8,16 @@
 #include "webserver/bridge.h"
 #include "libs/http/http.h"
 
+#include "capture/capture.h"
+
 namespace Webserver {
 
 class CaptureStartCommand : public Command {
 public:
 	void Execute() override;
 	static void Post(const httplib::Request& req, httplib::Response& res);
+
+	VideoCaptureMode mode = VideoCaptureMode::Raw;
 };
 
 class CaptureStopCommand : public Command {
@@ -28,6 +32,8 @@ public:
 	static void Get(const httplib::Request& req, httplib::Response& res);
 
 	bool capturing = false;
+	VideoCaptureMode mode = VideoCaptureMode::Raw;
+	VideoCaptureEndReason end_reason = VideoCaptureEndReason::NotEnded;
 };
 
 } // namespace Webserver
