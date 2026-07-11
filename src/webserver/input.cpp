@@ -13,6 +13,7 @@
 #include "hardware/input/mouse.h" // MOUSE_Event*, mouse_*_hook
 #include "hardware/pic.h"
 #include "lua/text_input.h"
+#include "utils/string_utils.h"
 
 #include <algorithm>
 #include <chrono>
@@ -350,18 +351,98 @@ void InputSequenceCommand::Post(const httplib::Request& req, httplib::Response& 
 		return;
 	}
 
+	// Every event field must be recognized. Silently ignoring a
+	// misnamed field (say 'x' instead of 'x_rel') injects zero-motion
+	// events and leaves the caller diagnosing ghosts; the first field
+	// test drive lost an hour to exactly that.
+	static const std::unordered_map<std::string, std::vector<std::string>> allowed_fields = {
+	        {         "key",                             {"key", "pressed"}},
+	        {  "mouse_move", {"x_rel", "y_rel", "x_abs", "y_abs"}},
+	        {"mouse_button",                          {"button", "pressed"}},
+	        { "mouse_wheel",                                      {"delta"}},
+	};
+	static const std::vector<std::string> common_fields = {
+	        "type", "t", "delay_ms", "frame"};
+
+	auto is_allowed = [](const std::vector<std::string>& fields,
+	                     const std::string& name) {
+		return std::find(fields.begin(), fields.end(), name) !=
+		       fields.end();
+	};
+
 	std::vector<InputEvent> events;
+
+	// Running timeline position for 'delay_ms' (relative) timing
+	double cumulative_t_ms = 0.0;
+
 	for (const auto& jev : body["events"]) {
 		InputEvent ev = {};
 
+		const auto type_str = jev.value("type", "key");
+
+		const auto af = allowed_fields.find(type_str);
+		if (af != allowed_fields.end()) {
+			for (const auto& [field_name, field_value] : jev.items()) {
+				if (is_allowed(common_fields, field_name) ||
+				    is_allowed(af->second, field_name)) {
+					continue;
+				}
+				res.status = 400;
+				json err;
+				auto allowed = common_fields;
+				allowed.insert(allowed.end(),
+				               af->second.begin(),
+				               af->second.end());
+				err["error"] = "Unknown field '" + field_name +
+				               "' for " + type_str +
+				               " event. Allowed fields: " +
+				               join(allowed, ", ", "", "");
+				send_json(res, err);
+				return;
+			}
+		}
+
+		// Two timing forms: 't' places the event at an absolute
+		// position on the sequence timeline (recording format);
+		// 'delay_ms' waits relative to the previous event, which is
+		// the natural form for hand-written sequences. Mixing them in
+		// one event is ambiguous.
+		if (jev.contains("t") && jev.contains("delay_ms")) {
+			res.status = 400;
+			json err;
+			err["error"] = "Use either 't' (absolute ms) or "
+			               "'delay_ms' (relative ms), not both";
+			send_json(res, err);
+			return;
+		}
 		if (jev.contains("t")) {
 			ev.t_ms = jev["t"].get<double>();
+			if (ev.t_ms < 0) {
+				res.status = 400;
+				json err;
+				err["error"] = "'t' must not be negative";
+				send_json(res, err);
+				return;
+			}
+			cumulative_t_ms = ev.t_ms;
+		} else if (jev.contains("delay_ms")) {
+			const auto delay_ms = jev["delay_ms"].get<double>();
+			if (delay_ms < 0) {
+				res.status = 400;
+				json err;
+				err["error"] = "'delay_ms' must not be negative";
+				send_json(res, err);
+				return;
+			}
+			cumulative_t_ms += delay_ms;
+			ev.t_ms = cumulative_t_ms;
+		} else {
+			// No timing given: fire at the current timeline position
+			ev.t_ms = cumulative_t_ms;
 		}
 		if (jev.contains("frame")) {
 			ev.frame = jev["frame"].get<uint64_t>();
 		}
-
-		const auto type_str = jev.value("type", "key");
 
 		if (type_str == "key") {
 			ev.type             = InputEvent::Type::Key;

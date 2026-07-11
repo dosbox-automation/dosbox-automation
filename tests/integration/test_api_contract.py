@@ -151,6 +151,40 @@ def test_input_timed_events(dosbox):
     assert r.json()["events_scheduled"] == 4
 
 
+def test_input_delay_ms_relative_timing(dosbox):
+    # delay_ms is the hand-written form: wait relative to the previous
+    # event instead of an absolute timeline position. A 409 means an
+    # earlier test's timed chain is still draining; that is the
+    # documented busy contract, so retry briefly.
+    events = [
+        {"type": "mouse_move", "x_rel": -4000, "y_rel": -4000},
+        {"type": "mouse_move", "x_rel": 160, "y_rel": 105, "delay_ms": 100},
+        {"type": "mouse_button", "button": "left", "pressed": True,
+         "delay_ms": 100},
+        {"type": "mouse_button", "button": "left", "pressed": False,
+         "delay_ms": 50},
+    ]
+    deadline = time.monotonic() + 5.0
+    while True:
+        r = dosbox.input_sequence(events)
+        if r.status_code != 409 or time.monotonic() > deadline:
+            break
+        time.sleep(0.1)
+    assert r.status_code == 200
+    assert r.json()["events_scheduled"] == 4
+
+
+def test_input_recording_fields_still_accepted(dosbox):
+    # Recorded replays carry x_abs/y_abs metadata alongside the deltas;
+    # they must keep replaying
+    r = dosbox.input_sequence([{
+        "type": "mouse_move",
+        "t": 0, "frame": 1,
+        "x_rel": 2.0, "y_rel": 3.0, "x_abs": 100.0, "y_abs": 50.0,
+    }])
+    assert r.status_code == 200
+
+
 # ---------------------------------------------------------------------------
 # Input injection — validation errors
 # ---------------------------------------------------------------------------
@@ -182,6 +216,43 @@ def test_input_unknown_button(dosbox):
     r = dosbox.input_sequence([{"type": "mouse_button", "button": "extra"}])
     assert r.status_code == 400
     assert "extra" in r.json()["error"]
+
+
+def test_input_unknown_field_rejected(dosbox):
+    # 'x'/'y' instead of 'x_rel'/'y_rel' must fail loudly, not inject
+    # silent zero-motion events (found on the first MCP field test)
+    r = dosbox.input_sequence([{"type": "mouse_move", "x": 160, "y": 105}])
+    assert r.status_code == 400
+    error = r.json()["error"]
+    assert "'x'" in error
+    assert "x_rel" in error  # the error must name the correct field
+
+
+def test_input_unknown_field_rejected_for_key_event(dosbox):
+    r = dosbox.input_sequence([
+        {"type": "key", "key": "KBD_a", "presed": True},  # typo
+    ])
+    assert r.status_code == 400
+    assert "'presed'" in r.json()["error"]
+
+
+def test_input_t_and_delay_ms_conflict(dosbox):
+    r = dosbox.input_sequence([
+        {"type": "key", "key": "KBD_a", "t": 100, "delay_ms": 100},
+    ])
+    assert r.status_code == 400
+    assert "not both" in r.json()["error"]
+
+
+def test_input_negative_delay_rejected(dosbox):
+    r = dosbox.input_sequence([
+        {"type": "key", "key": "KBD_a", "delay_ms": -5},
+    ])
+    assert r.status_code == 400
+    r = dosbox.input_sequence([
+        {"type": "key", "key": "KBD_a", "t": -5},
+    ])
+    assert r.status_code == 400
 
 
 # ---------------------------------------------------------------------------
