@@ -6,7 +6,7 @@ import base64
 import json
 
 
-def register(server, client, add_tool):
+def register(server, client, add_tool, feature=None):
     add_tool(
         name="screen_text",
         description=(

@@ -5,7 +5,7 @@
 import json
 
 
-def register(server, client, add_tool):
+def register(server, client, add_tool, feature=None):
     add_tool(
         name="mem_read",
         description=(
@@ -28,6 +28,7 @@ def register(server, client, add_tool):
             "required": ["offset", "length"],
         },
         handler=lambda args: _mem_read(client, args),
+        feature=feature,
     )
 
     add_tool(
@@ -49,31 +50,27 @@ def register(server, client, add_tool):
             "required": ["offset", "data"],
         },
         handler=lambda args: _mem_write(client, args),
+        feature=feature,
     )
 
 
 def _mem_read(client, args):
     import mcp.types as types
-    seg = args["offset"] >> 4
-    off = args["offset"] & 0xF
-    path = f"/api/v1/memory/{seg}/{off}"
-    result = client.get(path, params={
-        "length": args["length"],
-        "format": "json",
-    })
+    # The two-part route takes a plain linear offset; JSON output (with
+    # base64 data) is selected via the Accept header, binary otherwise
+    path = f"/api/v1/memory/{args['offset']}/{args['length']}"
+    result = client.get(path, headers={"accept": "application/json"})
     return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
 def _mem_write(client, args):
     import mcp.types as types
-    seg = args["offset"] >> 4
-    off = args["offset"] & 0xF
-    path = f"/api/v1/memory/{seg}/{off}"
+    path = f"/api/v1/memory/{args['offset']}"
     result = client.put(path, json={"data": args["data"]})
     return [types.TextContent(type="text", text=json.dumps(result))]
 
 
-def register_search(server, client, add_tool):
+def register_search(server, client, add_tool, feature=None):
     add_tool(
         name="mem_search",
         description=(
@@ -106,6 +103,7 @@ def register_search(server, client, add_tool):
             "required": ["start", "end", "value"],
         },
         handler=lambda args: _mem_search(client, args),
+        feature=feature,
     )
 
     add_tool(
@@ -117,6 +115,7 @@ def register_search(server, client, add_tool):
         read_only=True,
         schema={"type": "object", "properties": {}},
         handler=lambda args: _dos_memory_map(client),
+        feature=feature,
     )
 
 

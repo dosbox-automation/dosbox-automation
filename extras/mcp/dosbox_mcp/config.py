@@ -29,8 +29,9 @@ def validate_base_url(url: str) -> str:
     raise ValueError(f"host {host!r} is not a loopback address")
 
 
-def read_token() -> str:
-    """Token from DOSBOX_API_TOKEN, else the token file the launcher writes."""
+def read_token() -> str | None:
+    """Token from DOSBOX_API_TOKEN, else the token file the launcher writes.
+    Returns None if no token is available (dosbox not running yet)."""
     env = os.environ.get("DOSBOX_API_TOKEN")
     if env:
         return env
@@ -42,15 +43,13 @@ def read_token() -> str:
     )
     if token_path.is_file():
         return token_path.read_text().strip()
-    raise RuntimeError(
-        "No API token: set DOSBOX_API_TOKEN or enable webserver_token_file"
-    )
+    return None
 
 
 @dataclass
 class Config:
     base_url: str
-    token: str
+    token: str | None = None
 
     @classmethod
     def from_env(cls) -> "Config":

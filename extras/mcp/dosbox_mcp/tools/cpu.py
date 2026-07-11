@@ -5,7 +5,7 @@
 import json
 
 
-def register(server, client, add_tool):
+def register(server, client, add_tool, feature=None):
     add_tool(
         name="cpu_write_register",
         description=(
@@ -29,6 +29,7 @@ def register(server, client, add_tool):
             "required": ["register", "value"],
         },
         handler=lambda args: _cpu_write(client, args),
+        feature=feature,
     )
 
 

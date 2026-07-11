@@ -5,7 +5,7 @@
 import json
 
 
-def register(server, client, add_tool):
+def register(server, client, add_tool, feature=None):
     add_tool(
         name="video_capture_start",
         description="Start ZMBV video recording of the emulator screen.",

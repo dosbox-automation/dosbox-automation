@@ -5,7 +5,7 @@
 import json
 
 
-def register(server, client, add_tool):
+def register(server, client, add_tool, feature=None):
     add_tool(
         name="freeze_set",
         description=(
@@ -33,6 +33,7 @@ def register(server, client, add_tool):
             "required": ["address", "value"],
         },
         handler=lambda args: _freeze_set(client, args),
+        feature=feature,
     )
 
     add_tool(
@@ -41,6 +42,7 @@ def register(server, client, add_tool):
         read_only=True,
         schema={"type": "object", "properties": {}},
         handler=lambda args: _freeze_list(client),
+        feature=feature,
     )
 
     add_tool(
@@ -60,6 +62,7 @@ def register(server, client, add_tool):
             },
         },
         handler=lambda args: _freeze_clear(client, args),
+        feature=feature,
     )
 
 

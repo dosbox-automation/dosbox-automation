@@ -2585,5 +2585,21 @@ BUNDLED DOS UTILITIES (resources/drives/y/dos/)
                  Source: https://archive.org/details/infozip_msdos
                  Homepage: https://infozip.sourceforge.net/
 
+================================================================================
+PYTHON MCP BRIDGE (extras/mcp/)
+================================================================================
+
+  httpx          HTTP client for Python
+                 Copyright (c) Tom Christie
+                 License: BSD-3-Clause
+                 Homepage: https://github.com/encode/httpx
+
+  mcp            Model Context Protocol SDK
+                 Copyright (c) Anthropic, PBC.
+                 License: MIT
+                 Homepage: https://modelcontextprotocol.io
+
+(See BSD-3-Clause and MIT license texts in the vendored libraries section above.)
+
 END OF THIRD-PARTY LICENSES
 ================================================================================

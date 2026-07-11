@@ -5,13 +5,14 @@
 import json
 
 
-def register(server, client, add_tool):
+def register(server, client, add_tool, feature=None):
     add_tool(
         name="debug_status",
         description="Debugger state: paused, breakpoints, current instruction.",
         read_only=True,
         schema={"type": "object", "properties": {}},
         handler=lambda args: _not_available("debug_status"),
+        feature=feature,
     )
 
     add_tool(
@@ -20,6 +21,7 @@ def register(server, client, add_tool):
         read_only=False,
         schema={"type": "object", "properties": {}},
         handler=lambda args: _not_available("debug_pause"),
+        feature=feature,
     )
 
     add_tool(
@@ -28,6 +30,7 @@ def register(server, client, add_tool):
         read_only=False,
         schema={"type": "object", "properties": {}},
         handler=lambda args: _not_available("debug_continue"),
+        feature=feature,
     )
 
     add_tool(
@@ -36,6 +39,7 @@ def register(server, client, add_tool):
         read_only=False,
         schema={"type": "object", "properties": {}},
         handler=lambda args: _not_available("debug_step"),
+        feature=feature,
     )
 
 

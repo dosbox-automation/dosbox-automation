@@ -32,14 +32,26 @@ class DosboxClient:
             return resp.json()
         return resp.content
 
-    def get(self, path, params=None):
+    def get(self, path, params=None, headers=None):
         return self._handle(
-            self._client.get(self._base + path, params=params)
+            self._client.get(self._base + path, params=params, headers=headers)
         )
 
     def post(self, path, json=None):
         return self._handle(
             self._client.post(self._base + path, json=json)
+        )
+
+    def post_text(self, path, text, content_type="text/plain", params=None):
+        # Some endpoints (script/load) take a raw body, not JSON. httpx
+        # sets Content-Type from the content= kwarg's type, so pin it.
+        return self._handle(
+            self._client.post(
+                self._base + path,
+                content=text.encode("utf-8"),
+                headers={"Content-Type": content_type},
+                params=params,
+            )
         )
 
     def put(self, path, json=None):

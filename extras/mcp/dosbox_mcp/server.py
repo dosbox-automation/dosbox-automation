@@ -8,18 +8,18 @@ import mcp.server.stdio
 from mcp.server.lowlevel import Server
 import mcp.types as types
 
-from .capabilities import registered_groups
-from .client import DosboxClient
+from .capabilities import GROUP_CAPABILITY
+from .connection import Connection, guard
 from .config import Config
 from .tools import session, screen, input as input_tools, memory, freeze, io, cpu, debug, media, script
 
 
-def build_server(client, features):
+def build_server(conn):
     server = Server("dosbox-automation")
-    groups = registered_groups(features)
     registry = {}
 
-    def add_tool(name, description, schema, handler, read_only=False):
+    def add_tool(name, description, schema, handler, read_only=False, feature=None):
+        wrapped = guard(conn, handler, feature=feature)
         annotations = types.ToolAnnotations(readOnlyHint=read_only)
         registry[name] = (
             types.Tool(
@@ -28,24 +28,19 @@ def build_server(client, features):
                 inputSchema=schema,
                 annotations=annotations,
             ),
-            handler,
+            wrapped,
         )
 
     for mod in (session, screen, media, script):
-        mod.register(server, client, add_tool)
-    if "input" in groups:
-        input_tools.register(server, client, add_tool)
-    if "memory" in groups:
-        memory.register(server, client, add_tool)
-        memory.register_search(server, client, add_tool)
-    if "freeze" in groups:
-        freeze.register(server, client, add_tool)
-    if "port_io" in groups:
-        io.register(server, client, add_tool)
-    if "cpu_control" in groups:
-        cpu.register(server, client, add_tool)
-    if "debugger" in groups:
-        debug.register(server, client, add_tool)
+        mod.register(server, conn, add_tool)
+
+    input_tools.register(server, conn, add_tool, feature="input")
+    memory.register(server, conn, add_tool, feature="memory")
+    memory.register_search(server, conn, add_tool, feature="memory")
+    freeze.register(server, conn, add_tool, feature="freeze")
+    io.register(server, conn, add_tool, feature="port_io")
+    cpu.register(server, conn, add_tool, feature="cpu_control")
+    debug.register(server, conn, add_tool, feature="debugger")
 
     @server.list_tools()
     async def list_tools():
@@ -67,9 +62,8 @@ def build_server(client, features):
 
 async def _run():
     config = Config.from_env()
-    client = DosboxClient(config.base_url, config.token)
-    features = client.get("/api/v1/dosbox/info").get("features", {})
-    server = build_server(client, features)
+    conn = Connection(config)
+    server = build_server(conn)
     async with mcp.server.stdio.stdio_server() as (read, write):
         await server.run(read, write, server.create_initialization_options())
 

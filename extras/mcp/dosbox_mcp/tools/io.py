@@ -5,7 +5,7 @@
 import json
 
 
-def register(server, client, add_tool):
+def register(server, client, add_tool, feature=None):
     add_tool(
         name="port_read",
         description=(
@@ -29,6 +29,7 @@ def register(server, client, add_tool):
             "required": ["port"],
         },
         handler=lambda args: _port_read(client, args),
+        feature=feature,
     )
 
     add_tool(
@@ -58,6 +59,7 @@ def register(server, client, add_tool):
             "required": ["port", "value"],
         },
         handler=lambda args: _port_write(client, args),
+        feature=feature,
     )
 
 

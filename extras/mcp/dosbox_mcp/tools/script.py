@@ -5,7 +5,7 @@
 import json
 
 
-def register(server, client, add_tool):
+def register(server, client, add_tool, feature=None):
     add_tool(
         name="script_run",
         description=(
@@ -49,7 +49,9 @@ def register(server, client, add_tool):
 
 def _script_run(client, args):
     import mcp.types as types
-    client.post("/api/v1/script/load", json={"script": args["script"]})
+    # The load endpoint takes the raw Lua as a text/plain body, not JSON
+    # (aug-bt7n: the old JSON post 415'd before reaching the loader).
+    client.post_text("/api/v1/script/load", args["script"])
     result = client.post("/api/v1/script/start")
     return [types.TextContent(type="text", text=json.dumps(result))]
 
