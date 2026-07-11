@@ -21,6 +21,7 @@
 
 #include "dos/programs/mount_policy.h"
 #include "gui/osd/osd.h"
+#include "gui/osd/osd_port.h"
 
 #include <cctype>
 #include <cstdint>
@@ -569,6 +570,10 @@ void WEBSERVER_Init()
 		OSD::OsdManager::Instance().SetEnabled(
 		        section->GetBool("webserver_osd"));
 
+		// Guest-side OSD access (osd.com) is part of the
+		// automation surface, so it comes and goes with it
+		OSDPORT_Init();
+
 		const auto port = section->GetInt("webserver_port");
 		const auto resource_home = get_resource_path("webserver").string();
 		const auto use_token_file = section->GetBool("webserver_token_file");
@@ -583,6 +588,7 @@ void WEBSERVER_Init()
 
 void WEBSERVER_Destroy()
 {
+	OSDPORT_Destroy();
 	Webserver::server.stop();
 	Webserver::remove_token_file();
 }

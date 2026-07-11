@@ -7,6 +7,8 @@
 #include <gtest/gtest.h>
 
 #include "gui/osd/gl_draw.h"
+#include "gui/osd/osd_port.h"
+#include "hardware/port.h"
 
 // VGA ROM font - 256 glyphs, 16 bytes each, one bit per pixel, MSB left.
 extern uint8_t int10_font_16[256 * 16];
@@ -258,6 +260,110 @@ TEST_F(Osd, OverlayTextIsCappedAtMaxLength)
 
 	// 256-char cap reflected in the background box width.
 	EXPECT_EQ(ctx.rects.front().rect.w, 256 * 8 + 4);
+}
+
+// --- Guest port interface (osd.com) ------------------------------------------
+
+class OsdPort : public Osd {
+protected:
+	void SetUp() override
+	{
+		Osd::SetUp();
+		OSDPORT_Init();
+	}
+	void TearDown() override
+	{
+		OSDPORT_Destroy();
+		Osd::TearDown();
+	}
+};
+
+TEST_F(OsdPort, SignatureIsReadable)
+{
+	EXPECT_EQ(IO_ReadB(0x3e0), 0x4f);
+}
+
+TEST_F(OsdPort, ShowAndClearThroughPorts)
+{
+	for (const char c : std::string("HI")) {
+		IO_WriteB(0x3e1, static_cast<uint8_t>(c));
+	}
+	IO_WriteB(0x3e0, 0x01); // show
+
+	RecordingDrawContext shown(640, 480);
+	OSD::OsdManager::Instance().Render(0, shown);
+	EXPECT_FALSE(shown.rects.empty());
+
+	IO_WriteB(0x3e0, 0x02); // clear
+
+	RecordingDrawContext cleared(640, 480);
+	OSD::OsdManager::Instance().Render(0, cleared);
+	EXPECT_TRUE(cleared.rects.empty());
+}
+
+TEST_F(OsdPort, ShowReplacesPreviousOverlay)
+{
+	for (const char c : std::string("FIRST")) {
+		IO_WriteB(0x3e1, static_cast<uint8_t>(c));
+	}
+	IO_WriteB(0x3e0, 0x01);
+
+	for (const char c : std::string("SECOND")) {
+		IO_WriteB(0x3e1, static_cast<uint8_t>(c));
+	}
+	IO_WriteB(0x3e0, 0x01);
+
+	// One overlay, not two: the tag replaces. The background box of
+	// a single small-font overlay is text-width, so a second overlay
+	// would double the rect count at minimum.
+	RecordingDrawContext ctx(640, 480);
+	OSD::OsdManager::Instance().Render(0, ctx);
+	ASSERT_FALSE(ctx.rects.empty());
+
+	IO_WriteB(0x3e0, 0x02);
+	RecordingDrawContext cleared(640, 480);
+	OSD::OsdManager::Instance().Render(0, cleared);
+	EXPECT_TRUE(cleared.rects.empty()) << "clear must remove all "
+	                                      "guest overlays, so show "
+	                                      "replaced rather than stacked";
+}
+
+TEST_F(OsdPort, DiscardEmptiesTheBuffer)
+{
+	for (const char c : std::string("JUNK")) {
+		IO_WriteB(0x3e1, static_cast<uint8_t>(c));
+	}
+	IO_WriteB(0x3e0, 0x03); // discard
+	IO_WriteB(0x3e0, 0x01); // show (empty buffer -> acts as clear)
+
+	RecordingDrawContext ctx(640, 480);
+	OSD::OsdManager::Instance().Render(0, ctx);
+	EXPECT_TRUE(ctx.rects.empty());
+}
+
+TEST_F(OsdPort, OverlongTextIsCappedNotWrapped)
+{
+	for (auto i = 0; i < 400; ++i) {
+		IO_WriteB(0x3e1, static_cast<uint8_t>('W'));
+	}
+	IO_WriteB(0x3e0, 0x01);
+
+	RecordingDrawContext ctx(8192, 480);
+	OSD::OsdManager::Instance().Render(0, ctx);
+	ASSERT_FALSE(ctx.rects.empty());
+
+	// Capped at 256 chars like every other OSD text source; the
+	// background box width proves the length that got through
+	EXPECT_EQ(ctx.rects.front().rect.w, 256 * 8 * 2 + 4);
+}
+
+TEST_F(OsdPort, UnknownCommandIsIgnored)
+{
+	IO_WriteB(0x3e0, 0x7f);
+
+	RecordingDrawContext ctx(640, 480);
+	OSD::OsdManager::Instance().Render(0, ctx);
+	EXPECT_TRUE(ctx.rects.empty());
 }
 
 // --- Glyph expansion --------------------------------------------------------

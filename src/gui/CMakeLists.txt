@@ -7,6 +7,7 @@ target_sources(dosboxcommon PRIVATE
   osd/draw_context.cpp
   osd/gl_draw.cpp
   osd/osd.cpp
+  osd/osd_port.cpp
   osd/sdl_draw.cpp
 
   render/auto_image_adjustments.cpp
