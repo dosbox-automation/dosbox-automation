@@ -6,7 +6,9 @@
 #include "dos.h"
 
 #include <array>
+#include <cassert>
 #include <cctype>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -118,6 +120,80 @@ static void DOS_AddDays(Bitu days)
 			dos.date.year++;
 		}
 	}
+}
+
+// For emulating temporary time changes (INT 21h/2Dh with CX=DX=0);
+// shared between the INT 21h handler and the CLOCK$ device
+static Bitu time_start = 0;
+
+// The CLOCK$ device record counts days from this date
+constexpr auto dos_clock_epoch = std::chrono::sys_days{
+        std::chrono::year{1980} / std::chrono::January / std::chrono::day{1}};
+
+void DOS_GetClockData(uint16_t* days, uint8_t* hours, uint8_t* minutes,
+                      uint8_t* seconds, uint8_t* hundredths)
+{
+	assert(days && hours && minutes && seconds && hundredths);
+
+	// Same midnight handling as INT 21h/2Ah: consume the BIOS
+	// midnight flag and roll the DOS date forward
+	const uint8_t midnights = mem_readb(BIOS_24_HOURS_FLAG);
+	mem_writeb(BIOS_24_HOURS_FLAG, 0);
+	if (midnights) {
+		DOS_AddDays(midnights);
+	}
+
+	// Same tick-to-time conversion as INT 21h/2Ch
+	uint32_t ticks = mem_readd(BIOS_TIMER);
+	if (time_start <= ticks) {
+		ticks -= time_start;
+	}
+	auto time = (Bitu)((100.0 / ((double)PIT_TICK_RATE / 65536.0)) *
+	                   (double)ticks);
+
+	*hundredths = (uint8_t)(time % 100);
+	time /= 100;
+	*seconds = (uint8_t)(time % 60);
+	time /= 60;
+	*minutes = (uint8_t)(time % 60);
+	time /= 60;
+	*hours = (uint8_t)(time % 24);
+
+	const std::chrono::year_month_day ymd = {
+	        std::chrono::year{dos.date.year},
+	        std::chrono::month{dos.date.month},
+	        std::chrono::day{dos.date.day}};
+
+	const auto epoch_days = (std::chrono::sys_days{ymd} - dos_clock_epoch).count();
+
+	*days = (epoch_days > 0) ? check_cast<uint16_t>(epoch_days) : 0;
+}
+
+bool DOS_SetClockData(const uint16_t days, const uint8_t hours,
+                      const uint8_t minutes, const uint8_t seconds,
+                      const uint8_t hundredths)
+{
+	if (!is_time_valid(hours, minutes, seconds) || hundredths > 99) {
+		return false;
+	}
+
+	const std::chrono::year_month_day ymd{dos_clock_epoch +
+	                                      std::chrono::days{days}};
+
+	dos.date.year  = check_cast<uint16_t>(static_cast<int>(ymd.year()));
+	dos.date.month = check_cast<uint8_t>(static_cast<unsigned>(ymd.month()));
+	dos.date.day   = check_cast<uint8_t>(static_cast<unsigned>(ymd.day()));
+
+	// Same tick math as INT 21h/2Dh, with the hundredths included
+	constexpr uint64_t ticks_per_day = 1573040;
+	const uint64_t total_hundredths  = (hours * 3600ull + minutes * 60ull +
+                                           seconds) * 100ull + hundredths;
+	const auto ticks = ticks_per_day * total_hundredths / (24 * 3600 * 100ull);
+
+	mem_writed(BIOS_TIMER, check_cast<uint32_t>(ticks));
+	time_start = 0;
+
+	return true;
 }
 
 static uint16_t DOS_GetAmount(void) {
@@ -464,8 +540,6 @@ static Bitu DOS_21Handler(void) {
 
 	char name1[DOSNAMEBUF+2+DOS_NAMELENGTH_ASCII];
 	char name2[DOSNAMEBUF+2+DOS_NAMELENGTH_ASCII];
-	
-	static Bitu time_start = 0; //For emulating temporary time changes.
 
 	switch (reg_ah) {
 	case 0x00:		/* Terminate Program */

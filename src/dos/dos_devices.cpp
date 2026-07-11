@@ -4,6 +4,7 @@
 
 #include "dos/dos_system.h"
 
+#include <algorithm>
 #include <cstring>
 
 #include "dosbox.h"
@@ -293,6 +294,121 @@ public:
 	}
 };
 
+// CLOCK$ character device (DOS 2.0+). Reading returns the 6-byte
+// date/time record, writing a record sets the DOS date and time.
+// Record layout per the MS-DOS Programmer's Reference:
+//   bytes 0-1  days since 1980-01-01 (little endian)
+//   byte  2    minutes
+//   byte  3    hours
+//   byte  4    hundredths of a second
+//   byte  5    seconds
+class device_CLOCK final : public DOS_Device {
+public:
+	device_CLOCK()
+	{
+		SetName("CLOCK$");
+	}
+
+	static constexpr uint16_t RecordSize = 6;
+
+	// Reads walk a cursor through a record snapshot so byte-wise
+	// readers see all six bytes, not the first byte repeatedly. At
+	// each record boundary one zero-byte read is returned: sequential
+	// readers (TYPE, COPY) take it as end-of-file and terminate
+	// instead of spinning forever on the emulation thread, matching
+	// how reading CLOCK$ terminates on real DOS.
+	bool Read(uint8_t* data, uint16_t* size) override
+	{
+		if (!data || !size) {
+			return false;
+		}
+
+		if (cursor >= RecordSize) {
+			cursor = 0;
+			*size  = 0;
+			return true;
+		}
+
+		if (cursor == 0) {
+			uint16_t days      = 0;
+			uint8_t hours      = 0;
+			uint8_t minutes    = 0;
+			uint8_t seconds    = 0;
+			uint8_t hundredths = 0;
+			DOS_GetClockData(&days, &hours, &minutes, &seconds,
+			                 &hundredths);
+
+			record[0] = static_cast<uint8_t>(days & 0xff);
+			record[1] = static_cast<uint8_t>(days >> 8);
+			record[2] = minutes;
+			record[3] = hours;
+			record[4] = hundredths;
+			record[5] = seconds;
+		}
+
+		const auto amount = std::min<uint16_t>(*size, RecordSize - cursor);
+		std::copy_n(&record[cursor], amount, data);
+		cursor = static_cast<uint8_t>(cursor + amount);
+		*size  = amount;
+		return true;
+	}
+
+	bool Write(uint8_t* data, uint16_t* size) override
+	{
+		if (!data || !size) {
+			return false;
+		}
+		// A full record sets the clock; anything shorter is
+		// swallowed like the real driver swallows partial writes
+		if (*size >= RecordSize) {
+			const auto days = static_cast<uint16_t>(data[0] |
+			                                        (data[1] << 8));
+			if (!DOS_SetClockData(days,
+			                      data[3],  // hours
+			                      data[2],  // minutes
+			                      data[5],  // seconds
+			                      data[4])) // hundredths
+			{
+				DOS_SetError(DOSERR_ACCESS_DENIED);
+				return false;
+			}
+			cursor = 0;
+		}
+		return true;
+	}
+
+	bool Seek(uint32_t* /*pos*/, uint32_t /*type*/) override
+	{
+		return true;
+	}
+
+	void Close() override
+	{
+		cursor = 0;
+	}
+
+	uint16_t GetInformation() override
+	{
+		// Character device with the clock bit (bit 3) set
+		return 0x8088;
+	}
+
+	bool ReadFromControlChannel(PhysPt /*bufptr*/, uint16_t /*size*/,
+	                            uint16_t* /*retcode*/) override
+	{
+		return false;
+	}
+	bool WriteToControlChannel(PhysPt /*bufptr*/, uint16_t /*size*/,
+	                           uint16_t* /*retcode*/) override
+	{
+		return false;
+	}
+
+private:
+	uint8_t record[RecordSize] = {};
+	uint8_t cursor             = 0;
+};
+
 class device_LPT1 final : public device_NUL {
 public:
 	device_LPT1()
@@ -370,8 +486,14 @@ uint8_t DOS_FindDevice(const char* name)
 	char* name_part = strrchr(fullname,'\\');
 	if(name_part) {
 		*name_part++ = 0;
+		// DOS 2.0+ accepts \DEV\ as a virtual directory into the
+		// device namespace (\DEV\NUL, \DEV\CON, ...). It exists on
+		// no drive, so it bypasses the directory check. Only the
+		// root-level form; a real subdirectory named DEV elsewhere
+		// in the path is still validated normally.
+		const bool is_dev_prefix = (strcmp(fullname, "DEV") == 0);
 		// Check validity of leading directory.
-		if(!Drives.at(drive)->TestDir(fullname)) {
+		if (!is_dev_prefix && !Drives.at(drive)->TestDir(fullname)) {
 			return DOS_DEVICES;
 		}
 	} else
@@ -558,6 +680,7 @@ void DOS_SetupDevices() {
 	DOS_Device * newdev3;
 	newdev3=new device_LPT1();
 	DOS_AddDevice(newdev3);
+	DOS_AddDevice(new device_CLOCK());
 }
 
 void DOS_ShutDownDevices()

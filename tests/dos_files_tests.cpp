@@ -306,6 +306,134 @@ TEST_F(DOS_FilesTest, DOS_FindFirst_FindDevice)
 	EXPECT_EQ(dos.errorcode, DOSERR_NONE);
 }
 
+// \DEV\ is a virtual directory into the device namespace (DOS 2.0+);
+// it must resolve devices without existing on any drive
+TEST_F(DOS_FilesTest, DOS_FindDevice_Dev_Prefix)
+{
+	EXPECT_NE(DOS_FindDevice("\\DEV\\NUL"), DOS_DEVICES);
+	EXPECT_NE(DOS_FindDevice("\\DEV\\CON"), DOS_DEVICES);
+	EXPECT_NE(DOS_FindDevice("Z:\\DEV\\NUL"), DOS_DEVICES);
+	// same device with and without the prefix
+	EXPECT_EQ(DOS_FindDevice("\\DEV\\NUL"), DOS_FindDevice("NUL"));
+	// extension is ignored on device names, also with the prefix
+	EXPECT_NE(DOS_FindDevice("\\DEV\\NUL.TXT"), DOS_DEVICES);
+}
+
+// CLOCK$ device: 6-byte record is days since 1980-01-01 (uint16 LE),
+// minutes, hours, hundredths, seconds
+TEST_F(DOS_FilesTest, DOS_Clock_Device_Read)
+{
+	EXPECT_NE(DOS_FindDevice("CLOCK$"), DOS_DEVICES);
+	EXPECT_NE(DOS_FindDevice("\\DEV\\CLOCK$"), DOS_DEVICES);
+
+	// The fixture has no functional PSP file table, so open in FCB
+	// mode where the entry is the real file handle
+	constexpr bool fcb = true;
+	uint16_t handle    = 0;
+	ASSERT_TRUE(DOS_OpenFile("\\DEV\\CLOCK$", OPEN_READ, &handle, fcb));
+
+	uint8_t record[6] = {};
+	uint16_t amount   = 6;
+	ASSERT_TRUE(DOS_ReadFile(handle, record, &amount, fcb));
+	EXPECT_EQ(amount, 6);
+
+	// Decode and compare against the live DOS date
+	const auto days = static_cast<uint16_t>(record[0] | (record[1] << 8));
+	const auto ymd  = std::chrono::year_month_day{
+                std::chrono::sys_days{std::chrono::year{1980} /
+                                      std::chrono::January /
+                                      std::chrono::day{1}} +
+                std::chrono::days{days}};
+
+	EXPECT_EQ(static_cast<int>(ymd.year()), dos.date.year);
+	EXPECT_EQ(static_cast<unsigned>(ymd.month()), dos.date.month);
+	EXPECT_EQ(static_cast<unsigned>(ymd.day()), dos.date.day);
+
+	EXPECT_LT(record[2], 60); // minutes
+	EXPECT_LT(record[3], 24); // hours
+	EXPECT_LT(record[4], 100); // hundredths
+	EXPECT_LT(record[5], 60); // seconds
+
+	// The record boundary signals one zero-byte read, which ends
+	// sequential readers like TYPE instead of spinning them forever
+	amount = 6;
+	ASSERT_TRUE(DOS_ReadFile(handle, record, &amount, fcb));
+	EXPECT_EQ(amount, 0);
+
+	// Byte-wise reads must walk the whole record, not return the
+	// first byte over and over
+	uint8_t bytes[6] = {};
+	for (auto i = 0; i < 6; ++i) {
+		amount = 1;
+		ASSERT_TRUE(DOS_ReadFile(handle, &bytes[i], &amount, fcb));
+		EXPECT_EQ(amount, 1);
+	}
+	const auto bytewise_days = static_cast<uint16_t>(bytes[0] |
+	                                                 (bytes[1] << 8));
+	EXPECT_EQ(bytewise_days, days);
+
+	ASSERT_TRUE(DOS_CloseFile(handle, fcb));
+}
+
+TEST_F(DOS_FilesTest, DOS_Clock_Device_Write_Read_Roundtrip)
+{
+	constexpr bool fcb = true;
+	uint16_t handle    = 0;
+	ASSERT_TRUE(DOS_OpenFile("CLOCK$", OPEN_READWRITE, &handle, fcb));
+
+	// 1995-07-15 = 5674 days after 1980-01-01; 12:34:56.00
+	const uint8_t set_record[6] = {
+	        static_cast<uint8_t>(5674 & 0xff),
+	        static_cast<uint8_t>(5674 >> 8),
+	        34, // minutes
+	        12, // hours
+	        0,  // hundredths
+	        56, // seconds
+	};
+	uint16_t amount = 6;
+	ASSERT_TRUE(DOS_WriteFile(handle, const_cast<uint8_t*>(set_record), &amount, fcb));
+
+	EXPECT_EQ(dos.date.year, 1995);
+	EXPECT_EQ(dos.date.month, 7);
+	EXPECT_EQ(dos.date.day, 15);
+
+	uint8_t record[6] = {};
+	amount            = 6;
+	ASSERT_TRUE(DOS_ReadFile(handle, record, &amount, fcb));
+	EXPECT_EQ(amount, 6);
+
+	const auto days = static_cast<uint16_t>(record[0] | (record[1] << 8));
+	EXPECT_EQ(days, 5674);
+
+	// The time survives a trip through BIOS timer ticks (54.9 ms
+	// each). Setting uses 1573040 ticks/day, reading uses
+	// PIT_TICK_RATE/65536 ticks/s (INT 21h/2Dh vs 2Ch constants);
+	// the constants diverge by ~1.5e-6, worth about a tick over
+	// half a day, on top of the floor() quantization on each side.
+	const int64_t set_hundredths = ((12 * 3600 + 34 * 60 + 56) * 100LL);
+	const int64_t got_hundredths = ((record[3] * 3600LL + record[2] * 60LL +
+                                        record[5]) * 100LL) + record[4];
+	EXPECT_NEAR(static_cast<double>(got_hundredths),
+	            static_cast<double>(set_hundredths), 20.0);
+
+	// An out-of-range record must be rejected
+	const uint8_t bad_record[6] = {0, 0, 77, 99, 0, 0};
+	amount                      = 6;
+	EXPECT_FALSE(DOS_WriteFile(handle, const_cast<uint8_t*>(bad_record), &amount, fcb));
+
+	ASSERT_TRUE(DOS_CloseFile(handle, fcb));
+}
+
+TEST_F(DOS_FilesTest, DOS_FindDevice_Dev_Prefix_Negative)
+{
+	// not a device, even with the prefix
+	EXPECT_EQ(DOS_FindDevice("\\DEV\\NODEV"), DOS_DEVICES);
+	// only the root-level \DEV\ form is virtual
+	EXPECT_EQ(DOS_FindDevice("\\DEV\\SUB\\NUL"), DOS_DEVICES);
+	// nonexistent directories other than \DEV\ still fail
+	EXPECT_EQ(DOS_FindDevice("\\NODIR\\NUL"), DOS_DEVICES);
+}
+
 TEST_F(DOS_FilesTest, DOS_FindFirst_FindFile)
 {
 	dos.errorcode = DOSERR_NONE;

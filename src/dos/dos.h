@@ -161,6 +161,16 @@ void DOS_PerformCdRomIoDelay(uint16_t data_transferred_bytes);
 uint16_t DOS_GetBiosTimePacked();
 uint16_t DOS_GetBiosDatePacked();
 
+// Current DOS date/time in the CLOCK$ device's units: days since
+// 1980-01-01 plus wall clock, mirroring INT 21h/2Ah-2Ch semantics
+void DOS_GetClockData(uint16_t* days, uint8_t* hours, uint8_t* minutes,
+                      uint8_t* seconds, uint8_t* hundredths);
+
+// Set the DOS date/time from CLOCK$ device units, mirroring INT
+// 21h/2Bh-2Dh. Returns false if the time fields are out of range.
+bool DOS_SetClockData(uint16_t days, uint8_t hours, uint8_t minutes,
+                      uint8_t seconds, uint8_t hundredths);
+
 // Date and Time Conversion
 
 constexpr uint16_t DOS_PackTime(const uint16_t hour,
