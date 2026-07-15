@@ -4,7 +4,6 @@ target_sources(dosboxcommon PRIVATE
   control.cpp
   cpu.cpp
   dos.cpp
-  dosbox.cpp
   drive.cpp
   freeze.cpp
   input.cpp
