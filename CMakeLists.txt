@@ -56,6 +56,24 @@ if (MSVC)
   # Disable cl/clangcl warnings about insecure C functions
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
+  # vcpkg builds Lua 5.5 as C (the port's cpp feature is off), so lua_yield
+  # and luaL_error leave a C function through setjmp/longjmp. On Windows
+  # MSVC's longjmp unwinds C++ frames, and the default /EHsc includes /EHc,
+  # which tells the compiler extern "C" functions never throw - so it drops
+  # the unwind bookkeeping around calls to the (extern "C") Lua entry
+  # points. The longjmp then unwinds the yielding frame through that stale
+  # state and double-frees a local: deterministic heap corruption on
+  # wait_for_text/type (aug-zj8l). /EHs is /EHsc without the extern-C-nothrow
+  # assumption; unwind stays correct. This corrects every luaL_error and
+  # lua_yield unwind site, not just those two functions.
+  # Replace the default rather than append so /EHsc does not linger.
+  if (CMAKE_CXX_FLAGS MATCHES "/EHsc")
+    string(REPLACE "/EHsc" "/EHs" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  elseif (NOT CMAKE_CXX_FLAGS MATCHES "/EHs")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs")
+  endif()
+  message(STATUS "aug-zj8l: MSVC C++ exception model set to /EHs")
+
 else()
 
   # Warning flags common to C and C++ code
@@ -217,6 +235,21 @@ if (OPT_SANITIZER OR OPT_THREAD_SANITIZER)
 
   # Ask to recover sanitizer output
   add_compile_options("-fsanitize-recover=all")
+endif()
+
+# Diagnostic option: emit a PDB for the release binary without changing
+# codegen. clang-cl /Zi emits CodeView into the objects (no codegen
+# difference); /DEBUG makes the linker produce dosbox.pdb. /DEBUG also
+# flips the linker defaults to /OPT:NOREF,NOICF, which would change the
+# binary layout, so both are re-pinned to keep the release image
+# identical (matters for heap-layout-sensitive bugs, see aug-zj8l).
+option(OPT_PDB "Emit PDB debug info for release diagnostics (Windows ClangCL)")
+if (OPT_PDB)
+  if (NOT MSVC)
+    message(FATAL_ERROR "OPT_PDB is only for the Windows ClangCL build")
+  endif()
+  add_compile_options(/Zi)
+  add_link_options(/DEBUG /OPT:REF /OPT:ICF)
 endif()
 
 # Check host endianness

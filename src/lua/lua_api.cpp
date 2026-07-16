@@ -549,18 +549,25 @@ static int LuaWaitForText(lua_State* L)
 		          ignorecase ? ", ignorecase" : "");
 	}
 
-	// Check immediately before yielding.
-	const auto text = ReadScreenText();
-	if (MatchSubstring(text, pattern, ignorecase)) {
-		OSD_ClearCommand();
-		lua_pushboolean(L, true);
+	// Check immediately before yielding. Scope the screen-text buffer so it
+	// is destroyed before the yield below: lua_yield leaves this frame by a
+	// non-local exit (longjmp, since Lua is built as C). glibc longjmp skips
+	// C++ destructors, so a live local here would leak; MSVC longjmp unwinds
+	// but can double-free it. Keeping the yielding frame free of live
+	// destructibles is correct on both (aug-zj8l).
+	{
+		const auto text = ReadScreenText();
+		if (MatchSubstring(text, pattern, ignorecase)) {
+			OSD_ClearCommand();
+			lua_pushboolean(L, true);
 
-		if (dl && dl->IsOpen()) {
-			dl->Trace(CurrentFrame(L),
-			          "dosbox.wait_for_text -> true (immediate)");
+			if (dl && dl->IsOpen()) {
+				dl->Trace(CurrentFrame(L),
+				          "dosbox.wait_for_text -> true (immediate)");
+			}
+
+			return 1;
 		}
-
-		return 1;
 	}
 
 	// Store the wait parameters for the coroutine to poll.

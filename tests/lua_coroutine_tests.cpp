@@ -225,6 +225,28 @@ TEST_F(LuaCoroutineTest, ReapTimesOutTypeWhenFramesStall)
 	EXPECT_EQ(coroutine.ReapStalledWaits(), Lua::ScriptState::Completed);
 }
 
+TEST_F(LuaCoroutineTest, WaitForTextLongPatternYieldsAndReaps)
+{
+	// aug-zj8l regression. A pattern longer than the std::string SSO buffer
+	// (>15 chars) forces heap storage, so the parameter temporary and the
+	// screen-text local in the yielding frame are real allocations. This
+	// exercises the full wait_for_text yield path with heap-backed strings;
+	// under a sanitizer build it guards against the leak/double-free that a
+	// destructible local crossing the yield used to cause. The Windows
+	// page-heap repro (developer-docs handoff) is the platform-specific gate.
+	coroutine.SetWallCeiling(std::chrono::milliseconds(5));
+	engine.LoadScript(
+	        "dosbox.wait_for_text('NEVERAPPEARS-0123456789-padding', 1000000)\n",
+	        "reap-wft-long");
+	coroutine.Start();
+
+	EXPECT_EQ(coroutine.DispatchFrame(1), Lua::ScriptState::Yielded);
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+	EXPECT_EQ(coroutine.ReapStalledWaits(), Lua::ScriptState::Completed);
+}
+
 TEST_F(LuaCoroutineTest, ReapLeavesWaitForTextAloneBeforeDeadline)
 {
 	// With frames stalled but the wall deadline far off, the reaper must
