@@ -204,37 +204,47 @@ if (OPT_SANITIZER AND OPT_THREAD_SANITIZER)
           "-DOPT_SANITIZER and -DOPT_THREAD_SANITIZER are mutually exclusive")
 endif()
 
-if (OPT_SANITIZER)
-  if (DOSBOX_PLATFORM_MACOS)
-    set(SANITIZER_FLAGS "address,pointer-compare,pointer-subtract,undefined")
-  else()
-    set(SANITIZER_FLAGS "address,pointer-compare,pointer-subtract,leak,undefined")
-  endif()
-
-elseif (OPT_THREAD_SANITIZER)
-  set(SANITIZER_FLAGS "thread")
-endif()
-
 if (OPT_SANITIZER OR OPT_THREAD_SANITIZER)
   if (MSVC)
-    message(FATAL_ERROR "Sanitizers are only supported for Clang and GCC compilers")
+    # The MSVC/clang-cl toolchain only supports AddressSanitizer on Windows;
+    # the thread, leak, and undefined-behaviour sanitizers are unavailable.
+    if (OPT_THREAD_SANITIZER)
+      message(FATAL_ERROR "The thread sanitizer is not supported by the MSVC/clang-cl toolchain; only OPT_SANITIZER (AddressSanitizer) is available on Windows")
+    endif()
+
+    # AddressSanitizer is incompatible with edit-and-continue debug info,
+    # incremental linking, and the /RTC runtime checks. CMake enables none of
+    # these by default, but we pin the debug info format and disable
+    # incremental linking to be safe.
+    # See: https://learn.microsoft.com/en-us/cpp/sanitizers/asan
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "ProgramDatabase")
+    add_compile_options("/fsanitize=address")
+    add_link_options("/INCREMENTAL:NO")
+
+  else()
+    # GCC and Clang
+    if (OPT_SANITIZER)
+      if (DOSBOX_PLATFORM_MACOS)
+        set(SANITIZER_FLAGS "address,pointer-compare,pointer-subtract,undefined")
+      else()
+        set(SANITIZER_FLAGS "address,pointer-compare,pointer-subtract,leak,undefined")
+      endif()
+    else()
+      set(SANITIZER_FLAGS "thread")
+    endif()
+
+    # Disable optimizations, increase amount of debug info
+    add_compile_options("-O0")
+    add_compile_options("-fno-omit-frame-pointer")
+    add_compile_options("-g")
+
+    # Enable selected sanitizer mechanisms
+    add_compile_options("-fsanitize=${SANITIZER_FLAGS}")
+    add_link_options("-fsanitize=${SANITIZER_FLAGS}")
+
+    # Ask to recover sanitizer output
+    add_compile_options("-fsanitize-recover=all")
   endif()
-
-  if (DOSBOX_PLATFORM_WINDOWS)
-    message(WARNING "Sanitizers were not tested on Windows")
-  endif()
-
-  # Disable optimizations, increase amount of debug info
-  add_compile_options("-O0")
-  add_compile_options("-fno-omit-frame-pointer")
-  add_compile_options("-g")
-
-  # Enable selected sanitizer mechanisms
-  add_compile_options("-fsanitize=${SANITIZER_FLAGS}")
-  add_link_options("-fsanitize=${SANITIZER_FLAGS}")
-
-  # Ask to recover sanitizer output
-  add_compile_options("-fsanitize-recover=all")
 endif()
 
 # Diagnostic option: emit a PDB for the release binary without changing

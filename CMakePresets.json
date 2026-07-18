@@ -208,6 +208,22 @@
         "UseMultiToolTask": "true",
         "EnforceProcessCountAcrossBuilds": "true"
       }
+    },
+    {
+      "name": "debug-windows-asan",
+      "displayName": "Debug (Windows, AddressSanitizer)",
+      "inherits": "debug-windows",
+      "cacheVariables": {
+        "OPT_SANITIZER": "ON"
+      }
+    },
+    {
+      "name": "debug-windows-vs2022-asan",
+      "displayName": "Debug (Windows VS2022, AddressSanitizer)",
+      "inherits": "debug-windows-vs2022",
+      "cacheVariables": {
+        "OPT_SANITIZER": "ON"
+      }
     }
   ],
   "buildPresets": [
