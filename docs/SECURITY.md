@@ -18,10 +18,11 @@ and patches are welcome in public.
 
 ## Security model in short
 
+For further details, see the full description in the manual:
+<https://dosbox-automation.org/0.84-da2/automation/security/>.
+
 The REST API gives full control over the emulated machine, which makes the
-webserver an attack surface by design. The full, current description lives
-in the manual: <https://dosbox-automation.org/0.84-da1/automation/security/>.
-The short version:
+webserver an attack surface by design. The short version:
 
 - Every API request needs a bearer token (64-char random hex, fresh per
   start, never fully logged, constant-time comparison). No default
