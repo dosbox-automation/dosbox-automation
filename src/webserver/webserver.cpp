@@ -11,7 +11,7 @@
 #include "private/auth.h"
 #include "private/cpu.h"
 #include "private/dos.h"
-#include "private/dosbox.h"
+#include "private/shutdown.h"
 #include "private/freeze.h"
 #include "private/io_port.h"
 #include "private/memory.h"

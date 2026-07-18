@@ -2,8 +2,8 @@
 // License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
 //
 
-#ifndef DOSBOX_WEBSERVER_DOSBOX_H
-#define DOSBOX_WEBSERVER_DOSBOX_H
+#ifndef DOSBOX_WEBSERVER_SHUTDOWN_H
+#define DOSBOX_WEBSERVER_SHUTDOWN_H
 
 #include "webserver/bridge.h"
 
@@ -19,4 +19,4 @@ public:
 
 } // namespace Webserver
 
-#endif // DOSBOX_WEBSERVER_DOSBOX_H
+#endif // DOSBOX_WEBSERVER_SHUTDOWN_H

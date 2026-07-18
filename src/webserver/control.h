@@ -5,7 +5,7 @@
 #ifndef DOSBOX_WEBSERVER_CONTROL_H
 #define DOSBOX_WEBSERVER_CONTROL_H
 
-#include "private/dosbox.h"
+#include "private/shutdown.h"
 
 #include "http/http.h"
 
