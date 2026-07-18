@@ -104,6 +104,11 @@ uint64_t GFX_GetRenderedFrameCount();
 
 void GFX_CaptureRenderedImage();
 
+// True when any consumer needs a post-shader readback of the frame
+// being presented: a rendered screenshot, rendered video capture, or a
+// pending webserver frame request.
+bool GFX_WantsRenderedFrameCapture();
+
 DosBox::Rect GFX_GetDesktopSize();
 
 float GFX_GetDpiScaleFactor();

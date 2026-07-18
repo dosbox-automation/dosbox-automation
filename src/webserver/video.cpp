@@ -5,6 +5,8 @@
 #include "video.h"
 #include "webserver.h"
 
+#include "webserver/private/frame_tap.h"
+
 #include "gui/render/render_shared.h"
 #include "misc/rendered_image.h"
 #include "misc/unicode.h"
@@ -208,15 +210,36 @@ static const char* pixel_format_name(PixelFormat pf)
 
 void VideoHandlers::GetFrame(const httplib::Request& req, httplib::Response& res)
 {
-	if (!RENDER_HasSharedFrame()) {
-		res.status = 503;
-		json err;
-		err["error"] = "No frame available yet";
-		send_json(res, err);
-		return;
+	const auto source = ParseFrameSource(req.get_param_value("mode"));
+
+	RenderedImage frame = {};
+
+	if (source == FrameSource::Rendered) {
+		// Long enough for the forced present to come around even at
+		// low frame rates; a paused or minimized emulator times out.
+		constexpr auto RenderedFrameTimeout = std::chrono::milliseconds(2000);
+
+		auto rendered = GetRenderedFrameTap().RequestAndWait(
+		        RenderedFrameTimeout);
+		if (!rendered) {
+			res.status = 503;
+			json err;
+			err["error"] = "No rendered frame available (nothing is being presented)";
+			send_json(res, err);
+			return;
+		}
+		frame = *rendered;
+	} else {
+		if (!RENDER_HasSharedFrame()) {
+			res.status = 503;
+			json err;
+			err["error"] = "No frame available yet";
+			send_json(res, err);
+			return;
+		}
+		frame = RENDER_GetSharedFrame();
 	}
 
-	auto frame = RENDER_GetSharedFrame();
 	auto format = req.get_param_value("format");
 
 	if (format.empty()) {

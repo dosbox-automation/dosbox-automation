@@ -53,6 +53,8 @@ CHECK_NARROWING();
 namespace Webserver {
 void ReplayDispatchFrame(uint64_t);
 void ApplyFreezes();
+bool RenderedFrameRequested();
+void DeliverRenderedFrame(const RenderedImage&);
 }
 
 void LuaDispatchFrame(uint64_t);
@@ -2482,20 +2484,30 @@ void GFX_CaptureRenderedImage()
 	assert(sdl.maybe_video_mode);
 	image.params.video_mode = *sdl.maybe_video_mode;
 
-	// The video encoder only reads the pixels, so it goes first; the
-	// image capturer takes ownership of the buffer, so it goes last.
-	// When it isn't active, the buffer is ours to release.
+	// The video encoder and the webserver tap only read the pixels,
+	// so they go first; the image capturer takes ownership of the
+	// buffer, so it goes last. When it isn't active, the buffer is
+	// ours to release.
 	if (CAPTURE_IsCapturingRenderedVideo()) {
 		CAPTURE_AddRenderedVideoFrame(image,
 		                              static_cast<float>(render.fps),
 		                              GFX_GetRenderedFrameCount());
 	}
 
+	Webserver::DeliverRenderedFrame(image);
+
 	if (CAPTURE_IsCapturingPostRenderImage()) {
 		CAPTURE_AddPostRenderImage(image);
 	} else {
 		image.free();
 	}
+}
+
+bool GFX_WantsRenderedFrameCapture()
+{
+	return CAPTURE_IsCapturingPostRenderImage() ||
+	       CAPTURE_IsCapturingRenderedVideo() ||
+	       Webserver::RenderedFrameRequested();
 }
 
 void GFX_MaybePresentFrame()
@@ -2508,8 +2520,11 @@ void GFX_MaybePresentFrame()
 	// rendered frame, regardless of the presentation mode. This is
 	// necessary to keep the contents of rendered and raw/upscaled
 	// screenshots in sync (so they capture the exact same frame) in
-	// multi-output image capture modes.
-	const auto force_present = CAPTURE_IsCapturingPostRenderImage();
+	// multi-output image capture modes. A pending webserver frame
+	// request forces a present for the same reason: it needs one to
+	// happen to be served at all.
+	const auto force_present = CAPTURE_IsCapturingPostRenderImage() ||
+	                           Webserver::RenderedFrameRequested();
 
 	const auto curr_frame_time_us =
 	        GetTicksDiff(start_us, sdl.presentation.last_present_time_us);

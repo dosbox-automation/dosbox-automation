@@ -410,8 +410,7 @@ void SdlRenderer::PresentFrame()
 	SDL_RenderClear(renderer);
 	SDL_RenderTexture(renderer, texture, nullptr, nullptr);
 
-	if (CAPTURE_IsCapturingPostRenderImage() ||
-	    CAPTURE_IsCapturingRenderedVideo()) {
+	if (GFX_WantsRenderedFrameCapture()) {
 		// glReadPixels() implicitly blocks until all pipelined
 		// rendering commands have finished, so we're guaranteed to
 		// read the contents of the up-to-date backbuffer here right

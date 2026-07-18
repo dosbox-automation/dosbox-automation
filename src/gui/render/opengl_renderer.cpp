@@ -506,8 +506,7 @@ void OpenGlRenderer::PresentFrame()
 	shader_pipeline->Render(vao);
 
 	// Optionally capture frame
-	if (CAPTURE_IsCapturingPostRenderImage() ||
-	    CAPTURE_IsCapturingRenderedVideo()) {
+	if (GFX_WantsRenderedFrameCapture()) {
 		// glReadPixels() implicitly blocks until all pipelined
 		// rendering commands have finished, so we're guaranteed to
 		// read the contents of the up-to-date backbuffer here right

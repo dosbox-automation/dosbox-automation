@@ -815,7 +815,7 @@
         ],
         "summary": "Capture the current video frame",
         "operationId": "getFrame",
-        "description": "Returns the current rendered frame. The format is chosen by the `format` query parameter or the `Accept` header. This is the clean emulator output and does not include the on-screen automation overlay (OSD). Returns 503 if no frame has been rendered yet.\n\nThe raw format is a binary header (uint32 width, uint32 height, int32 pitch, uint8 pixel_format, uint16 palette_count) followed by palette data when paletted, then the image data.",
+        "description": "Returns the current frame. The format is chosen by the `format` query parameter or the `Accept` header. The `mode` parameter selects the source: `raw` (default) is the clean emulator framebuffer at native resolution, `rendered` is the post-shader image as shown on screen at window resolution. Neither includes the on-screen automation overlay (OSD). Returns 503 if no frame is available (raw: nothing rendered yet; rendered: nothing is being presented).\n\nThe raw format is a binary header (uint32 width, uint32 height, int32 pitch, uint8 pixel_format, uint16 palette_count) followed by palette data when paletted, then the image data.",
         "parameters": [
           {
             "name": "format",
@@ -828,6 +828,19 @@
                 "raw"
               ],
               "default": "jpeg"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "description": "Frame source: the emulator framebuffer or the rendered display.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "raw",
+                "rendered"
+              ],
+              "default": "raw"
             }
           },
           {
