@@ -17,12 +17,13 @@
 #include "cpu/registers.h"
 #include "dos/programs/more_output.h"
 #include "dos/programs/setver.h"
-#include "gui/mapper.h"
 #include "hardware/timer.h"
 #include "misc/support.h"
 #include "shell/autoexec.h"
+#include "shell/shell_banner.h"
 #include "utils/fs_utils.h"
 #include "utils/string_utils.h"
+#include "webserver/webserver.h"
 
 callback_number_t call_shellstop = 0;
 
@@ -453,24 +454,13 @@ void DOS_Shell::Run()
 		const bool wants_welcome_banner = control->GetStartupVerbosity() >=
 		                                  StartupVerbosity::High;
 		if (wants_welcome_banner) {
-			WriteOut(MSG_Get("SHELL_STARTUP_BEGIN"),
-			         DOSBOX_GetDetailedVersion(), PRIMARY_MOD_NAME,
-			         PRIMARY_MOD_NAME, PRIMARY_MOD_PAD, PRIMARY_MOD_PAD,
-			         PRIMARY_MOD_NAME, PRIMARY_MOD_PAD);
-#if C_DEBUGGER
-			WriteOut(MSG_Get("SHELL_STARTUP_DEBUG"), MMOD2_NAME);
-#endif
-			if (is_machine_cga_mono()) {
-				WriteOut(MSG_Get("SHELL_STARTUP_CGA_MONO"),
-				         MMOD2_NAME);
-
-			} else if (is_machine_cga() || is_machine_pcjr_or_tandy()) {
-				WriteOut(MSG_Get("SHELL_STARTUP_CGA"), MMOD2_NAME);
-
-			} else if (is_machine_hercules()) {
-				WriteOut(MSG_Get("SHELL_STARTUP_HERC"));
-			}
-			WriteOut(MSG_Get("SHELL_STARTUP_END"));
+			const auto webserver_tag = MSG_Get(
+			        WEBSERVER_IsEnabled()
+			                ? "SHELL_STARTUP_WEBSERVER_ENABLED"
+			                : "SHELL_STARTUP_WEBSERVER_DISABLED");
+			WriteOut(MSG_Get("SHELL_STARTUP_BANNER"),
+			         DOSBOX_GetDetailedVersion(),
+			         webserver_tag.c_str());
 		}
 		safe_strcpy(input_line, line.c_str());
 		line.erase();
@@ -709,39 +699,9 @@ void SHELL_InitAndRun()
 	MSG_Add("SHELL_CMD_SUBST_NO_REMOVE", "Unable to remove, drive not in use.\n");
 	MSG_Add("SHELL_CMD_SUBST_FAILURE", "SUBST failed, the target drive may already exist.\nNote it is only possible to use SUBST on local drives.");
 
-	MSG_Add("SHELL_STARTUP_BEGIN",
-	        "[bgcolor=blue][color=white]╔═══════════════════════════════════════════════════════════════════════╗\n"
-	        "║ [color=light-green]Welcome to dosbox-automation %-37s[color=white]    ║\n"
-	        "║                                                                       ║\n"
-	        "║ For the [color=yellow]Getting Started guide[color=white] for new users, run the [color=light-green]GUIDE[color=white] command.   ║\n"
-	        "║ For the [color=yellow]User Manual[color=white], run the [color=light-green]MANUAL[color=white] command.                          ║\n"
-	        "║                                                                       ║\n"
-	        "║ To adjust the emulated CPU speed, press [color=light-red]%s+F11[color=white] and [color=light-red]%s+F12[color=white].%s%s        ║\n"
-	        "║ To open the keymapper, press [color=light-red]%s+F1[color=white].%s                                 ║\n"
-	        "║                                                                       ║\n");
-
-	MSG_Add("SHELL_STARTUP_CGA",
-	        "║ Press [color=light-red]F12[color=white] to set composite output ON, OFF, or AUTO (default).         ║\n"
-	        "║ [color=light-red]F10[color=white] selects the composite setting to change and [color=light-red](%s+)F11[color=white] changes it. ║\n"
-	        "║                                                                       ║\n");
-
-	MSG_Add("SHELL_STARTUP_CGA_MONO",
-	        "║ Press [color=light-red]F11[color=white] to cycle through green, amber, white and paper-white mode,  ║\n"
-	        "║ and [color=light-red]%s+F11[color=white] to change contrast/brightness settings.                   ║\n"
-	        "║                                                                       ║\n");
-
-	MSG_Add("SHELL_STARTUP_HERC",
-	        "║ Press [color=light-red]F11[color=white] to cycle through white, amber, and green monochrome color.  ║\n"
-	        "║                                                                       ║\n");
-
-	MSG_Add("SHELL_STARTUP_DEBUG",
-	        "║ Press [color=light-red]%s+Pause[color=white] to enter the debugger or start the exe with [color=light-green]DEBUG[color=white].    ║\n"
-	        "║                                                                       ║\n");
-
-	MSG_Add("SHELL_STARTUP_END",
-	        "║ [color=yellow]https://dosbox-automation.org[color=white]                                         ║\n"
-	        "╚═══════════════════════════════════════════════════════════════════════╝[reset]\n"
-	        "\n");
+	MSG_Add("SHELL_STARTUP_BANNER", ShellBannerFormat);
+	MSG_Add("SHELL_STARTUP_WEBSERVER_ENABLED", ShellBannerWebserverEnabledTag);
+	MSG_Add("SHELL_STARTUP_WEBSERVER_DISABLED", ShellBannerWebserverDisabledTag);
 
 	MSG_Add("SHELL_STARTUP_SUB",
 	        "[color=light-green]" DOSBOX_PROJECT_NAME " %s[reset]\n");

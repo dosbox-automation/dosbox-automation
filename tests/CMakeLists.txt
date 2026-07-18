@@ -25,6 +25,7 @@ add_executable(dosbox_tests
     ring_buffer_tests.cpp
     rwqueue_tests.cpp
     shader_pragma_parser_tests.cpp
+    shell_banner_tests.cpp
     shell_cmds_tests.cpp
     shell_redirection_tests.cpp
     string_utils_tests.cpp

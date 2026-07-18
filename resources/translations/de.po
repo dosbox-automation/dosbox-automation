@@ -12570,87 +12570,31 @@ msgstr ""
 "SUBST ist fehlgeschlagen; das Ziellaufwerk ist möglicherweise bereits vorhanden.\n"
 "Beachte, dass SUBST nur für lokale Laufwerke verwendet werden kann."
 
-#: src/shell/shell.cpp:711
+#: src/shell/shell.cpp:702
 #, c-format, no-wrap
-msgctxt "SHELL_STARTUP_BEGIN"
+msgctxt "SHELL_STARTUP_BANNER"
 msgid ""
-"[bgcolor=blue][color=white]╔═══════════════════════════════════════════════════════════════════════╗\n"
-"║ [color=light-green]Welcome to dosbox-automation %-37s[color=white]    ║\n"
-"║                                                                       ║\n"
-"║ For the [color=yellow]Getting Started guide[color=white] for new users, run the [color=light-green]GUIDE[color=white] command.   ║\n"
-"║ For the [color=yellow]User Manual[color=white], run the [color=light-green]MANUAL[color=white] command.                          ║\n"
-"║                                                                       ║\n"
-"║ To adjust the emulated CPU speed, press [color=light-red]%s+F11[color=white] and [color=light-red]%s+F12[color=white].%s%s        ║\n"
-"║ To open the keymapper, press [color=light-red]%s+F1[color=white].%s                                 ║\n"
-"║                                                                       ║\n"
-msgstr ""
-"[bgcolor=blue][color=white]╔═════════════════════════════════════════════════════════════════════╗\n"
-"║ [color=light-green]Willkommen zu dosbox-automation %-36s[color=white]║\n"
-"║                                                                     ║\n"
-"║ Für den [color=yellow]Einsteiger-Leitfaden[color=white] für neue Benutzer tippe: [color=light-green]GUIDE[color=white]         ║\n"
-"║ Für das [color=yellow]Benutzerhandbuch[color=white] tippe: [color=light-green]MANUAL[color=white]                              ║\n"
-"║                                                                     ║\n"
-"║ Emulierte CPU-Geschwindigkeit anpassen mit [color=light-red]%s+F11[color=white] und [color=light-red]%s+F12[color=white].%s%s   ║\n"
-"║ Aktiviere den Keymapper mit [color=light-red]%s+F1[color=white].%s                                ║\n"
-"║                                                                     ║\n"
-
-#: src/shell/shell.cpp:722
-#, c-format, no-wrap
-msgctxt "SHELL_STARTUP_CGA"
-msgid ""
-"║ Press [color=light-red]F12[color=white] to set composite output ON, OFF, or AUTO (default).         ║\n"
-"║ [color=light-red]F10[color=white] selects the composite setting to change and [color=light-red](%s+)F11[color=white] changes it. ║\n"
-"║                                                                       ║\n"
-msgstr ""
-"║ [color=light-red]F12[color=white] ändert den Composite-Ausgang auf EIN, AUS oder AUTO (Standard)    ║\n"
-"║ [color=light-red]F10[color=white] wählt zu ändernde Composite-Einstellung aus, [color=light-red](%s+)F11[color=white] ändert sie.║\n"
-"║                                                                       ║\n"
-
-#: src/shell/shell.cpp:727
-#, c-format, no-wrap
-msgctxt "SHELL_STARTUP_CGA_MONO"
-msgid ""
-"║ Press [color=light-red]F11[color=white] to cycle through green, amber, white and paper-white mode,  ║\n"
-"║ and [color=light-red]%s+F11[color=white] to change contrast/brightness settings.                   ║\n"
-"║                                                                       ║\n"
-msgstr ""
-"║ Benutze [color=light-red]F11[color=white], zum Umschalten der Farben des CGA-Modus,                 ║\n"
-"║ und [color=light-red]%s+F11[color=white], um die Kontrast-/Helligkeitseinstellungen zu ändern.     ║\n"
-"║                                                                       ║\n"
-
-#: src/shell/shell.cpp:732
-#, c-format, no-wrap
-msgctxt "SHELL_STARTUP_HERC"
-msgid ""
-"║ Press [color=light-red]F11[color=white] to cycle through white, amber, and green monochrome color.  ║\n"
-"║                                                                       ║\n"
-msgstr ""
-"║ Benutze [color=light-red]F11[color=white], zum Umschalten von weiß, orange und Grün monochrom.    ║\n"
-"║                                                                     ║\n"
-
-#: src/shell/shell.cpp:736
-#, c-format, no-wrap
-msgctxt "SHELL_STARTUP_DEBUG"
-msgid ""
-"║ Press [color=light-red]%s+Pause[color=white] to enter the debugger or start the exe with [color=light-green]DEBUG[color=white].    ║\n"
-"║                                                                       ║\n"
-msgstr ""
-"║ Drücke [color=light-red]%s+Pause[color=white] um Debugger zu starten oder starte ihn mit [color=yellow]DEBUG[color=white]. ║\n"
-"║                                                                     ║\n"
-
-#: src/shell/shell.cpp:740
-#, c-format, no-wrap
-msgctxt "SHELL_STARTUP_END"
-msgid ""
-"║ [color=yellow]https://dosbox-automation.org[color=white]                                         ║\n"
-"╚═══════════════════════════════════════════════════════════════════════╝[reset]\n"
+"[color=yellow]dosbox-automation [color=white]%s[reset] %s\n"
+"[color=white]https://www.dosbox-automation.org[reset][color=light-gray] - command list: [color=white]HELP[reset][color=light-gray], instructions: [color=white]MANUAL[reset]\n"
 "\n"
 msgstr ""
-"║ [color=yellow]https://dosbox-automation.org[color=white]                                       ║\n"
-"╚═════════════════════════════════════════════════════════════════════╝[reset]\n"
+"[color=yellow]dosbox-automation [color=white]%s[reset] %s\n"
+"[color=white]https://www.dosbox-automation.org[reset][color=light-gray] - Befehlsliste: [color=white]HELP[reset][color=light-gray], Handbuch: [color=white]MANUAL[reset]\n"
 "\n"
 
-#: src/shell/shell.cpp:745
+#: src/shell/shell.cpp:703
+#, no-wrap
+msgctxt "SHELL_STARTUP_WEBSERVER_ENABLED"
+msgid "[color=light-green][webserver enabled][reset]"
+msgstr "[color=light-green][Webserver aktiv][reset]"
+
+#: src/shell/shell.cpp:704
+#, no-wrap
+msgctxt "SHELL_STARTUP_WEBSERVER_DISABLED"
+msgid "[color=dark-gray][webserver disabled][reset]"
+msgstr "[color=dark-gray][Webserver inaktiv][reset]"
+
+#: src/shell/shell.cpp:706
 #, c-format, no-wrap
 msgctxt "SHELL_STARTUP_SUB"
 msgid "[color=light-green]dosbox-automation %s[reset]\n"
