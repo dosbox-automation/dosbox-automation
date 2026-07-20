@@ -68,7 +68,7 @@ static struct {
 
 static struct {
 	int raw      = 9;
-	int rendered = 0;
+	int rendered = 6;
 } compression_levels = {};
 
 void capture_video_set_compression_levels(const int raw_level, const int rendered_level)

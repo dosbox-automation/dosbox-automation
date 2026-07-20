@@ -774,13 +774,13 @@ static void init_capture_config_settings(SectionProp& section)
 	        "(9 by default). Raw frames are small (native resolution), so even maximum\n"
 	        "compression has negligible CPU cost.");
 
-	int_prop = section.AddInt("capture_video_compression_rendered", WhenIdle, 0);
+	int_prop = section.AddInt("capture_video_compression_rendered", WhenIdle, 6);
 	int_prop->SetMinMax(0, 9);
 	int_prop->SetHelp(
 	        "Zlib compression level for rendered video capture, 0 (store only) to 9\n"
-	        "(maximum) (0 by default). Rendered frames are large (window resolution),\n"
-	        "so lower values reduce CPU load during recording. The default of 0 (store\n"
-	        "only) avoids frame drops at the cost of larger files.");
+	        "(maximum) (6 by default). Rendered frames are large (window resolution),\n"
+	        "so lower values reduce CPU load during recording if the default causes\n"
+	        "slowdowns on your machine.");
 
 	auto* str_prop = section.AddString("default_image_capture_formats",
 	                                   WhenIdle,
