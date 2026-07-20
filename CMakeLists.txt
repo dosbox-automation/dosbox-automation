@@ -531,6 +531,9 @@ add_executable(dosbox src/main.cpp src/dosbox.cpp)
 if (OPT_DEBUGGER)
   set_target_properties(dosbox PROPERTIES OUTPUT_NAME dosbox_with_debugger)
 endif()
+if (WIN32)
+  target_sources(dosbox PRIVATE src/dosbox.rc)
+endif()
 
 set(LICENSE_FILES
   THIRD_PARTY_LICENSES.txt

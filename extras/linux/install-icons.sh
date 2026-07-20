@@ -6,7 +6,7 @@
 DEST_PATH="$HOME/.local/share"
 REMOVE=false
 USAGE=false
-DESKTOP_FILE="org.dosbox_staging.dosbox_staging.desktop"
+DESKTOP_FILE="org.dosbox_automation.dosbox_automation.desktop"
 
 strstr() {
     [ "${1#*$2*}" = "$1" ] && return 1

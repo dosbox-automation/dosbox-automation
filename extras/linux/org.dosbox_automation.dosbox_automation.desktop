@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=DOSBox Staging
+Name=dosbox-automation
 GenericName=DOS emulator
 GenericName[ar]=محاكي DOS
 GenericName[az]=DOS emulyatoru
@@ -54,10 +54,10 @@ GenericName[vi]=Trình mô phỏng DOS
 GenericName[wa]=Èn emulateu DOS
 GenericName[zh_CN]=DOS 模拟器
 GenericName[zh_TW]=DOS 模擬器
-Comment=DOS/x86 emulator focusing on ease of use
+Comment=DOS emulator with an HTTP automation API and Lua scripting
 Exec=dosbox
-Icon=org.dosbox_staging.dosbox_staging
+Icon=org.dosbox_automation.dosbox_automation
 Type=Application
 Terminal=false
-Keywords=dos;gaming;game;games;emulator;
+Keywords=dos;gaming;game;games;emulator;automation;
 Categories=Game;Emulator;

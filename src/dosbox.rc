@@ -1,0 +1,7 @@
+// This file is part of the dosbox-automation Project.
+// License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
+//
+
+// Application icon for Explorer, the taskbar, and pinned shortcuts.
+// The lowest-ID icon becomes the exe's icon.
+1 ICON "../resources/icons/windows/dosbox-automation.ico"

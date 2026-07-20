@@ -38,6 +38,8 @@
 #include "misc/cross.h"
 #include "misc/notifications.h"
 #include "misc/support.h"
+
+#include <SDL3_image/SDL_image.h>
 #include "misc/video.h"
 #include "utils/checks.h"
 #include "utils/env_utils.h"
@@ -1657,6 +1659,24 @@ static RenderBackend* create_renderer()
 	return nullptr;
 }
 
+// On X11 and Windows the window icon comes from the window itself;
+// only Wayland ignores this and resolves the icon via the app_id's
+// .desktop file (see the SDL_SetAppMetadata call).
+static void set_window_icon(SDL_Window* window)
+{
+	const auto icon_path = get_resource_path("icons/png", "icon_128.png");
+
+	auto* surface = IMG_Load(icon_path.string().c_str());
+	if (!surface) {
+		LOG_WARNING("SDL: Could not load window icon '%s': %s",
+		            icon_path.string().c_str(),
+		            SDL_GetError());
+		return;
+	}
+	SDL_SetWindowIcon(window, surface);
+	SDL_DestroySurface(surface);
+}
+
 static void set_keyboard_capture()
 {
 	assert(sdl.window);
@@ -1867,6 +1887,14 @@ void GFX_InitSdl()
 {
 	set_sdl_hints();
 
+	// Wayland's app_id and X11's WM_CLASS both come from this
+	// identifier. Without it SDL falls back to the binary name
+	// "dosbox", which desktop environments match to the wrong
+	// .desktop file (stock DOSBox's icon instead of ours).
+	SDL_SetAppMetadata(DOSBOX_PROJECT_NAME,
+	                   DOSBOX_GetDetailedVersion(),
+	                   "org.dosbox_automation.dosbox_automation");
+
 	// Initialise SDL
 	if (!SDL_Init(SDL_INIT_VIDEO)) {
 		E_Exit("SDL: Failed to init SDL video and timer: %s", SDL_GetError());
@@ -1938,6 +1966,8 @@ void GFX_InitAndStartGui()
 
 	sdl.window = sdl.renderer->GetWindow();
 	assert(sdl.window);
+
+	set_window_icon(sdl.window);
 
 #ifdef MACOSX
 	// The window is not always brought to the foreground after startup with
