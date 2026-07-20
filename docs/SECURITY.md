@@ -19,7 +19,7 @@ and patches are welcome in public.
 ## Security model in short
 
 For further details, see the full description in the manual:
-<https://dosbox-automation.org/0.84-da2/automation/security/>.
+<https://dosbox-automation.org/0.84-da3/automation/security/>.
 
 The REST API gives full control over the emulated machine, which makes the
 webserver an attack surface by design. The short version:
