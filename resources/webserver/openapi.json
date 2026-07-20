@@ -1401,6 +1401,102 @@
         }
       }
     },
+    "/api/v1/capture/video/compression": {
+      "get": {
+        "tags": [
+          "Capture"
+        ],
+        "summary": "Query video capture compression levels",
+        "operationId": "captureCompressionGet",
+        "description": "Zlib compression levels applied when the next video capture starts, one per capture mode. 0 is store only, 9 is maximum compression.",
+        "responses": {
+          "200": {
+            "description": "Current compression levels.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "raw": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9
+                    },
+                    "rendered": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9
+                    }
+                  }
+                },
+                "example": {
+                  "raw": 9,
+                  "rendered": 0
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Capture"
+        ],
+        "summary": "Set video capture compression levels",
+        "operationId": "captureCompressionSet",
+        "description": "Sets the zlib compression level for one or both capture modes. Takes effect when the next capture starts. Rejected while a video capture is running, because the running capture keeps the level it started with.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "raw": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9
+                  },
+                  "rendered": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9
+                  }
+                }
+              },
+              "example": {
+                "rendered": 2
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Applied compression levels for both modes.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "raw": 9,
+                  "rendered": 2
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or out-of-range level."
+          },
+          "409": {
+            "description": "A video capture is running."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
     "/api/v1/input/type": {
       "post": {
         "tags": [

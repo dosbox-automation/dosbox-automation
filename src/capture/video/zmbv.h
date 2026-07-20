@@ -122,7 +122,7 @@ public:
 	VideoCodec(const VideoCodec &) = delete;            // prevent copy
 	VideoCodec &operator=(const VideoCodec &) = delete; // prevent assignment
 
-	bool SetupCompress(int _width, int _height);
+	bool SetupCompress(int _width, int _height, int compression_level = 9);
 	bool SetupDecompress(int _width, int _height);
 	ZMBV_FORMAT BPPFormat(int bpp);
 	int NeededSize(int _width, int _height, ZMBV_FORMAT _format);

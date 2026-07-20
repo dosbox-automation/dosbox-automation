@@ -125,4 +125,111 @@ void CaptureStatusCommand::Get(const httplib::Request&, httplib::Response& res)
 	send_json(res, result);
 }
 
+// --- CaptureCompressionGetCommand ---
+
+void CaptureCompressionGetCommand::Execute()
+{
+	raw_level = CAPTURE_GetVideoCompressionLevel(VideoCaptureMode::Raw);
+	rendered_level = CAPTURE_GetVideoCompressionLevel(VideoCaptureMode::Rendered);
+}
+
+void CaptureCompressionGetCommand::Get(const httplib::Request&, httplib::Response& res)
+{
+	CaptureCompressionGetCommand cmd;
+	cmd.WaitForCompletion(250);
+
+	if (!cmd.error.empty()) {
+		res.status = 500;
+		json err;
+		err["error"] = cmd.error;
+		send_json(res, err);
+		return;
+	}
+
+	json result;
+	result["raw"]      = cmd.raw_level;
+	result["rendered"] = cmd.rendered_level;
+	send_json(res, result);
+}
+
+// --- CaptureCompressionSetCommand ---
+
+void CaptureCompressionSetCommand::Execute()
+{
+	// The level is latched at capture start (deflateInit2); changing it
+	// mid-recording would silently not apply, so refuse instead
+	if (CAPTURE_IsCapturingVideo()) {
+		rejected_recording_active = true;
+		return;
+	}
+	if (raw_level >= 0) {
+		CAPTURE_SetVideoCompressionLevel(VideoCaptureMode::Raw, raw_level);
+	}
+	if (rendered_level >= 0) {
+		CAPTURE_SetVideoCompressionLevel(VideoCaptureMode::Rendered,
+		                                 rendered_level);
+	}
+	raw_level = CAPTURE_GetVideoCompressionLevel(VideoCaptureMode::Raw);
+	rendered_level = CAPTURE_GetVideoCompressionLevel(VideoCaptureMode::Rendered);
+}
+
+void CaptureCompressionSetCommand::Put(const httplib::Request& req, httplib::Response& res)
+{
+	CaptureCompressionSetCommand cmd;
+
+	const auto j = json::parse(req.body);
+
+	if (!j.contains("raw") && !j.contains("rendered")) {
+		res.status = 400;
+		json err;
+		err["error"] = "body must contain 'raw' and/or 'rendered'";
+		send_json(res, err);
+		return;
+	}
+
+	for (const auto* key : {"raw", "rendered"}) {
+		if (!j.contains(key)) {
+			continue;
+		}
+		if (!j[key].is_number_integer() || j[key] < 0 || j[key] > 9) {
+			res.status = 400;
+			json err;
+			err["error"] = std::string(key) +
+			               " must be an integer from 0 to 9";
+			send_json(res, err);
+			return;
+		}
+	}
+
+	if (j.contains("raw")) {
+		cmd.raw_level = j["raw"];
+	}
+	if (j.contains("rendered")) {
+		cmd.rendered_level = j["rendered"];
+	}
+
+	cmd.WaitForCompletion(250);
+
+	if (!cmd.error.empty()) {
+		res.status = 500;
+		json err;
+		err["error"] = cmd.error;
+		send_json(res, err);
+		return;
+	}
+
+	if (cmd.rejected_recording_active) {
+		res.status = 409;
+		json err;
+		err["error"] = "cannot change compression levels while a video capture is running";
+		send_json(res, err);
+		return;
+	}
+
+	json result;
+	result["raw"]      = cmd.raw_level;
+	result["rendered"] = cmd.rendered_level;
+	send_json(res, result);
+}
+
 } // namespace Webserver

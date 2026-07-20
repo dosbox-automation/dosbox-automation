@@ -420,6 +420,71 @@ def test_frame_capture_to_file(dosbox, tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Video capture compression levels
+# ---------------------------------------------------------------------------
+
+def test_capture_compression_get_shape(dosbox):
+    r = dosbox.capture_compression()
+    assert r.status_code == 200
+    data = r.json()
+    assert isinstance(data["raw"], int)
+    assert isinstance(data["rendered"], int)
+    assert 0 <= data["raw"] <= 9
+    assert 0 <= data["rendered"] <= 9
+
+
+def test_capture_compression_set_and_restore(dosbox):
+    before = dosbox.capture_compression().json()
+
+    r = dosbox.capture_compression_set(raw=3, rendered=1)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["raw"] == 3
+    assert data["rendered"] == 1
+
+    # Partial update touches only the named mode
+    r = dosbox.capture_compression_set(rendered=5)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["raw"] == 3
+    assert data["rendered"] == 5
+
+    r = dosbox.capture_compression_set_raw(before)
+    assert r.status_code == 200
+    assert r.json() == before
+
+
+def test_capture_compression_set_validation(dosbox):
+    r = dosbox.capture_compression_set_raw({})
+    assert r.status_code == 400
+
+    r = dosbox.capture_compression_set(raw=10)
+    assert r.status_code == 400
+
+    r = dosbox.capture_compression_set(raw=-1)
+    assert r.status_code == 400
+
+    r = dosbox.capture_compression_set(rendered="fast")
+    assert r.status_code == 400
+
+
+def test_capture_compression_set_rejected_while_recording(dosbox):
+    r = dosbox.capture_video_start(mode="raw")
+    assert r.status_code == 200
+    try:
+        r = dosbox.capture_compression_set(raw=1)
+        assert r.status_code == 409
+    finally:
+        r = dosbox.capture_video_stop()
+        assert r.status_code == 200
+
+    # After stopping, setting works again
+    before = dosbox.capture_compression().json()
+    r = dosbox.capture_compression_set_raw(before)
+    assert r.status_code == 200
+
+
+# ---------------------------------------------------------------------------
 # Drive swap validation
 # ---------------------------------------------------------------------------
 

@@ -36,6 +36,26 @@ public:
 	VideoCaptureEndReason end_reason = VideoCaptureEndReason::NotEnded;
 };
 
+class CaptureCompressionGetCommand : public Command {
+public:
+	void Execute() override;
+	static void Get(const httplib::Request& req, httplib::Response& res);
+
+	int raw_level      = 0;
+	int rendered_level = 0;
+};
+
+class CaptureCompressionSetCommand : public Command {
+public:
+	void Execute() override;
+	static void Put(const httplib::Request& req, httplib::Response& res);
+
+	// -1 = leave unchanged; filled with the applied values on success
+	int raw_level      = -1;
+	int rendered_level = -1;
+	bool rejected_recording_active = false;
+};
+
 } // namespace Webserver
 
 #endif // DOSBOX_WEBSERVER_CAPTURE_H

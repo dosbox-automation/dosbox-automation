@@ -63,6 +63,12 @@ void CAPTURE_StopVideoCapture();
 VideoCaptureMode CAPTURE_GetVideoCaptureMode();
 bool CAPTURE_IsCapturingRenderedVideo();
 
+// Per-mode zlib compression level (0 = store only, 9 = maximum) applied
+// when the next video capture starts; a running capture keeps the level
+// it started with.
+int CAPTURE_GetVideoCompressionLevel(const VideoCaptureMode mode);
+void CAPTURE_SetVideoCompressionLevel(const VideoCaptureMode mode, const int level);
+
 // Feed one presented post-shader frame from the present path. The
 // rendered frame count paces the output: re-presents of the same
 // emulated frame are skipped and presentation gaps are padded with

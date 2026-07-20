@@ -126,6 +126,23 @@ class DosboxClient:
     def recording_status(self) -> requests.Response:
         return self._get("/api/v1/input/record/status")
 
+    # --- Video capture ---
+
+    def capture_video_start(self, mode: str = "raw") -> requests.Response:
+        return self._post("/api/v1/capture/video/start", json={"mode": mode})
+
+    def capture_video_stop(self) -> requests.Response:
+        return self._post("/api/v1/capture/video/stop")
+
+    def capture_compression(self) -> requests.Response:
+        return self._get("/api/v1/capture/video/compression")
+
+    def capture_compression_set(self, **levels) -> requests.Response:
+        return self._put("/api/v1/capture/video/compression", json=levels)
+
+    def capture_compression_set_raw(self, body: dict) -> requests.Response:
+        return self._put("/api/v1/capture/video/compression", json=body)
+
     # --- Video ---
 
     def frame(self, fmt: str = "jpeg", quality: int = 98) -> requests.Response:

@@ -26,9 +26,15 @@ constexpr uint8_t Mask_DeltaPalette = 0x02;
 
 // Compression flags
 constexpr uint8_t COMPRESSION_ZLIB     = 1;
-constexpr int ZLIB_COMPRESSION_LEVEL   = 6;          // 0 to 9 (0 = no compression)
 constexpr auto ZLIB_COMPRESSION_METHOD = Z_DEFLATED; // currently the only option
-constexpr int ZLIB_MEM_LEVEL           = 9;          // 1 to 9 (default 8)
+
+// Upstream passed the memLevel constant as windowBits too, giving a
+// 512-byte sliding window: zlib then rebases its 64K-entry hash table
+// every 512 input bytes (slide_hash), which dominated rendered-capture
+// profiles at 55% of total CPU. 15 = the standard 32KB window; the zlib
+// header encodes the window size, so every standard inflate accepts it.
+constexpr int ZLIB_WINDOW_BITS = 15; // 9 to 15 (15 = 32KB window)
+constexpr int ZLIB_MEM_LEVEL   = 9;  // 1 to 9 (default 8)
 constexpr auto ZLIB_STRATEGY           = Z_FILTERED; // Z_DEFAULT_STRATEGY, Z_FILTERED,
                                                      // Z_HUFFMAN_ONLY, Z_RLE, Z_FIXED
 
@@ -242,13 +248,13 @@ void VideoCodec::AddXorFrame()
 	}
 }
 
-bool VideoCodec::SetupCompress(const int _width, const int _height)
+bool VideoCodec::SetupCompress(const int _width, const int _height, const int compression_level)
 {
 	width  = _width;
 	height = _height;
 	pitch  = _width + 2 * MAX_VECTOR;
 	format = ZMBV_FORMAT::NONE;
-	if (deflateInit2(&zstream, ZLIB_COMPRESSION_LEVEL, ZLIB_COMPRESSION_METHOD, ZLIB_MEM_LEVEL, ZLIB_MEM_LEVEL, ZLIB_STRATEGY) !=
+	if (deflateInit2(&zstream, compression_level, ZLIB_COMPRESSION_METHOD, ZLIB_WINDOW_BITS, ZLIB_MEM_LEVEL, ZLIB_STRATEGY) !=
 	    Z_OK)
 		return false;
 	return true;

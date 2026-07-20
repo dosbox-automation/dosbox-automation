@@ -66,6 +66,32 @@ static struct {
 	uint32_t min_free_mb     = 0;
 } free_space_limit = {};
 
+static struct {
+	int raw      = 9;
+	int rendered = 0;
+} compression_levels = {};
+
+void capture_video_set_compression_levels(const int raw_level, const int rendered_level)
+{
+	compression_levels.raw      = raw_level;
+	compression_levels.rendered = rendered_level;
+}
+
+int capture_video_get_compression_level(const bool rendered)
+{
+	return rendered ? compression_levels.rendered : compression_levels.raw;
+}
+
+void capture_video_set_compression_level(const bool rendered, const int level)
+{
+	assert(level >= 0 && level <= 9);
+	if (rendered) {
+		compression_levels.rendered = level;
+	} else {
+		compression_levels.raw = level;
+	}
+}
+
 void capture_video_set_free_space_limit(const std_fs::path& capture_dir,
                                         const uint32_t min_free_mb)
 {
@@ -417,7 +443,8 @@ void capture_video_add_audio_data(const uint32_t sample_rate,
 
 static void create_avi_file(const uint16_t width, const uint16_t height,
                             const PixelFormat pixel_format,
-                            const float frames_per_second, ZMBV_FORMAT format)
+                            const float frames_per_second, ZMBV_FORMAT format,
+                            const bool is_rendered)
 {
 	video.handle = CAPTURE_CreateFile(CaptureType::Video);
 	if (!video.handle) {
@@ -438,7 +465,9 @@ static void create_avi_file(const uint16_t width, const uint16_t height,
 	OSD::OsdManager::Instance().ClearByTag(OsdNoticeTag);
 
 	video.codec = new VideoCodec();
-	if (!video.codec->SetupCompress(width, height)) {
+	const auto level = is_rendered ? compression_levels.rendered
+	                               : compression_levels.raw;
+	if (!video.codec->SetupCompress(width, height, level)) {
 		return;
 	}
 
@@ -647,7 +676,8 @@ void capture_video_add_frame(const RenderedImage& image, const float frames_per_
 		                raw_height,
 		                src.pixel_format,
 		                frames_per_second,
-		                zmbv_format);
+		                zmbv_format,
+		                CAPTURE_IsCapturingRenderedVideo());
 	}
 	if (!video.handle) {
 		// The recording could not start (already reported); stop the

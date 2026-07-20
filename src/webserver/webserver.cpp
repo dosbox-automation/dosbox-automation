@@ -174,6 +174,8 @@ static void setup_api_handlers()
 	server.Post("/api/v1/capture/video/start", CaptureStartCommand::Post);
 	server.Post("/api/v1/capture/video/stop", CaptureStopCommand::Post);
 	server.Get("/api/v1/capture/video/status", CaptureStatusCommand::Get);
+	server.Get("/api/v1/capture/video/compression", CaptureCompressionGetCommand::Get);
+	server.Put("/api/v1/capture/video/compression", CaptureCompressionSetCommand::Put);
 }
 
 static std::string strip_port(const std::string& host)

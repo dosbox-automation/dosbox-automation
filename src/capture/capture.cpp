@@ -387,6 +387,17 @@ bool CAPTURE_IsCapturingRenderedVideo()
 	       capture.video_capture_mode == VideoCaptureMode::Rendered;
 }
 
+int CAPTURE_GetVideoCompressionLevel(const VideoCaptureMode mode)
+{
+	return capture_video_get_compression_level(mode == VideoCaptureMode::Rendered);
+}
+
+void CAPTURE_SetVideoCompressionLevel(const VideoCaptureMode mode, const int level)
+{
+	capture_video_set_compression_level(mode == VideoCaptureMode::Rendered,
+	                                    level);
+}
+
 void CAPTURE_AddRenderedVideoFrame(const RenderedImage& image,
                                    const float frames_per_second,
                                    const uint64_t rendered_frame_count)
@@ -652,6 +663,10 @@ void CAPTURE_Init()
 	capture_video_set_free_space_limit(capture.path,
 	                                   check_cast<uint32_t>(min_free_mb));
 
+	capture_video_set_compression_levels(
+	        section->GetInt("capture_video_compression"),
+	        section->GetInt("capture_video_compression_rendered"));
+
 	const auto prefs = section->GetString("default_image_capture_formats");
 
 	image_capturer = std::make_unique<ImageCapturer>(prefs);
@@ -751,6 +766,21 @@ static void init_capture_config_settings(SectionProp& section)
 	        "'capture_dir' is checked regularly; when it drops below this many megabytes,\n"
 	        "the recording is stopped cleanly and a notice is shown. Set to 0 to disable\n"
 	        "the check.");
+
+	int_prop = section.AddInt("capture_video_compression", WhenIdle, 9);
+	int_prop->SetMinMax(0, 9);
+	int_prop->SetHelp(
+	        "Zlib compression level for raw video capture, 0 (store only) to 9 (maximum)\n"
+	        "(9 by default). Raw frames are small (native resolution), so even maximum\n"
+	        "compression has negligible CPU cost.");
+
+	int_prop = section.AddInt("capture_video_compression_rendered", WhenIdle, 0);
+	int_prop->SetMinMax(0, 9);
+	int_prop->SetHelp(
+	        "Zlib compression level for rendered video capture, 0 (store only) to 9\n"
+	        "(maximum) (0 by default). Rendered frames are large (window resolution),\n"
+	        "so lower values reduce CPU load during recording. The default of 0 (store\n"
+	        "only) avoids frame drops at the cost of larger files.");
 
 	auto* str_prop = section.AddString("default_image_capture_formats",
 	                                   WhenIdle,

@@ -16,6 +16,11 @@ void capture_video_add_frame(const RenderedImage& image,
 void capture_video_set_free_space_limit(const std_fs::path& capture_dir,
                                         const uint32_t min_free_mb);
 
+void capture_video_set_compression_levels(int raw_level, int rendered_level);
+
+int capture_video_get_compression_level(bool rendered);
+void capture_video_set_compression_level(bool rendered, int level);
+
 void capture_video_add_audio_data(const uint32_t sample_rate,
                                   const uint32_t num_sample_frames,
                                   const int16_t* sample_frames);
