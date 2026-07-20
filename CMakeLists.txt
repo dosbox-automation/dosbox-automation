@@ -150,6 +150,13 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options("--param" "max-gcse-memory=300000")
 endif()
 
+# Project decision: release builds use -O2 instead of CMake's -O3
+# default. MSVC's own /O2 release default already matches.
+if (NOT MSVC)
+  set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+endif()
+
 if (APPLE)
   # TODO: These are sprintf deprecated warnings. We probably do want to remove
   # sprintf usage at some point.
