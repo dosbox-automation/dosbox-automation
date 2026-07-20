@@ -536,7 +536,7 @@ static void ParsePathList(const std::string& val,
 
 PolicyPaths ParsePolicyConfig(const std::filesystem::path& config_path)
 {
-	constexpr int max_entries = 3;
+	constexpr int max_entries = 5;
 	auto result               = PolicyPaths{};
 
 	auto file = std::ifstream(config_path);

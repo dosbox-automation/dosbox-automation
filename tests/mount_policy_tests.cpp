@@ -727,23 +727,28 @@ TEST_F(MountPolicyTest, ParseIgnoresOtherSections)
 	EXPECT_TRUE(paths.allowed_bases.empty());
 }
 
-TEST_F(MountPolicyTest, ParseCapAt3)
+TEST_F(MountPolicyTest, ParseCapAtFive)
 {
-	const auto d1 = CreateDir("a");
-	const auto d2 = CreateDir("b");
-	const auto d3 = CreateDir("c");
-	const auto d4 = CreateDir("d");
-	const auto d5 = CreateDir("e");
+	auto list = std::string();
+	for (const auto* name : {"a", "b", "c", "d", "e", "f"}) {
+		const auto dir = CreateDir(name);
+		if (!list.empty()) {
+			list += ";";
+		}
+		list += dir.string();
+	}
 
 	const auto cfg = CreateFile("test.conf",
 	                            "[webserver]\n"
-	                            "mount_allowed_bases = " +
-	                                    d1.string() + ";" + d2.string() +
-	                                    ";" + d3.string() + ";" + d4.string() +
-	                                    ";" + d5.string() + "\n");
+	                            "mount_allowed_bases = " + list + "\n"
+	                            "mount_allowed_image_roots = " + list + "\n");
 
 	const auto paths = MountPolicy::ParsePolicyConfig(cfg);
-	EXPECT_EQ(paths.allowed_bases.size(), 3u);
+	EXPECT_EQ(paths.allowed_bases.size(), 5u);
+	EXPECT_EQ(paths.allowed_image_roots.size(), 5u);
+	// The first five survive in order; only the sixth is dropped
+	EXPECT_EQ(paths.allowed_bases.front(), fs::canonical(tmp_dir / "a"));
+	EXPECT_EQ(paths.allowed_bases.back(), fs::canonical(tmp_dir / "e"));
 }
 
 TEST_F(MountPolicyTest, ParseNonexistentPathDropped)
