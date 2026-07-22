@@ -491,16 +491,20 @@ void DOS_PerformCdRomIoDelay(uint16_t data_transferred_bytes)
 	} while (PIC_FullIndex() < endtime);
 }
 
+// Fix: apply DOS file I/O delay unconditionally instead of capping it
+// at the remaining CPU slice. The old cap made I/O speed depend on PIC
+// event density (e.g. per-scanline vs chunked VGA rendering).
+// CPU_Cycles may go negative; the tick accounting absorbs the remainder.
+// Adapted from dosbox-staging PR #4991 (John Novak, 2026).
 static inline void modify_cycles(Bits value)
 {
-	if ((4 * value + 5) < CPU_Cycles) {
-		CPU_Cycles -= 4*value;
-		CPU_IODelayRemoved += 4*value;
-	} else {
-		CPU_IODelayRemoved += CPU_Cycles/*-5*/; //don't want to mess with negative
-		CPU_Cycles = 5;
-	}
+	CPU_Cycles -= 4 * value;
+	CPU_IODelayRemoved += 4 * value;
 }
+
+// Expose modify_cycles for unit testing via forward declaration.
+void dos_test_modify_cycles(Bits value) { modify_cycles(value); }
+
 #else
 static inline void modify_cycles(Bits /* value */) {
 	return;

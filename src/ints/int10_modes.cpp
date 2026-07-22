@@ -896,6 +896,12 @@ static void finish_set_mode(bool clearmem) {
 	// Set cursor shape
 	if (CurMode->type==M_TEXT) {
 		INT10_SetCursorShape(0x06,0x07);
+	} else if (is_machine_ega_or_better()) {
+		// Clear stale text cursor state from the BDA on graphics
+		// mode switches. Some TSRs check this word to distinguish
+		// graphics from text mode.
+		// Cherry-picked from dosbox-staging PR #4959 (codengine).
+		real_writew(BIOSMEM_SEG, BIOSMEM_CURSOR_TYPE, 0);
 	}
 	// Set cursor pos for page 0..7
 	for (uint8_t ct=0;ct<8;ct++) INT10_SetCursorPos(0,0,ct);

@@ -4,10 +4,12 @@ find_package(GTest REQUIRED)
 add_executable(dosbox_tests
     ansi_code_markup_tests.cpp
     batch_file_tests.cpp
+    bda_cursor_type_tests.cpp
     bit_view_tests.cpp
     bitops_tests.cpp
     cmd_move_tests.cpp
     dos_files_tests.cpp
+    dos_io_delay_tests.cpp
     dos_memory_struct_tests.cpp
     dosbox_test_fixture.h
     drives_tests.cpp

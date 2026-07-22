@@ -2572,6 +2572,20 @@ dosbox-automation is a fork of DOSBox Staging, which is a fork of DOSBox.
                  License: GPL-2.0-or-later
                  Homepage: https://dosbox-staging.github.io/
 
+  Cherry-picked fixes from DOSBox Staging:
+
+    DOS file I/O delay fix (src/dos/dos.cpp modify_cycles)
+                 Author: John Novak and dosbox-staging contributors
+                 Source: https://github.com/dosbox-staging/dosbox-staging/pull/4991
+                 License: GPL-2.0-or-later
+                 Local changes: attribution comment added, adapted to our tree.
+
+    BDA cursor type clear on EGA/VGA graphics modes (src/ints/int10_modes.cpp)
+                 Author: codengine and dosbox-staging contributors
+                 Source: https://github.com/dosbox-staging/dosbox-staging/pull/4959
+                 License: GPL-2.0-or-later
+                 Local changes: attribution comment added.
+
 
 ================================================================================
 
