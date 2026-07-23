@@ -13,6 +13,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#if defined(LINUX)
+#include <gnu/libc-version.h>
+#include <sys/utsname.h>
+#endif
+
 #if C_DEBUGGER
 #include "debugger/debugger.h"
 #include "debugger/debugger_inc.h"
@@ -1883,6 +1888,41 @@ static void handle_macos_dosbox_package_drop(const std::string& dropped_file_pat
 }
 #endif
 
+#if defined(LINUX)
+static void LogSystemInfo(const std::string& video_driver)
+{
+	struct utsname uts = {};
+	if (uname(&uts) == 0) {
+		LOG_MSG("SYSTEM: %s %s (%s)", uts.sysname, uts.release, uts.machine);
+	}
+
+	const auto* glibc_ver = gnu_get_libc_version();
+	if (glibc_ver) {
+		LOG_MSG("SYSTEM: glibc %s", glibc_ver);
+	}
+
+	const auto* xdg_session = getenv("XDG_SESSION_TYPE");
+	const auto* wayland_display = getenv("WAYLAND_DISPLAY");
+
+	if (xdg_session) {
+		LOG_MSG("SYSTEM: session %s", xdg_session);
+	}
+
+	// Detect Xwayland fallback: video driver is x11 but a Wayland
+	// session is active (WAYLAND_DISPLAY is set)
+	const bool is_xwayland = video_driver == "x11" && wayland_display &&
+	                         wayland_display[0] != '\0';
+
+	if (is_xwayland) {
+		LOG_MSG("SDL: running on Xwayland (x11 driver, Wayland session)");
+	} else if (video_driver == "wayland") {
+		LOG_MSG("SDL: running on native Wayland");
+	} else if (video_driver == "x11") {
+		LOG_MSG("SDL: running on X11");
+	}
+}
+#endif
+
 void GFX_InitSdl()
 {
 	set_sdl_hints();
@@ -1919,7 +1959,13 @@ void GFX_InitSdl()
 	        SDL_VERSIONNUM_MAJOR(sdl_version),
 	        SDL_VERSIONNUM_MINOR(sdl_version),
 	        SDL_VERSIONNUM_MICRO(sdl_version));
-	LOG_MSG("SDL: %s video initialised", SDL_GetCurrentVideoDriver());
+
+	const auto video_driver = SDL_GetCurrentVideoDriver();
+	LOG_MSG("SDL: %s video initialised", video_driver);
+
+#if defined(LINUX)
+	LogSystemInfo(video_driver ? video_driver : "");
+#endif
 
 #ifdef MACOSX
 	// Check for .dosbox document packages dropped from Finder
