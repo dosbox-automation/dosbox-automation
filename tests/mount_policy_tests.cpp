@@ -618,6 +618,99 @@ TEST_F(MountPolicyTest, ImagePathInteractiveIgnoresRoots)
 	EXPECT_TRUE(verdict.allowed);
 }
 
+// -- Conf anchor for API image mounts (aug-fnq2) --
+//
+// A directory under the conf anchor is already mountable. An image file
+// sitting in that same directory was not, so a recipe that swaps disks
+// over REST failed on any machine whose primary config did not happen to
+// list the path. The anchor now counts as a root here too.
+
+TEST_F(MountPolicyTest, ImagePathApiUnderConfAnchor)
+{
+	const auto anchor = CreateDir("confdir");
+	const auto img    = CreateFatImage("confdir/disk2.img");
+
+	const auto verdict = MountPolicy::ValidateImagePath(img,
+	                                                    MountOrigin::Api,
+	                                                    {},
+	                                                    anchor);
+
+	EXPECT_TRUE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::None);
+}
+
+TEST_F(MountPolicyTest, ImagePathApiOutsideConfAnchorAndRoots)
+{
+	const auto anchor    = CreateDir("confdir");
+	const auto elsewhere = CreateFatImage("elsewhere/disk.img");
+
+	const auto verdict = MountPolicy::ValidateImagePath(elsewhere,
+	                                                    MountOrigin::Api,
+	                                                    {},
+	                                                    anchor);
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::OutsideWhitelist);
+}
+
+TEST_F(MountPolicyTest, ImagePathApiNoAnchorNoRootsBlocks)
+{
+	const auto img = CreateFatImage("somewhere/disk.img");
+
+	const auto verdict = MountPolicy::ValidateImagePath(img,
+	                                                    MountOrigin::Api,
+	                                                    {},
+	                                                    {});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::OutsideWhitelist);
+}
+
+TEST_F(MountPolicyTest, ImagePathApiAnchorAndRootsAreAdditive)
+{
+	const auto anchor = CreateDir("confdir");
+	const auto extra  = CreateDir("extra_images");
+	const auto img    = CreateFatImage("extra_images/disk.img");
+
+	const auto verdict = MountPolicy::ValidateImagePath(img,
+	                                                    MountOrigin::Api,
+	                                                    {extra},
+	                                                    anchor);
+
+	EXPECT_TRUE(verdict.allowed);
+}
+
+TEST_F(MountPolicyTest, ImagePathInteractiveUnaffectedByAnchor)
+{
+	const auto anchor    = CreateDir("confdir");
+	const auto elsewhere = CreateFatImage("elsewhere/disk.img");
+
+	const auto verdict = MountPolicy::ValidateImagePath(elsewhere,
+	                                                    MountOrigin::Interactive,
+	                                                    {},
+	                                                    anchor);
+
+	EXPECT_TRUE(verdict.allowed);
+}
+
+#if !defined(WIN32)
+TEST_F(MountPolicyTest, ImagePathApiAnchorDoesNotUnblockSystemPath)
+{
+	// The anchor widens the whitelist. It must not reach past the
+	// system-path denylist, which is checked first.
+	if (!fs::exists("/etc/hostname")) {
+		GTEST_SKIP() << "/etc/hostname not available";
+	}
+	const auto verdict = MountPolicy::ValidateImagePath(fs::path("/etc/hostname"),
+	                                                    MountOrigin::Api,
+	                                                    {},
+	                                                    fs::path("/etc"));
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::SystemPath);
+}
+#endif
+
 // -- Attack scenarios --
 
 TEST_F(MountPolicyTest, HardlinkToPasswdCaughtByStructuralValidation)

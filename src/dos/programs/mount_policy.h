@@ -55,9 +55,12 @@ MountVerdict ValidateDirectoryMount(const std::filesystem::path& raw_path,
                                     const std::vector<std::filesystem::path>& allowed_bases,
                                     DirMountPolicy policy);
 
+// conf_anchor counts as an allowed root for Api origin, matching
+// ValidateDirectoryMount. Defaults to empty, which only ever blocks more.
 MountVerdict ValidateImagePath(
         const std::filesystem::path& raw_path, MountOrigin origin,
-        const std::vector<std::filesystem::path>& allowed_image_roots);
+        const std::vector<std::filesystem::path>& allowed_image_roots,
+        const std::filesystem::path& conf_anchor = {});
 
 #if defined(WIN32)
 bool IsDeviceNamespacePath(const std::string& path);
@@ -73,6 +76,11 @@ bool IsLocked();
 void InitPolicyConfig(const std::filesystem::path& primary_config_path);
 const std::vector<std::filesystem::path>& AllowedBases();
 const std::vector<std::filesystem::path>& AllowedImageRoots();
+
+// Parent directory of the last -conf file on the command line, canonical.
+// Empty when no -conf was loaded. The third policy root, alongside the two
+// accessors above.
+std::filesystem::path ConfAnchor();
 
 struct PolicyPaths {
 	std::vector<std::filesystem::path> allowed_bases       = {};

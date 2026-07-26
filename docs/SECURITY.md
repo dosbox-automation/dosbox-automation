@@ -33,10 +33,12 @@ webserver an attack surface by design. The short version:
 - Every MOUNT, BOOT, and drive-swap path is validated before a drive is
   constructed: paths must resolve, symlink components are rejected, system
   directories are blocked, and disk images must pass structural validation.
-  With the webserver enabled, directory mounts are whitelist-restricted,
-  and a one-way mount lock can freeze the mount configuration until
-  restart. Whitelists are read from the primary config only, so a bundled
-  game config cannot widen them.
+  With the webserver enabled, directory mounts and API disk swaps are
+  whitelist-restricted, and a one-way mount lock can freeze the mount
+  configuration until restart. The directory holding the loaded -conf
+  file counts as an allowed root for both, so a recipe can reach the
+  files sitting next to it. Beyond that anchor, whitelists are read from
+  the primary config only, so a bundled game config cannot widen them.
 - Lua scripts run sandboxed: no filesystem or process access, bytecode
   rejected, dangerous globals removed, instruction and pattern-complexity
   limits against runaway scripts.

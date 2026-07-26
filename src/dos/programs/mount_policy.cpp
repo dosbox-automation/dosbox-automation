@@ -18,7 +18,10 @@
 //       2. mount_allowed_bases - extra directory roots listed in the
 //          [webserver] section of the primary config file.
 //       3. mount_allowed_image_roots - same, but for image files
-//          (floppies, CDs). Read from the primary config too.
+//          (floppies, CDs). Read from the primary config too. The conf
+//          anchor counts here as well, so a recipe can swap the disks
+//          sitting next to its own conf without the user editing the
+//          primary config.
 //     Anything outside these roots is blocked, even from autoexec.
 //     System directories are always blocked in both modes.
 //
@@ -46,6 +49,7 @@
 #include "mount_policy_linux.h"
 #endif
 
+#include "config/config.h"
 #include "dosbox.h"
 #include "misc/support.h"
 
@@ -400,7 +404,8 @@ MountVerdict ValidateDirectoryMount(const std::filesystem::path& raw_path,
 
 MountVerdict ValidateImagePath(const std::filesystem::path& raw_path,
                                MountOrigin origin,
-                               const std::vector<std::filesystem::path>& allowed_image_roots)
+                               const std::vector<std::filesystem::path>& allowed_image_roots,
+                               const std::filesystem::path& conf_anchor)
 {
 	auto verdict = MountVerdict{};
 
@@ -436,11 +441,21 @@ MountVerdict ValidateImagePath(const std::filesystem::path& raw_path,
 		return verdict;
 	}
 
-	// API origin requires the path to be under an allowed root.
-	// Empty list = no roots configured = deny all API image mounts.
+	// API origin requires the path to be under an allowed root. The conf
+	// anchor is one of them, at the same trust level it already carries
+	// for directory mounts: a conf that can autoexec a MOUNT of any image
+	// cannot be given less authority over the API than over its own
+	// autoexec. No anchor and no roots = deny all API image mounts.
 	if (origin == MountOrigin::Api) {
-		if (allowed_image_roots.empty() ||
-		    !IsUnderAnyRoot(*canonical, allowed_image_roots)) {
+		auto all_roots = std::vector<std::filesystem::path>{};
+		if (!conf_anchor.empty()) {
+			all_roots.push_back(conf_anchor);
+		}
+		all_roots.insert(all_roots.end(),
+		                 allowed_image_roots.begin(),
+		                 allowed_image_roots.end());
+
+		if (all_roots.empty() || !IsUnderAnyRoot(*canonical, all_roots)) {
 			verdict.reason = DenyReason::OutsideWhitelist;
 			return verdict;
 		}
@@ -617,6 +632,14 @@ const std::vector<std::filesystem::path>& AllowedImageRoots()
 {
 	assert(policy_initialized);
 	return policy_paths.allowed_image_roots;
+}
+
+std::filesystem::path ConfAnchor()
+{
+	if (!control || control->loaded_config_paths_canonical.empty()) {
+		return {};
+	}
+	return control->loaded_config_paths_canonical.back().parent_path();
 }
 
 } // namespace MountPolicy

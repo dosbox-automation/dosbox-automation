@@ -813,19 +813,6 @@ std::string MOUNT::GetDosMappedHostPath(const std::string& dos_path) const
 	return "";
 }
 
-// Parent directory of the last loaded config file, used as the
-// trusted anchor for mount path validation.
-// The conf anchor is the parent directory of the last -conf file on the
-// command line. Everything below it is reachable by MOUNT.
-// Must return a canonical path: IsUnderAnyRoot expects canonical roots.
-static std_fs::path GetConfAnchor()
-{
-	if (control->loaded_config_paths_canonical.empty()) {
-		return {};
-	}
-	return control->loaded_config_paths_canonical.back().parent_path();
-}
-
 static DirMountPolicy GetCurrentDirPolicy()
 {
 	if (WEBSERVER_IsEnabled()) {
@@ -1079,7 +1066,7 @@ bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_con
 
 	const auto dir_verdict =
 	        MountPolicy::ValidateDirectoryMount(std_fs::path(path_arg_1),
-	                                            GetConfAnchor(),
+	                                            MountPolicy::ConfAnchor(),
 	                                            MountPolicy::AllowedBases(),
 	                                            GetCurrentDirPolicy());
 	if (!dir_verdict.allowed) {

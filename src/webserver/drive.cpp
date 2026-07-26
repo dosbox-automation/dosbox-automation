@@ -42,7 +42,8 @@ void DriveSwapCommand::Execute()
 	const auto verdict =
 	        MountPolicy::ValidateImagePath(std::filesystem::path(image_path),
 	                                       MountOrigin::Api,
-	                                       MountPolicy::AllowedImageRoots());
+	                                       MountPolicy::AllowedImageRoots(),
+	                                       MountPolicy::ConfAnchor());
 	if (!verdict.allowed) {
 		error = "Blocked by mount policy";
 		LOG_WARNING("DRIVE-SWAP: Blocked - policy violation");
