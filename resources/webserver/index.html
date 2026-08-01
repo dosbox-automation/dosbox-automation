@@ -168,7 +168,10 @@
             <h2 class="single">POST /api/v1/drive/swap</h2>
             <p>Mount or swap a floppy or hard disk image on a drive letter.
             For multi-disk game installations, call this when the installer
-            prompts for the next disk.</p>
+            prompts for the next disk. A relative image path resolves
+            against the conf anchor, then each configured image root; the
+            first existing file wins. Scripts can do the same in-process
+            with <code>dosbox.drive_swap()</code>.</p>
             <p><strong>Request</strong></p>
             <pre><code>{
     "drive": "A",

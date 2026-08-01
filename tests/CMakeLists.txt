@@ -12,6 +12,7 @@ add_executable(dosbox_tests
     dos_io_delay_tests.cpp
     dos_memory_struct_tests.cpp
     dosbox_test_fixture.h
+    drive_swap_tests.cpp
     drives_tests.cpp
     fraction_tests.cpp
     fs_utils_tests.cpp

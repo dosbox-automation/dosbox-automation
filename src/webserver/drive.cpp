@@ -6,16 +6,13 @@
 #include "bridge.h"
 #include "webserver.h"
 
-#include "dos/dos.h"
-#include "dos/drives.h"
+#include "dos/drive_swap.h"
 #include "dos/programs/mount_policy.h"
-#include "ints/bios_disk.h"
 
 #include "libs/json/json.h"
 
 #include <cctype>
 #include <filesystem>
-#include <sys/stat.h>
 
 using json = nlohmann::json;
 
@@ -28,71 +25,16 @@ DriveSwapCommand::DriveSwapCommand(char drive_letter, std::string image_path)
 
 void DriveSwapCommand::Execute()
 {
-	// Once mounts are locked, the configuration is frozen for everyone,
-	// the guest commands (BOOT, IMGMOUNT, MOUNT) and the API alike. This
-	// is the authoritative check, on the emulation thread where the swap
-	// actually happens. The Post handler also checks early for a clean
-	// 403, but the latch can flip between that check and this one.
-	if (MountPolicy::IsLocked()) {
-		error = "mount is locked";
-		LOG_WARNING("DRIVE-SWAP: Blocked - locked");
-		return;
-	}
-
-	const auto verdict =
-	        MountPolicy::ValidateImagePath(std::filesystem::path(image_path),
-	                                       MountOrigin::Api,
-	                                       MountPolicy::AllowedImageRoots(),
-	                                       MountPolicy::ConfAnchor());
-	if (!verdict.allowed) {
-		error = "Blocked by mount policy";
-		LOG_WARNING("DRIVE-SWAP: Blocked - policy violation");
-		return;
-	}
-
-	// Use the canonical path from validation, not the raw request string.
-	// Mounting the validated object, not re-resolving an untrusted path.
-	const auto& resolved = verdict.resolved.string();
-
-	struct stat st = {};
-	if (stat(resolved.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
-		error = "File not found";
-		return;
-	}
-
-	const auto file_size_kb = static_cast<uint32_t>(st.st_size / 1024);
-	bool is_floppy          = false;
-	for (const auto& geom : BIOS_GetDiskGeometryList()) {
-		if (geom.ksize == file_size_kb) {
-			is_floppy = true;
-			break;
-		}
-	}
-
-	const auto drv_idx = static_cast<uint8_t>(
-	        std::toupper(static_cast<unsigned char>(drive_letter)) - 'A');
-
-	if (drv_idx >= DOS_DRIVES) {
-		error = "Invalid drive letter";
-		return;
-	}
-
-	// Build the new drive before releasing the old one so a
-	// construction failure does not leave the slot empty.
-	auto new_drive = std::make_shared<fatDrive>(
-	        resolved.c_str(), 512, 0, 0, 0, is_floppy ? 0xF0 : 0xF8, true);
-
-	if (!new_drive->created_successfully) {
-		error = "Failed to mount image";
-		return;
-	}
-
-	Drives[drv_idx].reset();
-
-	Drives[drv_idx] = new_drive;
-
-	if (drv_idx < MAX_DISK_IMAGES) {
-		imageDiskList[drv_idx] = new_drive->loadedDisk;
+	// The Post handler checks the lock latch early for a clean 403, but
+	// it can flip between that check and this one; the read passed here,
+	// on the emulation thread where the swap happens, is authoritative.
+	const auto result = DriveSwap::Swap(drive_letter,
+	                                    std::filesystem::path(image_path),
+	                                    MountPolicy::IsLocked(),
+	                                    MountPolicy::ConfAnchor(),
+	                                    MountPolicy::AllowedImageRoots());
+	if (!result.ok) {
+		error = result.error;
 	}
 }
 

@@ -33,6 +33,7 @@ target_sources(dosboxcommon PRIVATE
   drive_iso.cpp
   drive_local.cpp
   drive_overlay.cpp
+  drive_swap.cpp
   drive_virtual.cpp
   drives.cpp
   programs.cpp

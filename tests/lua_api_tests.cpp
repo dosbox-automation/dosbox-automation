@@ -2,10 +2,12 @@
 // License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
 //
 
+#include "dos/programs/mount_policy.h"
 #include "lua/lua_api.h"
 #include "lua/lua_coroutine.h"
 #include "lua/lua_debug_log.h"
 #include "lua/lua_engine.h"
+#include "misc/cross.h"
 #include "webserver/input.h"
 
 #include "hardware/input/keyboard.h"
@@ -338,6 +340,44 @@ TEST_F(LuaApiTest, AbortStopsScript)
 }
 
 // -- Mount lock --
+
+// -- drive_swap() --
+// These run before MountLockSucceeds: the mount lock is a process-wide
+// one-way latch, and a locked policy would shadow the errors under test.
+// The skip guards cover suites from other files having locked it first.
+
+TEST_F(LuaApiTest, DriveSwapMissingImageErrors)
+{
+	auto state = RunToCompletion("dosbox.drive_swap('A')");
+	EXPECT_EQ(state, Lua::ScriptState::Error);
+}
+
+TEST_F(LuaApiTest, DriveSwapBadDriveErrors)
+{
+	auto state = RunToCompletion("dosbox.drive_swap('AB', 'disk.img')");
+	EXPECT_EQ(state, Lua::ScriptState::Error);
+	EXPECT_NE(coroutine.ErrorMessage().find("single letter"), std::string::npos);
+}
+
+TEST_F(LuaApiTest, DriveSwapDeniedSurfacesAsScriptError)
+{
+	if (MountPolicy::IsLocked()) {
+		GTEST_SKIP() << "Lock already set by a prior test";
+	}
+
+	// The binding reads the policy globals, which assert initialization.
+	// In production WEBSERVER_Init has done that before any script can
+	// run; the test binary does it here, same as DOSBoxTestFixture
+	// primes the config dir. An empty config path yields no image
+	// roots, so every API-origin swap is denied.
+	init_config_dir();
+	MountPolicy::InitPolicyConfig({});
+
+	auto state = RunToCompletion("dosbox.drive_swap('A', 'no_such_disk.img')");
+	EXPECT_EQ(state, Lua::ScriptState::Error);
+	EXPECT_NE(coroutine.ErrorMessage().find("Blocked by mount policy"),
+	          std::string::npos);
+}
 
 TEST_F(LuaApiTest, MountLockSucceeds)
 {

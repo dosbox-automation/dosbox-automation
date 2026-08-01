@@ -2387,7 +2387,7 @@
           },
           "image": {
             "type": "string",
-            "description": "Path to the disk image."
+            "description": "Path to the disk image. A relative path resolves against the conf anchor, then each configured image root; the first existing file wins."
           }
         }
       },

@@ -141,6 +141,80 @@ def test_drive_swap_traversal_rejected(dosbox_e2e, tmp_path):
 
 
 # -----------------------------------------------------------------------
+# Drive swap: relative image name resolves against the image roots
+# -----------------------------------------------------------------------
+
+@pytest.mark.skipif(not HAS_MFORMAT, reason="mformat not available")
+def test_drive_swap_relative_image(dosbox_e2e, tmp_path):
+    """A bare filename resolves against allowed_image_roots."""
+    game_dir = tmp_path / "game"
+    game_dir.mkdir()
+    disk = create_fat12_floppy(game_dir / "disk.img")
+    create_fat12_floppy(game_dir / "disk2.img")
+
+    inst = dosbox_e2e(
+        autoexec_lines=[f"mount a {disk} -t floppy"],
+        conf_dir=game_dir,
+        allowed_image_roots=[game_dir],
+    )
+
+    r = inst.client.drive_swap("A", "disk2.img")
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+    assert r.json().get("drive") == "A"
+
+
+# -----------------------------------------------------------------------
+# Lua drive swap: a script swaps disks itself, no external coordinator
+# -----------------------------------------------------------------------
+
+@pytest.mark.skipif(not HAS_MFORMAT, reason="mformat not available")
+def test_lua_drive_swap_relative_image(dosbox_e2e, tmp_path):
+    """dosbox.drive_swap with a bare filename completes in-script."""
+    game_dir = tmp_path / "game"
+    game_dir.mkdir()
+    disk = create_fat12_floppy(game_dir / "disk.img")
+    create_fat12_floppy(game_dir / "disk2.img")
+
+    inst = dosbox_e2e(
+        autoexec_lines=[f"mount a {disk} -t floppy"],
+        conf_dir=game_dir,
+        allowed_image_roots=[game_dir],
+    )
+
+    script = (
+        'dosbox.drive_swap("A", "disk2.img")\n'
+        'dosbox.output["swapped"] = "yes"\n'
+    )
+    r = inst.client.script_load(script)
+    assert r.status_code == 200, r.text
+    r = inst.client.script_start()
+    assert r.status_code == 200, r.text
+
+    status = inst.client.wait_script_done()
+    assert status["state"] == "completed", status
+    assert status.get("output", {}).get("swapped") == "yes"
+
+
+def test_lua_drive_swap_outside_roots_errors(dosbox_e2e, tmp_path):
+    """A script swap outside the allowed roots fails the script."""
+    game_dir = tmp_path / "game"
+    game_dir.mkdir()
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    outside = write_floppy_image(elsewhere / "sneaky.img")
+
+    inst = dosbox_e2e(conf_dir=game_dir)
+    r = inst.client.script_load(f'dosbox.drive_swap("A", "{outside}")')
+    assert r.status_code == 200, r.text
+    r = inst.client.script_start()
+    assert r.status_code == 200, r.text
+
+    status = inst.client.wait_script_done()
+    assert status["state"] == "error", status
+    assert "Blocked by mount policy" in status.get("error", "")
+
+
+# -----------------------------------------------------------------------
 # Drive swap: nonexistent file
 # -----------------------------------------------------------------------
 

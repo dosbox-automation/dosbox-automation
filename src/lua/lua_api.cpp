@@ -11,6 +11,7 @@
 #include "capture/capture.h"
 #include "gui/osd/osd.h"
 
+#include "dos/drive_swap.h"
 #include "dos/programs/mount_policy.h"
 #include "hardware/input/keyboard.h"
 #include "hardware/input/mouse.h"
@@ -25,6 +26,7 @@ extern "C" {
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -551,10 +553,10 @@ static int LuaWaitForText(lua_State* L)
 
 	// Check immediately before yielding. Scope the screen-text buffer so it
 	// is destroyed before the yield below: lua_yield leaves this frame by a
-	// non-local exit (longjmp, since Lua is built as C). glibc longjmp skips
-	// C++ destructors, so a live local here would leak; MSVC longjmp unwinds
-	// but can double-free it. Keeping the yielding frame free of live
-	// destructibles is correct on both (aug-zj8l).
+	// non-local exit (longjmp, since Lua is built as C). glibc longjmp
+	// skips C++ destructors, so a live local here would leak; MSVC longjmp
+	// unwinds but can double-free it. Keeping the yielding frame free of
+	// live destructibles is correct on both (aug-zj8l).
 	{
 		const auto text = ReadScreenText();
 		if (MatchSubstring(text, pattern, ignorecase)) {
@@ -587,6 +589,44 @@ static int LuaWaitForText(lua_State* L)
 // ================================================================
 // Drive management
 // ================================================================
+
+// dosbox.drive_swap(drive, image_path)
+// Runs on the emulation thread, so the swap is complete when this call
+// returns; no yield involved. Relative paths resolve against the conf
+// anchor and the configured image roots.
+static int LuaDriveSwap(lua_State* L)
+{
+	const char* drive = luaL_checkstring(L, 1);
+	const char* image = luaL_checkstring(L, 2);
+
+	if (drive[0] == '\0' || drive[1] != '\0' ||
+	    !std::isalpha(static_cast<unsigned char>(drive[0]))) {
+		return luaL_error(L, "drive_swap: drive must be a single letter");
+	}
+
+	OSD_ShowCommand(std::string("drive_swap: ") + image, CurrentFrame(L));
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		dl->Trace(CurrentFrame(L), "dosbox.drive_swap(%s, \"%s\")", drive, image);
+	}
+
+	// lua_error leaves this frame by longjmp (aug-zj8l): copy the message
+	// into Lua-managed memory and let the scope destroy the result before
+	// raising, so no live destructible remains in the frame.
+	{
+		const auto result = DriveSwap::Swap(drive[0],
+		                                    std::filesystem::path(image),
+		                                    MountPolicy::IsLocked(),
+		                                    MountPolicy::ConfAnchor(),
+		                                    MountPolicy::AllowedImageRoots());
+		if (result.ok) {
+			return 0;
+		}
+		lua_pushfstring(L, "drive_swap: %s", result.error.c_str());
+	}
+	return lua_error(L);
+}
 
 // dosbox.mount_lock()
 static int LuaMountLock(lua_State* L)
@@ -847,6 +887,8 @@ void RegisterDosboxApi(lua_State* L, LuaCoroutine* coroutine, DebugLog* debug_lo
 	lua_setfield(L, -2, "is_text_mode");
 
 	// Drive management
+	lua_pushcfunction(L, LuaDriveSwap);
+	lua_setfield(L, -2, "drive_swap");
 	lua_pushcfunction(L, LuaMountLock);
 	lua_setfield(L, -2, "mount_lock");
 
