@@ -848,18 +848,11 @@ static void LogMountDenied(const std::string& path, const MountVerdict& verdict)
 
 // Returns true if processed successfully (even if it means it found an image
 // and decided to mount it) Returns false on failure.
-bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_config)
+bool MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
+                         bool path_relative_to_last_config)
 {
-	std::string final_path = {};
-
-	// Get the first path argument
-	if (!cmd->FindCommand(2, final_path) || final_path.empty()) {
-		ShowUsage();
-		return false;
-	}
-
 	// Expand ~ to home directory and apply relative path logic
-	auto path_arg_1 = ApplyRelativePath(resolve_home(final_path).string(),
+	auto path_arg_1 = ApplyRelativePath(resolve_home(first_path).string(),
 	                                    path_relative_to_last_config);
 
 #if defined(WIN32)
@@ -1044,42 +1037,43 @@ bool MOUNT::ProcessPaths(MountParameters& params, bool path_relative_to_last_con
 			incrementFDD();
 		}
 		return true;
-	}
 
-	// Standard directory or overlay mount
-	if (!S_ISDIR(test.st_mode)) {
-		NOTIFY_DisplayWarning(Notification::Source::Console,
-		                      "MOUNT",
-		                      "PROGRAM_MOUNT_ERROR_2",
-		                      path_arg_1.c_str());
-		return false;
-	}
+	} else {
+		// Standard directory or overlay mount
+		if (!S_ISDIR(test.st_mode)) {
+			NOTIFY_DisplayWarning(Notification::Source::Console,
+			                      "MOUNT",
+			                      "PROGRAM_MOUNT_ERROR_2",
+			                      path_arg_1.c_str());
+			return false;
+		}
 
-	if (MountPolicy::IsLocked()) {
-		LOG_WARNING("MOUNT: Blocked directory mount '%s' - locked",
-		            path_arg_1.c_str());
-		NOTIFY_DisplayWarning(Notification::Source::Console,
-		                      "MOUNT",
-		                      "PROGRAM_CONFIG_SECURE_DISALLOW");
-		return false;
-	}
+		if (MountPolicy::IsLocked()) {
+			LOG_WARNING("MOUNT: Blocked directory mount '%s' - locked",
+			            path_arg_1.c_str());
+			NOTIFY_DisplayWarning(Notification::Source::Console,
+			                      "MOUNT",
+			                      "PROGRAM_CONFIG_SECURE_DISALLOW");
+			return false;
+		}
 
-	const auto dir_verdict =
-	        MountPolicy::ValidateDirectoryMount(std_fs::path(path_arg_1),
-	                                            MountPolicy::ConfAnchor(),
-	                                            MountPolicy::AllowedBases(),
-	                                            GetCurrentDirPolicy());
-	if (!dir_verdict.allowed) {
-		LogMountDenied(path_arg_1, dir_verdict);
-		NOTIFY_DisplayWarning(Notification::Source::Console,
-		                      "MOUNT",
-		                      "PROGRAM_MOUNT_ERROR_2",
-		                      path_arg_1.c_str());
-		return false;
-	}
+		const auto dir_verdict = MountPolicy::ValidateDirectoryMount(
+		        std_fs::path(path_arg_1),
+		        MountPolicy::ConfAnchor(),
+		        MountPolicy::AllowedBases(),
+		        GetCurrentDirPolicy());
+		if (!dir_verdict.allowed) {
+			LogMountDenied(path_arg_1, dir_verdict);
+			NOTIFY_DisplayWarning(Notification::Source::Console,
+			                      "MOUNT",
+			                      "PROGRAM_MOUNT_ERROR_2",
+			                      path_arg_1.c_str());
+			return false;
+		}
 
-	MountLocal(params, path_arg_1);
-	return true;
+		MountLocal(params, path_arg_1);
+		return true;
+	}
 }
 
 void MOUNT::MountLocal(MountParameters& params, const std::string& local_path)
@@ -1304,7 +1298,15 @@ std::optional<MountParameters> MOUNT::ProcessArguments(CommandLine* cmd)
 	}
 
 	// Parse paths and execute (MountImage or MountLocal)
-	if (!ProcessPaths(params, path_relative_to_last_config)) {
+	std::string first_path = {};
+
+	// Get the first path argument
+	if (!cmd->FindCommand(2, first_path) || first_path.empty()) {
+		ShowUsage();
+		return {};
+	}
+
+	if (!ProcessPaths(first_path, params, path_relative_to_last_config)) {
 		return {};
 	}
 
