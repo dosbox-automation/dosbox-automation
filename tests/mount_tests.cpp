@@ -248,7 +248,7 @@ TEST_F(MountTest, MountsPlainDirectoryWithDefaults)
 
 	ASSERT_TRUE(result.has_value());
 	EXPECT_EQ(result->drive, 'L');
-	EXPECT_EQ(result->type, "dir");
+	EXPECT_EQ(result->type, MountType::Directory);
 	EXPECT_FALSE(result->is_drive_number);
 	EXPECT_FALSE(result->roflag);
 
@@ -296,7 +296,7 @@ TEST_F(MountTest, OverlayMountsOnTopOfExistingDrive)
 	const auto overlay = Mount("O " + P("overlay_layer") + " -t overlay");
 
 	ASSERT_TRUE(overlay.has_value());
-	EXPECT_EQ(overlay->type, "overlay");
+	EXPECT_EQ(overlay->type, MountType::Overlay);
 	EXPECT_EQ(overlay->drive, 'O');
 	EXPECT_EQ(overlay->label, "O_DRIVE");
 }
@@ -314,8 +314,8 @@ TEST_F(MountTest, FloppyDefaultsGeometryAndMediaId)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "floppy");
-	EXPECT_EQ(result->fstype, "fat");
+	EXPECT_EQ(result->type, MountType::FloppyImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
 	EXPECT_EQ(result->mediaid, MediaId::Floppy1_44MB);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -330,8 +330,8 @@ TEST_F(MountTest, IsoDefaultsGeometryAndFstype)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 2048);
@@ -347,8 +347,8 @@ TEST_F(MountTest, ExplicitSizeOverridesDefaults)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "hdd");
-	EXPECT_EQ(result->fstype, "none");
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::None);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -365,8 +365,8 @@ TEST_F(MountTest, ExplicitChsOverridesExplicitSize)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "hdd");
-	EXPECT_EQ(result->fstype, "none");
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::None);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -381,8 +381,8 @@ TEST_F(MountTest, FreesizeOverridesDirDefaults)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "dir");
-	EXPECT_EQ(result->fstype, "fat");
+	EXPECT_EQ(result->type, MountType::Directory);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	// total_size_cyl stays 32765 (100MB free is under the ~250MB
@@ -400,8 +400,8 @@ TEST_F(MountTest, FreesizeForFloppyIsInKbNotMb)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "floppy");
-	EXPECT_EQ(result->fstype, "none");
+	EXPECT_EQ(result->type, MountType::FloppyImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::None);
 	EXPECT_EQ(result->mediaid, MediaId::Floppy1_44MB);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -422,7 +422,7 @@ TEST_F(MountTest, DriveNumberForcesNoneFstypeWhenNotExplicit)
 
 	EXPECT_TRUE(result->is_drive_number);
 	EXPECT_EQ(result->drive, '0');
-	EXPECT_EQ(result->fstype, "none");
+	EXPECT_EQ(result->fstype, MountFileSystemType::None);
 }
 
 TEST_F(MountTest, LetterAtoDRemapsToDriveNumberWithFsNone)
@@ -443,7 +443,7 @@ TEST_F(MountTest, CdromAliasesToIso)
 	const auto result = Mount("R " + P("image.iso") + " -t cdrom");
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
 }
 
 TEST_F(MountTest, FddAliasesToFloppy)
@@ -451,7 +451,7 @@ TEST_F(MountTest, FddAliasesToFloppy)
 	const auto result = Mount("B " + P("raw.dat") + " -t fdd");
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "floppy");
+	EXPECT_EQ(result->type, MountType::FloppyImage);
 }
 
 // ---------------------------------------------------------------------
@@ -484,8 +484,8 @@ TEST_F(MountTest, ImplicitImageModeAutoDetectsIsoFromExtension)
 	ASSERT_TRUE(result.has_value());
 
 	ASSERT_EQ(result->paths.size(), 1);
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 }
 
 TEST_F(MountTest, AutoDetectsHddTypeFromImgExtension)
@@ -493,7 +493,7 @@ TEST_F(MountTest, AutoDetectsHddTypeFromImgExtension)
 	const auto result = Mount("U " + P("image.img"));
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "hdd");
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
 }
 
 TEST_F(MountTest, ExplicitTypeOverridesExtensionAutoDetection)
@@ -501,7 +501,7 @@ TEST_F(MountTest, ExplicitTypeOverridesExtensionAutoDetection)
 	const auto result = Mount("V " + P("image.img") + " -t iso");
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
 }
 
 TEST_F(MountTest, MultipleExplicitPathsArePreservedInOrder)
@@ -552,7 +552,7 @@ TEST_F(MountTest, DirectoryOverridesExplicitFloppyTypeAndSetsFloppyLabel)
 	const auto result = Mount("T " + P("plain_dir") + " -t floppy");
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "floppy");
+	EXPECT_EQ(result->type, MountType::FloppyImage);
 	EXPECT_EQ(result->label, "T_FLOPPY");
 }
 
@@ -604,8 +604,8 @@ TEST_F(MountTest, AutoDetectsIsoFromCueExtension)
 	const auto result = Mount("E " + P("image.cue"));
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 }
 
 TEST_F(MountTest, AutoDetectsIsoFromBinExtension)
@@ -613,8 +613,8 @@ TEST_F(MountTest, AutoDetectsIsoFromBinExtension)
 	const auto result = Mount("E " + P("image.bin"));
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 }
 
 TEST_F(MountTest, AutoDetectsIsoFromMdsExtension)
@@ -622,8 +622,8 @@ TEST_F(MountTest, AutoDetectsIsoFromMdsExtension)
 	const auto result = Mount("E " + P("image.mds"));
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 }
 
 TEST_F(MountTest, AutoDetectsIsoFromCcdExtension)
@@ -631,8 +631,8 @@ TEST_F(MountTest, AutoDetectsIsoFromCcdExtension)
 	const auto result = Mount("E " + P("image.ccd"));
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 }
 
 TEST_F(MountTest, AutoDetectsHddFromImaExtension)
@@ -640,8 +640,8 @@ TEST_F(MountTest, AutoDetectsHddFromImaExtension)
 	const auto result = Mount("E " + P("image.ima"));
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "hdd");
-	EXPECT_EQ(result->fstype, "fat");
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
 }
 
 TEST_F(MountTest, AutoDetectsHddFromVhdExtension)
@@ -649,8 +649,8 @@ TEST_F(MountTest, AutoDetectsHddFromVhdExtension)
 	const auto result = Mount("F " + P("image.vhd"));
 
 	ASSERT_TRUE(result.has_value());
-	EXPECT_EQ(result->type, "hdd");
-	EXPECT_EQ(result->fstype, "fat");
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
 }
 
 // ---------------------------------------------------------------------
@@ -683,8 +683,8 @@ TEST_F(MountTest, ExplicitSizeOverridesFreesize)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "dir");
-	EXPECT_EQ(result->fstype, "fat");
+	EXPECT_EQ(result->type, MountType::Directory);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -700,8 +700,8 @@ TEST_F(MountTest, ChsOverridesFreesize)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "dir");
-	EXPECT_EQ(result->fstype, "fat");
+	EXPECT_EQ(result->type, MountType::Directory);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -717,8 +717,8 @@ TEST_F(MountTest, ChsOverridesSizeRegardlessOfArgumentOrder)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "hdd");
-	EXPECT_EQ(result->fstype, "none");
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::None);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -737,8 +737,8 @@ TEST_F(MountTest, ExplicitIsoTypeOverridesImgExtension)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 2048);
@@ -754,8 +754,8 @@ TEST_F(MountTest, ExplicitHddTypeKeepsFatFilesystem)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "hdd");
-	EXPECT_EQ(result->fstype, "fat");
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -774,8 +774,8 @@ TEST_F(MountTest, IsoExtensionOverridesExplicitFatFs)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 }
 
@@ -793,8 +793,8 @@ TEST_F(MountTest, ExplicitIsoFsIsPreservedForFloppyType)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "floppy");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::FloppyImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 
 	// MediaId promotion only happens for floppy+fat.
 	EXPECT_EQ(result->mediaid, MediaId::Floppy1_44MB);
@@ -806,8 +806,8 @@ TEST_F(MountTest, ExplicitIsoTypeOverridesFloppyExtension)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 2048);
@@ -822,8 +822,8 @@ TEST_F(MountTest, ExplicitFloppyTypeOverridesIsoExtension)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "floppy");
-	EXPECT_EQ(result->fstype, "fat");
+	EXPECT_EQ(result->type, MountType::FloppyImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
 
 	// Pin down whatever the parser currently does.
 	EXPECT_EQ(result->mediaid, MediaId::Floppy1_44MB);
@@ -835,8 +835,8 @@ TEST_F(MountTest, ExplicitIsoFilesystemWithoutType)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "hdd");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 }
 
@@ -846,8 +846,8 @@ TEST_F(MountTest, ExplicitFatFilesystemWithoutType)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "hdd");
-	EXPECT_EQ(result->fstype, "fat");
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 }
 
@@ -857,8 +857,8 @@ TEST_F(MountTest, ExplicitIsoFilesystemOnIsoImage)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 }
 
@@ -872,8 +872,8 @@ TEST_F(MountTest, SizeAcceptedForIsoMount)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -888,8 +888,8 @@ TEST_F(MountTest, ChsAcceptedForIsoMount)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -917,8 +917,8 @@ TEST_F(MountTest, FirstImageControlsAutoDetection)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "hdd");
-	EXPECT_EQ(result->fstype, "fat");
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	ASSERT_EQ(result->paths.size(), 2);
@@ -930,8 +930,8 @@ TEST_F(MountTest, FirstImageControlsAutoDetectionReverseOrder)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	ASSERT_EQ(result->paths.size(), 2);
@@ -943,8 +943,8 @@ TEST_F(MountTest, FirstIsoImageControlsAutoDetection)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	ASSERT_EQ(result->paths.size(), 2);
@@ -976,8 +976,8 @@ TEST_F(MountTest, ExplicitSizeWithIsoImage)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 	EXPECT_EQ(result->mediaid, MediaId::HardDisk);
 
 	// Pin down whether ISO defaults or explicit size wins.
@@ -989,8 +989,8 @@ TEST_F(MountTest, ExplicitChsWithIsoImage)
 
 	ASSERT_TRUE(result.has_value());
 
-	EXPECT_EQ(result->type, "iso");
-	EXPECT_EQ(result->fstype, "iso");
+	EXPECT_EQ(result->type, MountType::CdRomImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
 }
 
 // ---------------------------------------------------------------------
