@@ -846,9 +846,10 @@ static void LogMountDenied(const std::string& path, const MountVerdict& verdict)
 	LOG_WARNING("MOUNT: Blocked '%s' - %s", path.c_str(), reason_text);
 }
 
-// Returns true if processed successfully (even if it means it found an image
-// and decided to mount it) Returns false on failure.
-bool MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
+// Process paths and prepare (mutate) the passed `MountParameters` for
+// mounting. This includes resolving host paths, auto-detecting mount types,
+// etc.
+void MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
                          bool path_relative_to_last_config)
 {
 	// Expand ~ to home directory and apply relative path logic
@@ -882,21 +883,21 @@ bool MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
 	const auto has_wildcards       = path_arg_1.find_first_of("*?") !=
 	                           std::string::npos;
 
-	auto is_image_mode = explicit_image_type || params.is_drive_number ||
-	                     has_wildcards;
+	params.is_image_mode = explicit_image_type || params.is_drive_number ||
+	                       has_wildcards;
 
 	// If the target is a directory, it is a directory mount,
 	// even if -t floppy was specified (legacy MOUNT behavior).
 	if (target_is_dir) {
-		is_image_mode = false;
+		params.is_image_mode = false;
 	}
 
 	// Implicit trigger: First argument exists and is a regular file
-	if (!is_image_mode && stat_ok && S_ISREG(test.st_mode)) {
-		is_image_mode = true;
+	if (!params.is_image_mode && stat_ok && S_ISREG(test.st_mode)) {
+		params.is_image_mode = true;
 	}
 
-	if (is_image_mode) {
+	if (params.is_image_mode) {
 		// Loop through all remaining arguments
 		auto arg_idx        = 2;
 		std::string cur_arg = "";
@@ -997,21 +998,38 @@ bool MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
 			params.paths.push_back(loop_final_path);
 		}
 
-		if (params.paths.empty()) {
-			NOTIFY_DisplayWarning(Notification::Source::Console,
-			                      "MOUNT",
-			                      "PROGRAM_IMGMOUNT_FILE_NOT_FOUND");
-			return false;
+		// Ensure consistency between type and fstype if user didn't
+		// override -fs
+		if (params.type == "floppy" && params.fstype == "fat") {
+			params.mediaid = MediaId::Floppy1_44MB;
 		}
 
-		if (MountPolicy::IsLocked()) {
-			LOG_WARNING("MOUNT: Blocked image mount - locked");
-			NOTIFY_DisplayWarning(Notification::Source::Console,
-			                      "MOUNT",
-			                      "PROGRAM_CONFIG_SECURE_DISALLOW");
-			return false;
+	} else {
+		// Standard directory or overlay mount
+		if (S_ISDIR(test.st_mode)) {
+			params.paths.push_back(path_arg_1);
 		}
+	}
+}
 
+bool MOUNT::MountPaths(MountParameters& params)
+{
+	if (params.paths.empty()) {
+		NOTIFY_DisplayWarning(Notification::Source::Console,
+		                      "MOUNT",
+		                      "PROGRAM_IMGMOUNT_FILE_NOT_FOUND");
+		return false;
+	}
+
+	if (MountPolicy::IsLocked()) {
+		LOG_WARNING("MOUNT: Blocked mount - locked");
+		NOTIFY_DisplayWarning(Notification::Source::Console,
+		                      "MOUNT",
+		                      "PROGRAM_CONFIG_SECURE_DISALLOW");
+		return false;
+	}
+
+	if (params.is_image_mode) {
 		// Validate every image path before any construction
 		for (const auto& img_path : params.paths) {
 			const auto img_verdict = MountPolicy::ValidateImagePath(
@@ -1026,54 +1044,31 @@ bool MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
 			}
 		}
 
-		// Ensure consistency between type and fstype if user didn't
-		// override -fs
-		if (params.type == "floppy" && params.fstype == "fat") {
-			params.mediaid = MediaId::Floppy1_44MB;
-		}
-
 		const auto success = MountImage(params);
 		if (success && params.type == "floppy") {
 			incrementFDD();
 		}
-		return true;
 
 	} else {
 		// Standard directory or overlay mount
-		if (!S_ISDIR(test.st_mode)) {
-			NOTIFY_DisplayWarning(Notification::Source::Console,
-			                      "MOUNT",
-			                      "PROGRAM_MOUNT_ERROR_2",
-			                      path_arg_1.c_str());
-			return false;
-		}
-
-		if (MountPolicy::IsLocked()) {
-			LOG_WARNING("MOUNT: Blocked directory mount '%s' - locked",
-			            path_arg_1.c_str());
-			NOTIFY_DisplayWarning(Notification::Source::Console,
-			                      "MOUNT",
-			                      "PROGRAM_CONFIG_SECURE_DISALLOW");
-			return false;
-		}
-
 		const auto dir_verdict = MountPolicy::ValidateDirectoryMount(
-		        std_fs::path(path_arg_1),
+		        std_fs::path(params.paths[0]),
 		        MountPolicy::ConfAnchor(),
 		        MountPolicy::AllowedBases(),
 		        GetCurrentDirPolicy());
 		if (!dir_verdict.allowed) {
-			LogMountDenied(path_arg_1, dir_verdict);
+			LogMountDenied(params.paths[0], dir_verdict);
 			NOTIFY_DisplayWarning(Notification::Source::Console,
 			                      "MOUNT",
 			                      "PROGRAM_MOUNT_ERROR_2",
-			                      path_arg_1.c_str());
+			                      params.paths[0].c_str());
 			return false;
 		}
 
-		MountLocal(params, path_arg_1);
-		return true;
+		MountLocal(params, params.paths[0]);
 	}
+
+	return true;
 }
 
 void MOUNT::MountLocal(MountParameters& params, const std::string& local_path)
@@ -1306,7 +1301,9 @@ std::optional<MountParameters> MOUNT::ProcessArguments(CommandLine* cmd)
 		return {};
 	}
 
-	if (!ProcessPaths(first_path, params, path_relative_to_last_config)) {
+	ProcessPaths(first_path, params, path_relative_to_last_config);
+
+	if (!MountPaths(params)) {
 		return {};
 	}
 
