@@ -1,6 +1,13 @@
 // SPDX-FileCopyrightText:  2021-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+//
+// Portions adapted from dosbox-staging PR #4755
+// (https://github.com/dosbox-staging/dosbox-staging/pull/4755)
+// Copyright (c) FeralChild64
+// Licensed under GPL-2.0-or-later
+// Local changes: UMB-first allocation + LastFit fallback extracted
+// from the PR, mouse config changes omitted.
 
 #include "dosbox.h"
 
@@ -577,17 +584,13 @@ std::optional<uint16_t> DOS_CreateFakeTsrArea(const uint32_t bytes,
                                               const bool force_low_memory)
 {
 	constexpr uint16_t StackNeeded = 0x80;
-	constexpr uint16_t PspSegments = 0x10;
 
 	constexpr uint32_t MaxTsrSizeBytes = 512 * 1024;
 
 	constexpr uint16_t CommandTailSegment   = 0x08;
 	constexpr uint16_t CommandTailSizeBytes = 0x80;
 
-	// Try to matche the smallest block
-	const uint8_t MemAllocStrategy = force_low_memory
-		? DosMemAllocStrategy::LowMemoryBestFit
-		: DosMemAllocStrategy::BestFit;
+	constexpr uint16_t UmbMinSegment = 0xc000;
 
 	if (bytes == 0 || bytes > MaxTsrSizeBytes || reg_sp <= StackNeeded) {
 		return {};
@@ -604,15 +607,37 @@ std::optional<uint16_t> DOS_CreateFakeTsrArea(const uint32_t bytes,
 	DOS_ParamBlock param_block(SegPhys(ss) + reg_sp);
 	param_block.Clear();
 
-	// Calculate number of memory blocks to allocate
-	uint16_t blocks = PspSegments;
-	blocks += (bytes + RealSegmentSize - 1) / RealSegmentSize;
-
-	// Allocate memory
-	uint16_t tsr_psp_segment = 0;
 	const auto old_strategy = DOS_GetMemAllocStrategy();
-	DOS_SetMemAllocStrategy(MemAllocStrategy);
-	const auto result = DOS_AllocateMemory(&tsr_psp_segment, &blocks);
+
+	uint16_t tsr_psp_segment = 0;
+
+	const uint16_t blocks_needed = PspSizeSegments +
+	                               (bytes + RealSegmentSize - 1) / RealSegmentSize;
+
+	uint16_t blocks = blocks_needed;
+	bool result     = false;
+
+	// Try UMB first when not forced into conventional memory
+	// (FeralChild64, dosbox-staging PR #4755).
+	if (!force_low_memory) {
+		DOS_SetMemAllocStrategy(DosMemAllocStrategy::UmbMemoryBestFit);
+		result = DOS_AllocateMemory(&tsr_psp_segment, &blocks);
+		if (result && tsr_psp_segment < UmbMinSegment) {
+			DOS_FreeMemory(tsr_psp_segment);
+			result = false;
+		}
+		if (!result) {
+			blocks = blocks_needed;
+		}
+	}
+
+	// LastFit avoids creating a memory hole after the executable
+	// exits, which was the root cause of MCB corruption on PCjr/Tandy.
+	if (!result) {
+		DOS_SetMemAllocStrategy(DosMemAllocStrategy::LowMemoryLastFit);
+		result = DOS_AllocateMemory(&tsr_psp_segment, &blocks);
+	}
+
 	DOS_SetMemAllocStrategy(old_strategy);
 
 	if (!result) {
@@ -630,7 +655,7 @@ std::optional<uint16_t> DOS_CreateFakeTsrArea(const uint32_t bytes,
 	              CommandTailSizeBytes);
 
 	// Clear the TSR memory
-	const auto start_segment = tsr_psp_segment + PspSegments;
+	const auto start_segment = tsr_psp_segment + PspSizeSegments;
 	const auto end_segment   = tsr_psp_segment + blocks;
 	for (auto seg = start_segment; seg < end_segment; ++seg) {
 		mem_writeq(PhysicalMake(seg, sizeof(uint64_t) * 0), 0);
