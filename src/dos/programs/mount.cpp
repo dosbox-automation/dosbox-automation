@@ -644,9 +644,9 @@ bool MOUNT::ParseGeometry(MountParameters& params)
 	}
 
 	// Parse the free space in mb (kb for floppies)
-	std::string mb_size;
+	const std::string& mb_size = params.freesize_arg;
 
-	if (cmd->FindString("-freesize", mb_size, true)) {
+	if (!mb_size.empty()) {
 
 		char teststr[1024];
 		uint16_t freesize = static_cast<uint16_t>(atoi(mb_size.c_str()));
@@ -677,7 +677,9 @@ bool MOUNT::ParseGeometry(MountParameters& params)
 	}
 
 	// Parse -size
-	cmd->FindString("-size", str_size, true);
+	if (!params.size_arg.empty()) {
+		str_size = params.size_arg;
+	}
 
 	// Apply str_size string to sizes array
 	if (!str_size.empty()) {
@@ -707,7 +709,8 @@ bool MOUNT::ParseGeometry(MountParameters& params)
 	}
 
 	// Parse -chs C,H,S
-	if (cmd->FindString("-chs", str_chs, true)) {
+	if (!params.chs_arg.empty()) {
+		str_chs = params.chs_arg;
 		int cmd_cylinders = 0;
 		int cmd_heads     = 0;
 		int cmd_sectors   = 0;
@@ -901,8 +904,10 @@ static void LogMountDenied(const std::string& path, const MountVerdict& verdict)
 }
 
 // Process paths and prepare (mutate) the passed `MountParameters` for
-// mounting. This includes resolving host paths, auto-detecting mount types,
-// etc.
+// mounting. This includes resolving host paths, wildcard path arguments,
+// auto-detecting mount types, and determining whether we're dealing with
+// image or directory/overlay mounts.
+//
 void MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
                          bool path_relative_to_last_config)
 {
@@ -1342,6 +1347,25 @@ std::optional<MountParameters> MOUNT::ProcessArguments(CommandLine* cmd)
 		return {};
 	}
 
+	// Get the first path argument
+	std::string first_path = {};
+	if (!cmd->FindCommand(2, first_path) || first_path.empty()) {
+		ShowUsage();
+		return {};
+	}
+
+	// Consume geometry switches before path collection: since the
+	// detection-before-geometry reorder, leftover switch tokens would
+	// land in params.paths and fail the fork's image path validation.
+	cmd->FindString("-freesize", params.freesize_arg, true);
+	cmd->FindString("-size", params.size_arg, true);
+	cmd->FindString("-chs", params.chs_arg, true);
+
+	// Resolve host paths, wildcard path arguments, auto-detect mount types,
+	// and determine whether we're dealing with image or directory/overlay
+	// mounts.
+	ProcessPaths(first_path, params, path_relative_to_last_config);
+
 	// Check drive geometry and types, abort if not valid
 	if (!ParseGeometry(params)) {
 		return {};
@@ -1351,17 +1375,6 @@ std::optional<MountParameters> MOUNT::ProcessArguments(CommandLine* cmd)
 	if (!ParseDrive(params, explicit_fs)) {
 		return {};
 	}
-
-	// Parse paths and execute (MountImage or MountLocal)
-	std::string first_path = {};
-
-	// Get the first path argument
-	if (!cmd->FindCommand(2, first_path) || first_path.empty()) {
-		ShowUsage();
-		return {};
-	}
-
-	ProcessPaths(first_path, params, path_relative_to_last_config);
 
 	if (!MountPaths(params)) {
 		return {};

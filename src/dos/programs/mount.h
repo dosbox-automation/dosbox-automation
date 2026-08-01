@@ -37,6 +37,13 @@ struct MountParameters {
 	bool is_drive_number = false;
 
 	bool is_image_mode = false;
+
+	// Raw geometry switch values, consumed before path collection so
+	// leftover switch tokens cannot land in paths and fail the fork's
+	// image path validation. Applied by ParseGeometry.
+	std::string freesize_arg = "";
+	std::string size_arg     = "";
+	std::string chs_arg      = "";
 };
 
 class MOUNT final : public Program {
