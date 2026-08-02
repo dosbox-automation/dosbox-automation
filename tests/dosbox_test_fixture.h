@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 
+#include "audio/mixer.h"
 #include "config/config.h"
 #include "cpu/cpu.h"
 #include "dos/dos.h"
@@ -60,6 +61,7 @@ public:
 
 		DOSBOX_Init();
 		CPU_Init();
+		MIXER_Init();
 		BIOS_Init();
 		SERIAL_Init();
 		DOS_Init();
@@ -72,6 +74,7 @@ public:
 		SERIAL_Destroy();
 		BIOS_Destroy();
 		CPU_Destroy();
+		MIXER_Destroy();
 		DOSBOX_Destroy();
 
 		control = {};
