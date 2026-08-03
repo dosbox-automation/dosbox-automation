@@ -251,13 +251,17 @@ static constexpr uint16_t fat_boot_signature = 0xAA55;
 // Known floppy image sizes in bytes
 static bool IsKnownFloppySize(std::uintmax_t size)
 {
-	// 160K, 180K, 320K, 360K, 720K, 1.2M, 1.44M, 2.88M
-	// The pre-DOS-2.0 formats (160K SS8, 180K SS9, 320K DS8) matter:
-	// early-80s self-booting game disks come in exactly these sizes
-	// and usually carry no FAT boot signature, so the size gate is
-	// the only check that can pass them.
-	constexpr std::array<std::uintmax_t, 8> sizes = {
-	        163840, 184320, 327680, 368640, 737280, 1228800, 1474560, 2949120};
+	// Every size in the BIOS disk geometry table (bios_disk.cpp).
+	// The pre-DOS-2.0 formats (160K SS8, 180K SS9, 320K DS8) and the
+	// 10-sector booters (200K, 400K) matter: early-80s self-booting
+	// game disks come in exactly these sizes and usually carry no FAT
+	// boot signature, so the size gate is the only check that can
+	// pass them. Keep in sync with disk_geometry_list - the detection
+	// chain accepts what this table refuses otherwise.
+	constexpr std::array<std::uintmax_t, 14> sizes = {
+	        163840,  184320,  204800,  327680,  368640,
+	        409600,  737280,  1228800, 1474560, 1556480,
+	        1720320, 1761280, 1884160, 2949120};
 
 	for (const auto& s : sizes) {
 		if (size == s) {

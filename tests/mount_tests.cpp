@@ -15,6 +15,7 @@
 
 #include "dos/programs/mount_policy.h"
 #include "dosbox_test_fixture.h"
+#include "ints/bios_disk.h"
 #include "misc/cross.h"
 
 namespace {
@@ -668,6 +669,129 @@ TEST_F(MountTest, AutoDetectsHddFromVhdExtension)
 	ASSERT_TRUE(result.has_value());
 	EXPECT_EQ(result->type, MountType::HardDiskImage);
 	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
+}
+
+// ---------------------------------------------------------------------
+// Geometry-based floppy detection (#4882, kept through the #4999 port;
+// aug-55a2 makes its survival mechanical instead of hand-checked)
+// ---------------------------------------------------------------------
+
+TEST_F(MountTest, EveryGeometryTableSizeDetectsAsFloppy)
+{
+	// Pins detection and validation to the same size set: a
+	// signature-less image at any BIOS geometry table size must both
+	// pass structure validation and detect as a floppy.
+	for (const auto& geo : BIOS_GetDiskGeometryList()) {
+		const auto img = test_file_path /
+		                 (std::to_string(geo.ksize) + "k.img");
+		write_file(img, static_cast<size_t>(geo.ksize) * 1024);
+
+		const auto result = Mount("A " + img.string());
+		ASSERT_TRUE(result.has_value())
+		        << geo.ksize << "K image refused";
+		EXPECT_EQ(result->type, MountType::FloppyImage)
+		        << geo.ksize << "K image not detected as floppy";
+	}
+}
+
+TEST_F(MountTest, PreDos2FloppySizeDetectsAsFloppy)
+{
+	// 160K SS8: signature-less self-booting era, the b1c4e3836 case.
+	const auto img = test_file_path / "ss8.img";
+	write_file(img, 163840);
+
+	const auto result = Mount("A " + img.string());
+	ASSERT_TRUE(result.has_value());
+	EXPECT_EQ(result->type, MountType::FloppyImage);
+}
+
+TEST_F(MountTest, DskExtensionUsesGeometryDetection)
+{
+	const auto img = test_file_path / "disk.dsk";
+	write_file(img, 737280);
+
+	const auto result = Mount("A " + img.string());
+	ASSERT_TRUE(result.has_value());
+	EXPECT_EQ(result->type, MountType::FloppyImage);
+}
+
+TEST_F(MountTest, GeometryMatchHasKilobyteGranularity)
+{
+	// Size matching truncates to whole KB (st_size / 1024), so one
+	// extra sector past 160K still reads as the 160K geometry.
+	const auto ragged = test_file_path / "ragged160.img";
+	write_fat_image(ragged, 163840 + 512);
+
+	const auto ragged_result = Mount("A " + ragged.string());
+	ASSERT_TRUE(ragged_result.has_value());
+	EXPECT_EQ(ragged_result->type, MountType::FloppyImage);
+
+	// A full KB off the table falls through to hdd; the FAT
+	// signature carries it past structure validation.
+	const auto off = test_file_path / "off161.img";
+	write_fat_image(off, 163840 + 1024);
+
+	const auto off_result = Mount("C " + off.string());
+	ASSERT_TRUE(off_result.has_value());
+	EXPECT_EQ(off_result->type, MountType::HardDiskImage);
+}
+
+// ---------------------------------------------------------------------
+// Autosize: the #4999 motivating bug at unit level (aug-vc54)
+// ---------------------------------------------------------------------
+
+TEST_F(MountTest, AutosizeDerivesGeometryForDetectedHddImage)
+{
+	// End of the aug-vc54 chain: a signed hdd image mounted without
+	// -t detects as hdd, geometry defaulting does not poison it, and
+	// autosize derives cylinders from the file size (16 heads x 63
+	// spt fixed, per MountImageFat).
+	const auto img = test_file_path / "auto.img";
+	write_fat_image(img, 16 * 63 * 512);
+
+	const auto result = Mount("C " + img.string());
+	ASSERT_TRUE(result.has_value());
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->sizes[0], 512);
+	EXPECT_EQ(result->sizes[1], 63);
+	EXPECT_EQ(result->sizes[2], 16);
+	EXPECT_EQ(result->sizes[3], 1);
+}
+
+TEST_F(MountTest, AutosizeLeavesSizesZeroForNonCylinderMultiple)
+{
+	// Half a cylinder extra: autosize's exact-multiple gate refuses
+	// and the sizes stay untouched.
+	const auto img = test_file_path / "ragged.img";
+	write_fat_image(img, 16 * 63 * 512 + 512);
+
+	const auto result = Mount("C " + img.string());
+	ASSERT_TRUE(result.has_value());
+	EXPECT_EQ(result->sizes[0], 0);
+	EXPECT_EQ(result->sizes[1], 0);
+	EXPECT_EQ(result->sizes[2], 0);
+	EXPECT_EQ(result->sizes[3], 0);
+}
+
+// ---------------------------------------------------------------------
+// Policy seam through MountPaths
+// ---------------------------------------------------------------------
+
+TEST_F(MountTest, LockedMountIsRefused)
+{
+	// The lock is one-way per process; ctest isolates each test in
+	// its own process, and an in-process full run gets the skip.
+	if (MountPolicy::IsLocked()) {
+		GTEST_SKIP() << "Lock already set by a prior test";
+	}
+
+	const auto before = Mount("I " + P("plain_dir"));
+	ASSERT_TRUE(before.has_value());
+
+	MountPolicy::Lock();
+
+	const auto after = Mount("K " + P("plain_dir"));
+	EXPECT_FALSE(after.has_value());
 }
 
 // ---------------------------------------------------------------------

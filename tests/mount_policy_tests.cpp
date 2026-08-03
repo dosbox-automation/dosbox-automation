@@ -331,6 +331,23 @@ TEST_F(MountPolicyTest, OddSizeUnsignedImageRejects)
 	        CreateFloppyImage("odd.img", 327681)));
 }
 
+TEST_F(MountPolicyTest, GeometryTableFloppySizesPass)
+{
+	// The size gate accepts every size the BIOS geometry table can
+	// mount, including the 10-sector booters (200K/400K) and the
+	// XDF/DMF formats - signature-less booter disks exist in all of
+	// them (aug-55a2, table sync with disk_geometry_list).
+	constexpr std::array<std::uintmax_t, 14> sizes = {
+	        163840,  184320,  204800,  327680,  368640,
+	        409600,  737280,  1228800, 1474560, 1556480,
+	        1720320, 1761280, 1884160, 2949120};
+	for (const auto size : sizes) {
+		EXPECT_TRUE(MountPolicy::ValidateDiskImageStructure(
+		        CreateFloppyImage("geom.img", size)))
+		        << "size " << size << " refused";
+	}
+}
+
 TEST_F(MountPolicyTest, RandomFileRejectsAsImage)
 {
 	const auto junk = CreateFile("junk.dat", "this is not a disk image");
