@@ -784,7 +784,7 @@ bool MOUNT::ParseGeometry(MountParameters& params)
 
 	// Parse -chs C,H,S
 	if (!params.chs_arg.empty()) {
-		str_chs = params.chs_arg;
+		str_chs           = params.chs_arg;
 		int cmd_cylinders = 0;
 		int cmd_heads     = 0;
 		int cmd_sectors   = 0;
@@ -1141,8 +1141,8 @@ void MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
 							               file_size_kb;
 						        });
 						params.type = is_floppy
-						        ? MountType::FloppyImage
-						        : MountType::HardDiskImage;
+						                    ? MountType::FloppyImage
+						                    : MountType::HardDiskImage;
 					}
 				}
 			}

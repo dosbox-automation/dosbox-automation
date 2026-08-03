@@ -148,7 +148,7 @@ protected:
 // portability.
 std_fs::path MountTest::test_file_path = [] {
 	std::random_device rd = {};
-	auto dist = std::uniform_int_distribution<uint64_t>();
+	auto dist             = std::uniform_int_distribution<uint64_t>();
 	for (int attempt = 0; attempt < 16; ++attempt) {
 		const auto name = std::to_string(dist(rd)) + "_mount_test_files";
 		const auto candidate = std_fs::temp_directory_path() / name;
