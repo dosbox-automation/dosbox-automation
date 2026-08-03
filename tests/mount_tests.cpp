@@ -927,18 +927,13 @@ TEST_F(MountTest, IsoTypeRejectsNoneFilesystem)
 	EXPECT_FALSE(result.has_value());
 }
 
-// TODO seems wrong; should be rejected
-TEST_F(MountTest, ExplicitIsoFsIsPreservedForFloppyType)
+TEST_F(MountTest, ExplicitIsoFsForFloppyTypeIsRejected)
 {
+	// Resolves the upstream author's own TODO: a floppy-typed mount
+	// cannot carry an ISO filesystem (both maintainers agree, aug-55a2).
 	const auto result = Mount("A " + P("raw.dat") + " -t floppy -fs iso");
 
-	ASSERT_TRUE(result.has_value());
-
-	EXPECT_EQ(result->type, MountType::FloppyImage);
-	EXPECT_EQ(result->fstype, MountFileSystemType::Iso);
-
-	// MediaId promotion only happens for floppy+fat.
-	EXPECT_EQ(result->mediaid, MediaId::Floppy1_44MB);
+	EXPECT_FALSE(result.has_value());
 }
 
 TEST_F(MountTest, ExplicitIsoTypeOverridesFloppyExtension)

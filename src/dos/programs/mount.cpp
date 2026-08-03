@@ -644,6 +644,17 @@ bool MOUNT::ParseArguments(MountParameters& params, bool& explicit_fs,
 	}
 	if (explicit_fs) {
 		params.fstype = *maybe_fs_type;
+
+		// A floppy cannot carry an ISO filesystem; resolves the
+		// refactor's own TODO in the tests (aug-55a2).
+		if (params.type == MountType::FloppyImage &&
+		    params.fstype == MountFileSystemType::Iso) {
+			NOTIFY_DisplayWarning(Notification::Source::Console,
+			                      "MOUNT",
+			                      "PROGRAM_MOUNT_ILL_TYPE",
+			                      fstype_str.c_str());
+			return false;
+		}
 	} else {
 		if (params.type == MountType::CdRomImage) {
 			params.fstype = MountFileSystemType::Iso;
