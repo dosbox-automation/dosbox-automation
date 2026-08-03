@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -141,15 +142,23 @@ protected:
 // chunks with the -j option (e.g. -j 16) the teardown and the setup steps of
 // two chunks can overlap and cause test failures.
 //
+// Upstream anchored this to the source tree; house rule keeps test
+// writes out of it. Same temp-dir shape as mount_policy_tests.cpp:
+// random name plus creation check instead of mkdtemp for Windows
+// portability.
 std_fs::path MountTest::test_file_path = [] {
-	const auto now = duration_cast<std::chrono::nanoseconds>(
-	                         std::chrono::system_clock::now().time_since_epoch())
-	                         .count();
-
-	// Anchored to this source file's location rather than the
-	// process's CWD
-	return std_fs::path(__FILE__).parent_path() /
-	       (std::to_string(now) + "_mount_test_files");
+	std::random_device rd = {};
+	auto dist = std::uniform_int_distribution<uint64_t>();
+	for (int attempt = 0; attempt < 16; ++attempt) {
+		const auto name = std::to_string(dist(rd)) + "_mount_test_files";
+		const auto candidate = std_fs::temp_directory_path() / name;
+		std::error_code ec   = {};
+		if (std_fs::create_directory(candidate, ec) && !ec) {
+			std_fs::permissions(candidate, std_fs::perms::owner_all, ec);
+			return candidate;
+		}
+	}
+	return std_fs::path{};
 }();
 
 // ---------------------------------------------------------------------
@@ -211,6 +220,14 @@ TEST_F(MountTest, RejectsNonexistentPath)
 TEST_F(MountTest, RejectsOverlayWithoutMountedBase)
 {
 	const auto result = Mount("E " + P("overlay_layer") + " -t overlay");
+	EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(MountTest, NonexistentPathDoesNotConsultFailedStatMode)
+{
+	// The dir branch must gate on stat_ok, not on st_mode surviving a
+	// failed stat via zero-initialization.
+	const auto result = Mount("C " + P("definitely-not-here"));
 	EXPECT_FALSE(result.has_value());
 }
 
