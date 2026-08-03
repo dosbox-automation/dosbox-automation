@@ -1162,8 +1162,15 @@ void MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
 
 	} else {
 		// Standard directory or overlay mount
-		if (S_ISDIR(test.st_mode)) {
+		if (stat_ok && S_ISDIR(test.st_mode)) {
 			params.paths.push_back(path_arg_1);
+		} else {
+			// Upstream #4999 dropped the specific "must be a
+			// directory" message here; keep it for our users.
+			NOTIFY_DisplayWarning(Notification::Source::Console,
+			                      "MOUNT",
+			                      "PROGRAM_MOUNT_ERROR_2",
+			                      path_arg_1.c_str());
 		}
 	}
 }
@@ -1171,9 +1178,13 @@ void MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
 bool MOUNT::MountPaths(MountParameters& params)
 {
 	if (params.paths.empty()) {
-		NOTIFY_DisplayWarning(Notification::Source::Console,
-		                      "MOUNT",
-		                      "PROGRAM_IMGMOUNT_FILE_NOT_FOUND");
+		// Dir mounts already reported ERROR_2 in ProcessPaths; a
+		// second message here would double up.
+		if (params.is_image_mode) {
+			NOTIFY_DisplayWarning(Notification::Source::Console,
+			                      "MOUNT",
+			                      "PROGRAM_IMGMOUNT_FILE_NOT_FOUND");
+		}
 		return false;
 	}
 
