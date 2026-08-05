@@ -12,8 +12,8 @@
 #include "utils/checks.h"
 
 #include <cctype>
+#include <filesystem>
 #include <memory>
-#include <sys/stat.h>
 
 CHECK_NARROWING();
 
@@ -92,13 +92,21 @@ Result Swap(char drive_letter, const std::filesystem::path& image_path,
 	// Mounting the validated object, not re-resolving an untrusted path.
 	const auto& resolved = verdict.resolved.string();
 
-	struct stat st = {};
-	if (stat(resolved.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
+	// std::filesystem rather than stat + S_ISREG: the POSIX macro does
+	// not exist on MSVC, which kept this whole file from building on
+	// Windows.
+	auto ec = std::error_code();
+	if (!std::filesystem::is_regular_file(verdict.resolved, ec) || ec) {
 		result.error = "File not found";
 		return result;
 	}
 
-	const auto file_size_kb = static_cast<uint32_t>(st.st_size / 1024);
+	const auto size_bytes = std::filesystem::file_size(verdict.resolved, ec);
+	if (ec) {
+		result.error = "File not found";
+		return result;
+	}
+	const auto file_size_kb = static_cast<uint32_t>(size_bytes / 1024);
 	bool is_floppy          = false;
 	for (const auto& geom : BIOS_GetDiskGeometryList()) {
 		if (geom.ksize == file_size_kb) {
