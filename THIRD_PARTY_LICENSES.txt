@@ -2298,11 +2298,6 @@ source tree.
                  https://www.lua.org/
                  License: MIT
 
-  sol2           C++ binding library for Lua
-                 Copyright (c) 2013-2024 Rapptz, ThePhD
-                 https://github.com/ThePhD/sol2
-                 License: MIT
-
   asio           Asynchronous I/O library (standalone, non-Boost)
                  Copyright (c) 2003-2024 Christopher M. Kohlhoff
                  License: BSL-1.0

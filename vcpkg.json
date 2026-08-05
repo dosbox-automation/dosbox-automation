@@ -29,8 +29,6 @@
     },
     "sdl3-image",
     "speexdsp",
-    "lua",
-    "sol2",
     "zlib",
     {
       "name": "pkgconf",

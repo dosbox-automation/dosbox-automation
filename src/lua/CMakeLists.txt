@@ -9,5 +9,5 @@ target_sources(dosboxcommon PRIVATE
 )
 
 target_link_libraries(dosboxcommon PRIVATE
-  unofficial::lua::lua
+  lua
 )

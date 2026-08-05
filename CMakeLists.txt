@@ -56,7 +56,7 @@ if (MSVC)
   # Disable cl/clangcl warnings about insecure C functions
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
-  # vcpkg builds Lua 5.5 as C (the port's cpp feature is off), so lua_yield
+  # Lua 5.5 (vendored, src/libs/lua) is built as C, so lua_yield
   # and luaL_error leave a C function through setjmp/longjmp. On Windows
   # MSVC's longjmp unwinds C++ frames, and the default /EHsc includes /EHc,
   # which tells the compiler extern "C" functions never throw - so it drops
@@ -517,22 +517,20 @@ endif()
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 
 # Find common external dependencies
-find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
+# 3.4.0 floor: upstream mapper code uses SDL_SetDefaultTextureScaleMode
+find_package(SDL3 3.4.0 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
 find_package(SDL3_image CONFIG REQUIRED)
 find_package(iir REQUIRED)
 find_package(PNG REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(FluidSynth REQUIRED CONFIG)
+# 2.5 floor: upstream midi code uses fluid_synth_set_portamento_time_mode
+find_package(FluidSynth 2.5 REQUIRED CONFIG)
 if (C_ALSA)
   find_package(ALSA REQUIRED)
 endif()
 
 # SpeexDSP: vcpkg has no cmake config, only a .pc file
 pkg_check_modules(SPEEXDSP REQUIRED IMPORTED_TARGET speexdsp)
-
-# Lua 5.5 scripting engine and sol2 C++ bindings
-find_package(Lua REQUIRED)
-find_package(sol2 CONFIG REQUIRED)
 
 add_executable(dosbox src/main.cpp src/dosbox.cpp)
 if (OPT_DEBUGGER)

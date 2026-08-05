@@ -68,18 +68,100 @@ These are generic, distro-independent building instructions.
 ### Install the dependencies (development packages are needed, too)
 
 - ALSA
-- FluidSynth
+- FluidSynth 2.5 or newer
 - GTest
-- IIR
+- IIR (iir1)
 - libpng
 - MT32Emu
 - OpenGL headers
 - OpusFile
-- SDL 3.x
+- SDL 3.4.0 or newer
 - SDL3_image
 - asio
 - SpeexDSP
-- zlib-nG
+- zlib
+
+Lua 5.5 is vendored in `src/libs/lua` and built as part of dosbox-automation.
+No system Lua package is needed or used, in either build method.
+
+Mind the SDL and FluidSynth versions: the code uses SDL functions
+introduced in 3.4.0 and FluidSynth functions introduced in 2.5, so older
+packages will not do. Configuration fails with a clear version message
+if yours are too old.
+
+### Distro package names
+
+Verified on Debian 13:
+
+```bash
+sudo apt install git build-essential cmake ninja-build pkg-config \
+    libasound2-dev libasio-dev libfluidsynth-dev libgtest-dev \
+    libgl1-mesa-dev libpng-dev libopusfile-dev libsdl3-dev \
+    libsdl3-image-dev libspeexdsp-dev zlib1g-dev
+```
+
+Caveats on Debian 13: `iir1` and `mt32emu` are not packaged at all (see
+below), and the shipped SDL3 (3.2) and FluidSynth (2.4) are too old.
+Until newer versions land in backports, either use the vcpkg build
+method or build the too-old libraries from source as described below.
+
+On other distributions the names differ; these lists are a starting point,
+not gospel:
+
+- Fedora: `gcc-c++ cmake ninja-build pkgconf-pkg-config alsa-lib-devel
+  asio-devel fluidsynth-devel gtest-devel libpng-devel mesa-libGL-devel
+  opusfile-devel SDL3-devel SDL3_image-devel speexdsp-devel zlib-ng-devel`
+- Arch: `base-devel cmake ninja pkgconf alsa-lib asio fluidsynth gtest
+  libpng opusfile sdl3 sdl3_image speexdsp zlib` (iir1 and mt32emu are on
+  the AUR)
+- Gentoo: `dev-build/cmake dev-build/ninja media-libs/alsa-lib
+  dev-cpp/asio media-sound/fluidsynth dev-cpp/gtest media-libs/libpng
+  media-libs/opusfile media-libs/libsdl3 media-libs/sdl3-image
+  media-libs/speexdsp sys-libs/zlib`
+
+### Libraries your distro does not package
+
+`iir1` and `mt32emu` are missing from several distributions. Both build
+from source in under a minute and install cleanly into a local prefix:
+
+```bash
+PREFIX=$HOME/.local/dosbox-automation-deps
+
+git clone --depth 1 --branch 1.10.0 https://github.com/berndporr/iir1.git
+cmake -S iir1 -B iir1/build -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=$PREFIX -DIIR1_BUILD_TESTING=OFF \
+    -DIIR1_BUILD_DEMO=OFF
+cmake --build iir1/build -j$(nproc)
+cmake --install iir1/build
+
+git clone --depth 1 --branch libmt32emu_2_7_3 https://github.com/munt/munt.git
+cmake -S munt/mt32emu -B munt/build -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=$PREFIX
+cmake --build munt/build -j$(nproc)
+cmake --install munt/build
+```
+
+Then point CMake at the prefix when configuring dosbox-automation:
+
+```bash
+cmake --preset=release-linux -DCMAKE_PREFIX_PATH=$PREFIX
+```
+
+The same pattern works for distributions whose SDL3 or FluidSynth are
+older than required: SDL3 (`release-3.4.8` tag of
+https://github.com/libsdl-org/SDL), SDL3_image (`release-3.4.4` of
+https://github.com/libsdl-org/SDL_image), and FluidSynth (`v2.5.4` of
+https://github.com/FluidSynth/fluidsynth). Build and install SDL3 into
+the prefix before SDL3_image so the image library picks it up.
+
+One caveat about running the result: libraries that came from your
+distribution are found at runtime as usual, but anything you built into
+a local prefix is a shared library the binary still has to find outside
+the build tree. Which ones those are depends on your system. Either
+install them somewhere your loader searches (`/usr/local` plus
+`ldconfig`), or start dosbox-automation with
+`LD_LIBRARY_PATH=$PREFIX/lib`. The vendored Lua is not affected; it is
+linked statically into the binary.
 
 ### Clone dosbox-automation
 
