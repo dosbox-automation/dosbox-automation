@@ -85,6 +85,20 @@ bool IsLocked()
 	return mount_locked.load(std::memory_order_acquire);
 }
 
+// Named for the property, not today's only source of it: any future way
+// to drive the guest registers here instead of adding a fourth door.
+static std::atomic<bool> injection_possible{false};
+
+void SetInjectionPossible(bool possible)
+{
+	injection_possible.store(possible, std::memory_order_release);
+}
+
+bool IsInjectionPossible()
+{
+	return injection_possible.load(std::memory_order_acquire);
+}
+
 #if defined(WIN32)
 bool IsDeviceNamespacePath(const std::string& path)
 {
@@ -445,12 +459,11 @@ MountVerdict ValidateImagePath(const std::filesystem::path& raw_path,
 		return verdict;
 	}
 
-	// API origin requires the path to be under an allowed root. The conf
-	// anchor is one of them, at the same trust level it already carries
-	// for directory mounts: a conf that can autoexec a MOUNT of any image
-	// cannot be given less authority over the API than over its own
-	// autoexec. No anchor and no roots = deny all API image mounts.
-	if (origin == MountOrigin::Api) {
+	// The whitelist applies to the API always, and to guest commands
+	// whenever something can type on the user's behalf. The conf anchor
+	// counts as a root: a conf that can autoexec a MOUNT of any image
+	// cannot be given less authority than its own autoexec.
+	if (origin == MountOrigin::Api || IsInjectionPossible()) {
 		auto all_roots = std::vector<std::filesystem::path>{};
 		if (!conf_anchor.empty()) {
 			all_roots.push_back(conf_anchor);

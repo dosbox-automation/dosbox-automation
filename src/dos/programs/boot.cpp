@@ -268,8 +268,9 @@ void BOOT::Run(void)
 			const auto boot_path = resolve_home(temp_line).string();
 			const auto boot_verdict = MountPolicy::ValidateImagePath(
 			        std::filesystem::path(boot_path),
-			        MountOrigin::Interactive,
-			        {});
+			        MountOrigin::GuestCommand,
+			        MountPolicy::AllowedImageRoots(),
+			        MountPolicy::ConfAnchor());
 			if (!boot_verdict.allowed) {
 				LOG_WARNING("BOOT: Blocked - policy violation");
 				WriteOut(MSG_Get("PROGRAM_BOOT_IMAGE_NOT_OPEN"),

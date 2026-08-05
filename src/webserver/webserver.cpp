@@ -569,6 +569,10 @@ void WEBSERVER_Init()
 
 		is_webserver_enabled = true;
 
+		// Runs before AUTOEXEC_Init, so autoexec MOUNT and BOOT are
+		// covered by the whitelist from the first line onwards.
+		MountPolicy::SetInjectionPossible(true);
+
 		OSD::OsdManager::Instance().SetEnabled(
 		        section->GetBool("webserver_osd"));
 

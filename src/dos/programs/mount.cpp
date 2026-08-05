@@ -1211,7 +1211,10 @@ bool MOUNT::MountPaths(MountParameters& params)
 		// Validate every image path before any construction
 		for (const auto& img_path : params.paths) {
 			const auto img_verdict = MountPolicy::ValidateImagePath(
-			        std_fs::path(img_path), MountOrigin::Interactive, {});
+			        std_fs::path(img_path),
+			        MountOrigin::GuestCommand,
+			        MountPolicy::AllowedImageRoots(),
+			        MountPolicy::ConfAnchor());
 			if (!img_verdict.allowed) {
 				LogMountDenied(img_path, img_verdict);
 				NOTIFY_DisplayWarning(Notification::Source::Console,

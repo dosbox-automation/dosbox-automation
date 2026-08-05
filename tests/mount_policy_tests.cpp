@@ -51,6 +51,7 @@ protected:
 
 	void TearDown() override
 	{
+		MountPolicy::SetInjectionPossible(false);
 		if (!tmp_dir.empty() && fs::exists(tmp_dir)) {
 			fs::remove_all(tmp_dir);
 		}
@@ -514,7 +515,7 @@ TEST_F(MountPolicyTest, ImagePathValidFat)
 	const auto img = CreateFatImage("disk.img");
 
 	const auto verdict = MountPolicy::ValidateImagePath(img,
-	                                                    MountOrigin::Interactive,
+	                                                    MountOrigin::GuestCommand,
 	                                                    {});
 
 	EXPECT_TRUE(verdict.allowed);
@@ -526,7 +527,7 @@ TEST_F(MountPolicyTest, ImagePathValidIso)
 	const auto img = CreateIsoImage("game.iso");
 
 	const auto verdict = MountPolicy::ValidateImagePath(img,
-	                                                    MountOrigin::Interactive,
+	                                                    MountOrigin::GuestCommand,
 	                                                    {});
 
 	EXPECT_TRUE(verdict.allowed);
@@ -537,7 +538,7 @@ TEST_F(MountPolicyTest, ImagePathJunkFile)
 	const auto junk = CreateFile("notadisk.dat", "definitely not a disk image");
 
 	const auto verdict = MountPolicy::ValidateImagePath(junk,
-	                                                    MountOrigin::Interactive,
+	                                                    MountOrigin::GuestCommand,
 	                                                    {});
 
 	EXPECT_FALSE(verdict.allowed);
@@ -547,7 +548,7 @@ TEST_F(MountPolicyTest, ImagePathJunkFile)
 TEST_F(MountPolicyTest, ImagePathNonexistent)
 {
 	const auto verdict = MountPolicy::ValidateImagePath(tmp_dir / "missing.iso",
-	                                                    MountOrigin::Interactive,
+	                                                    MountOrigin::GuestCommand,
 	                                                    {});
 
 	EXPECT_FALSE(verdict.allowed);
@@ -559,7 +560,7 @@ TEST_F(MountPolicyTest, ImagePathDirectory)
 	const auto dir = CreateDir("not_a_file");
 
 	const auto verdict = MountPolicy::ValidateImagePath(dir,
-	                                                    MountOrigin::Interactive,
+	                                                    MountOrigin::GuestCommand,
 	                                                    {});
 
 	EXPECT_FALSE(verdict.allowed);
@@ -575,7 +576,7 @@ TEST_F(MountPolicyTest, ImagePathSymlink)
 	const auto link = CreateSymlink(real, "link.img");
 
 	const auto verdict = MountPolicy::ValidateImagePath(link,
-	                                                    MountOrigin::Interactive,
+	                                                    MountOrigin::GuestCommand,
 	                                                    {});
 
 	EXPECT_FALSE(verdict.allowed);
@@ -590,7 +591,7 @@ TEST_F(MountPolicyTest, ImagePathUnderSystemDir)
 		GTEST_SKIP() << "/etc/hostname not available";
 	}
 	const auto verdict = MountPolicy::ValidateImagePath(
-	        fs::path("/etc/hostname"), MountOrigin::Interactive, {});
+	        fs::path("/etc/hostname"), MountOrigin::GuestCommand, {});
 
 	EXPECT_FALSE(verdict.allowed);
 	EXPECT_EQ(verdict.reason, DenyReason::SystemPath);
@@ -622,14 +623,17 @@ TEST_F(MountPolicyTest, ImagePathApiUnderAllowedRoot)
 	EXPECT_TRUE(verdict.allowed);
 }
 
-TEST_F(MountPolicyTest, ImagePathInteractiveIgnoresRoots)
+TEST_F(MountPolicyTest, ImagePathGuestCommandIgnoresRootsWithoutInjection)
 {
-	// Interactive origin does not check allowed_image_roots
+	// Human at the keyboard, nothing able to type on their behalf: the
+	// whitelist protects against an injector that cannot exist here.
+	MountPolicy::SetInjectionPossible(false);
+
 	const auto allowed   = CreateDir("allowed_images");
 	const auto elsewhere = CreateFatImage("elsewhere/disk.img");
 
 	const auto verdict = MountPolicy::ValidateImagePath(elsewhere,
-	                                                    MountOrigin::Interactive,
+	                                                    MountOrigin::GuestCommand,
 	                                                    {allowed});
 
 	EXPECT_TRUE(verdict.allowed);
@@ -697,17 +701,102 @@ TEST_F(MountPolicyTest, ImagePathApiAnchorAndRootsAreAdditive)
 	EXPECT_TRUE(verdict.allowed);
 }
 
-TEST_F(MountPolicyTest, ImagePathInteractiveUnaffectedByAnchor)
+TEST_F(MountPolicyTest, ImagePathGuestCommandUnaffectedByAnchorWithoutInjection)
 {
+	MountPolicy::SetInjectionPossible(false);
+
 	const auto anchor    = CreateDir("confdir");
 	const auto elsewhere = CreateFatImage("elsewhere/disk.img");
 
-	const auto verdict = MountPolicy::ValidateImagePath(elsewhere,
-	                                                    MountOrigin::Interactive,
-	                                                    {},
-	                                                    anchor);
+	const auto verdict = MountPolicy::ValidateImagePath(
+	        elsewhere, MountOrigin::GuestCommand, {}, anchor);
 
 	EXPECT_TRUE(verdict.allowed);
+}
+
+// -- Guest commands under an injector (aug-32ok, aug-onxm) --
+//
+// MOUNT and BOOT typed into the guest shell were trusted unconditionally,
+// so anything that could type - the input API, an autoexec line, a Lua
+// script - reached any image on the host, read-write. Trust now follows
+// whether an injector exists, and the policy decides that, not the caller.
+
+TEST_F(MountPolicyTest, ImagePathGuestCommandDeniedOutsideRootsWhenInjectionPossible)
+{
+	MountPolicy::SetInjectionPossible(true);
+
+	const auto allowed   = CreateDir("allowed_images");
+	const auto elsewhere = CreateFatImage("elsewhere/disk.img");
+
+	const auto verdict = MountPolicy::ValidateImagePath(elsewhere,
+	                                                    MountOrigin::GuestCommand,
+	                                                    {allowed});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::OutsideWhitelist);
+}
+
+TEST_F(MountPolicyTest, ImagePathGuestCommandUnderAllowedRootWhenInjectionPossible)
+{
+	MountPolicy::SetInjectionPossible(true);
+
+	const auto allowed = CreateDir("allowed_images");
+	const auto img     = CreateFatImage("allowed_images/disk.img");
+
+	const auto verdict = MountPolicy::ValidateImagePath(img,
+	                                                    MountOrigin::GuestCommand,
+	                                                    {allowed});
+
+	EXPECT_TRUE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::None);
+}
+
+TEST_F(MountPolicyTest, ImagePathGuestCommandUnderConfAnchorWhenInjectionPossible)
+{
+	MountPolicy::SetInjectionPossible(true);
+
+	const auto anchor = CreateDir("confdir");
+	const auto img    = CreateFatImage("confdir/disk2.img");
+
+	const auto verdict = MountPolicy::ValidateImagePath(
+	        img, MountOrigin::GuestCommand, {}, anchor);
+
+	EXPECT_TRUE(verdict.allowed);
+}
+
+TEST_F(MountPolicyTest, ImagePathGuestCommandNoRootsNoAnchorDeniedWhenInjectionPossible)
+{
+	// The inversion that makes this shape right: a future call site that
+	// forgets to pass roots is refused, where the old code trusted it.
+	MountPolicy::SetInjectionPossible(true);
+
+	const auto img = CreateFatImage("somewhere/disk.img");
+
+	const auto verdict = MountPolicy::ValidateImagePath(
+	        img, MountOrigin::GuestCommand, {}, {});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::OutsideWhitelist);
+}
+
+TEST_F(MountPolicyTest, ImagePathApiEnforcesWithoutInjection)
+{
+	// The API is an injector by definition; its enforcement never
+	// depends on the flag.
+	MountPolicy::SetInjectionPossible(false);
+
+	const auto img = CreateFatImage("somewhere/disk.img");
+
+	const auto verdict =
+	        MountPolicy::ValidateImagePath(img, MountOrigin::Api, {}, {});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::OutsideWhitelist);
+}
+
+TEST_F(MountPolicyTest, InjectionNotPossibleByDefault)
+{
+	EXPECT_FALSE(MountPolicy::IsInjectionPossible());
 }
 
 #if !defined(WIN32)
@@ -739,7 +828,7 @@ TEST_F(MountPolicyTest, HardlinkToPasswdCaughtByStructuralValidation)
 	                             "root:x:0:0:root:/root:/bin/bash\n");
 
 	const auto verdict = MountPolicy::ValidateImagePath(fake,
-	                                                    MountOrigin::Interactive,
+	                                                    MountOrigin::GuestCommand,
 	                                                    {});
 
 	EXPECT_FALSE(verdict.allowed);
