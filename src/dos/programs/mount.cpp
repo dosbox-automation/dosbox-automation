@@ -1159,7 +1159,9 @@ void MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
 				}
 			}
 
-			// Resolves to absolute canonical path
+			// Shortest equivalent form, which can be RELATIVE;
+			// MountPaths replaces it with the validated canonical
+			// path before anything opens it (aug-fuay).
 			loop_final_path = simplify_path(loop_final_path).string();
 			params.paths.push_back(loop_final_path);
 		}
@@ -1209,8 +1211,12 @@ bool MOUNT::MountPaths(MountParameters& params)
 	}
 
 	if (params.is_image_mode) {
-		// Validate every image path before any construction
-		for (const auto& img_path : params.paths) {
+		// Validate every image path before any construction. The
+		// validated canonical path replaces the raw string so the
+		// object opened is the object validated - a relative path
+		// would be re-resolved against the cwd at every later open
+		// (aug-fuay; boot.cpp and drive_swap.cpp already do this).
+		for (auto& img_path : params.paths) {
 			const auto img_verdict = MountPolicy::ValidateImagePath(
 			        std_fs::path(img_path),
 			        MountOrigin::GuestCommand,
@@ -1224,6 +1230,7 @@ bool MOUNT::MountPaths(MountParameters& params)
 				                      img_path.c_str());
 				return false;
 			}
+			img_path = img_verdict.resolved.string();
 		}
 
 		const auto success = MountImage(params);

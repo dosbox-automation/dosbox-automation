@@ -319,6 +319,23 @@ TEST_F(MountTest, OverlayMountsOnTopOfExistingDrive)
 	EXPECT_EQ(overlay->label, "O_DRIVE");
 }
 
+TEST_F(MountTest, MountedImagePathIsTheValidatedCanonicalPath)
+{
+	// aug-fuay: the object opened must be the object validated.
+	// simplify_path picks the shortest equivalent form, which for a
+	// path under the cwd is the relative one; that string was then
+	// re-resolved against the cwd at every later open.
+	const auto old_cwd = std_fs::current_path();
+	std_fs::current_path(test_file_path);
+	const auto result = Mount("B raw.dat -t floppy");
+	std_fs::current_path(old_cwd);
+
+	ASSERT_TRUE(result.has_value());
+	ASSERT_EQ(result->paths.size(), 1u);
+	EXPECT_EQ(std_fs::path(result->paths[0]),
+	          std_fs::canonical(test_file_path / "raw.dat"));
+}
+
 // ---------------------------------------------------------------------
 // Geometry parsing (ParseGeometry)
 // ---------------------------------------------------------------------

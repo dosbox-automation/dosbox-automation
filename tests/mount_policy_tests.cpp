@@ -700,6 +700,23 @@ TEST_F(MountPolicyTest, ImagePathUnderSystemDir)
 }
 #endif
 
+TEST_F(MountPolicyTest, ImagePathVerdictCarriesCanonicalTarget)
+{
+	// Characterisation for aug-fuay: callers mount verdict.resolved,
+	// so it must be the canonical form of what was validated.
+	const auto root      = CreateDir("real_images");
+	const auto img       = CreateFatImage("real_images/disk.img");
+	const auto traversal = root / ".." / "real_images" / "disk.img";
+
+	const auto verdict = MountPolicy::ValidateImagePath(traversal,
+	                                                    MountOrigin::Api,
+	                                                    {fs::canonical(root)},
+	                                                    {});
+
+	ASSERT_TRUE(verdict.allowed);
+	EXPECT_EQ(verdict.resolved, fs::canonical(img));
+}
+
 TEST_F(MountPolicyTest, ImagePathApiOutsideAllowedRoots)
 {
 	const auto allowed   = CreateDir("allowed_images");
