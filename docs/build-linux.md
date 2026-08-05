@@ -17,6 +17,28 @@ To create a distro package, use the [system libraries](#building-using-system-li
 build method. Pass the `-DOPT_TESTS=OFF` option to CMake when configuring the
 project to skip building unit tests and get rid of the GTest dependency.
 
+To collect the built files outside the tree (binary, resources, desktop
+entry, icons, man page, licenses), use the install step with a prefix or
+a staging directory:
+
+```bash
+cmake --install build/release-linux --prefix /usr/local
+# or, packager style:
+DESTDIR=/tmp/stage cmake --install build/release-linux --prefix /usr
+```
+
+For a relocatable tarball to unpack and run anywhere, there is a script
+that stages the install and bundles any libraries that did not come from
+your distribution (self-compiled SDL3, FluidSynth, and so on) next to
+the binary:
+
+```bash
+./scripts/packaging/linux/make-linux-tarball.sh build/release-linux
+```
+
+On a build against pure distro libraries it bundles nothing and the
+result relies on your system packages.
+
 dosbox-automation ships with some binary files as a part of its assets:
 
 - `resources/drives/y` — important DOS commands which are not yet

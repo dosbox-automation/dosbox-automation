@@ -44,10 +44,12 @@ function(add_install_rules)
     install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${RESOURCE_COPY_PATH}"
             DESTINATION "${INSTALL_DIR_RESOURCES}")
 
-    # Bundle required licenses
-    install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/doc/licenses"
-            DESTINATION "${INSTALL_DIR_DOC}")
-    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/doc/LICENSE"
+    # Bundle required licenses. Upstream collected per-dependency
+    # licenses into doc/licenses; this fork ships one combined
+    # THIRD_PARTY_LICENSES.txt instead.
+    install(FILES
+            "${CMAKE_CURRENT_BINARY_DIR}/doc/LICENSE"
+            "${CMAKE_CURRENT_BINARY_DIR}/doc/THIRD_PARTY_LICENSES.txt"
             DESTINATION "${INSTALL_DIR_DOC}")
 
   endif()
