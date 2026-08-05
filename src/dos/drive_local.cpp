@@ -5,8 +5,9 @@
 // Uncomment to enable file-open diagnostic messages
 // #define DEBUG 1
 
-#include "dos/drives.h"
 #include "drive_local.h"
+#include "dos/drives.h"
+#include "dos/programs/mount_policy.h"
 
 #include <cerrno>
 #include <climits>
@@ -565,6 +566,9 @@ localDrive::localDrive(const char* startdir, uint16_t _bytes_sector,
           write_protected_files{},
           allocation{_bytes_sector, _sectors_cluster, _total_clusters, _free_clusters, _mediaid}
 {
+	if (MountPolicy::drive_construction_hook) {
+		MountPolicy::drive_construction_hook(startdir);
+	}
 	type = DosDriveType::Local;
 	safe_strcpy(basedir, startdir);
 	safe_strcpy(info, startdir);

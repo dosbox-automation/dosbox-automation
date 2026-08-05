@@ -12,6 +12,7 @@
 #include "cpu/registers.h"
 #include "dos/dos.h" /* for Drives[] */
 #include "dos/drives.h"
+#include "dos/programs/mount_policy.h"
 #include "gui/mapper.h"
 #include "hardware/memory.h"
 #include "utils/string_utils.h"
@@ -255,6 +256,9 @@ imageDisk::imageDisk(FILE* img_file, const char* img_name, uint32_t img_size_k,
           current_fpos(0),
           last_action(NONE)
 {
+	if (MountPolicy::drive_construction_hook) {
+		MountPolicy::drive_construction_hook(img_name);
+	}
 	fseek(diskimg, 0, SEEK_SET);
 	memset(diskname, 0, 512);
 	safe_strcpy(diskname, img_name);

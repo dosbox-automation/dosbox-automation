@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include "dos/drive_swap.h"
+#include "dos/drives.h"
 #include "dos/programs/mount_policy.h"
 #include "dosbox_test_fixture.h"
 #include "ints/bios_disk.h"
@@ -54,6 +56,17 @@ protected:
 		std::vector<char> buf(0x9000, 0);
 		const char magic[] = {'C', 'D', '0', '0', '1'};
 		std::copy(std::begin(magic), std::end(magic), buf.begin() + 0x8001);
+		std::ofstream out(path, std::ios::binary | std::ios::trunc);
+		out.write(buf.data(), static_cast<std::streamsize>(buf.size()));
+	}
+
+	// 320K DOS 1.x floppy: no BPB, fatDrive synthesizes one from the
+	// media descriptor at the start of the FAT (sector 1). The stub
+	// fat images above fail the swap path, which autodetects geometry.
+	static void write_dos1_floppy(const std_fs::path& path)
+	{
+		std::vector<char> buf(327680, 0);
+		buf[512] = '\xFF';
 		std::ofstream out(path, std::ios::binary | std::ios::trunc);
 		out.write(buf.data(), static_cast<std::streamsize>(buf.size()));
 	}
@@ -1231,5 +1244,146 @@ TEST_F(MountTest, DuplicateTypeIsRejected)
 
 	EXPECT_FALSE(result.has_value());
 }
+
+// ---------------------------------------------------------------------
+// Sink invariant (aug-2yza): no drive is constructed from a host path
+// without a preceding allowed verdict for that same path. A future door
+// that skips the policy fails these instead of repeating aug-32ok.
+// ---------------------------------------------------------------------
+
+namespace sink {
+
+std::vector<std::string> constructed = {};
+
+struct RecordedVerdict {
+	std::string raw      = {};
+	MountVerdict verdict = {};
+};
+std::vector<RecordedVerdict> verdicts = {};
+
+void CaptureConstruction(const char* host_path)
+{
+	constructed.emplace_back(host_path);
+}
+
+void CaptureVerdict(const std_fs::path& raw_path, const MountVerdict& verdict)
+{
+	verdicts.push_back({raw_path.string(), verdict});
+}
+
+struct HookCapture {
+	HookCapture()
+	{
+		constructed.clear();
+		verdicts.clear();
+		MountPolicy::drive_construction_hook = &CaptureConstruction;
+		MountPolicy::verdict_hook            = &CaptureVerdict;
+	}
+	~HookCapture()
+	{
+		MountPolicy::drive_construction_hook = nullptr;
+		MountPolicy::verdict_hook            = nullptr;
+	}
+};
+
+// localDrive's basedir carries a trailing separator; compare canonically
+bool WasAllowed(const std::string& constructed_path)
+{
+	std::error_code ec   = {};
+	const auto canonical = std_fs::canonical(constructed_path, ec);
+	if (ec) {
+		return false;
+	}
+	for (const auto& v : verdicts) {
+		if (v.verdict.allowed && v.verdict.resolved == canonical) {
+			return true;
+		}
+	}
+	return false;
+}
+
+} // namespace sink
+
+TEST_F(MountTest, EveryDriveConstructionFollowsAnAllowedVerdict)
+{
+	sink::HookCapture capture;
+
+	ASSERT_TRUE(Mount("V " + P("image.img") + " -t floppy").has_value());
+	ASSERT_TRUE(Mount("X " + P("image.iso")).has_value());
+	ASSERT_TRUE(Mount("U " + P("plain_dir")).has_value());
+	ASSERT_TRUE(Mount("S " + P("disk1.img") + " " + P("disk02.img") + " -t floppy")
+	                    .has_value());
+	ASSERT_TRUE(Mount("A " + P("raw.dat") + " -fs none").has_value());
+
+	ASSERT_FALSE(sink::constructed.empty());
+	for (const auto& path : sink::constructed) {
+		EXPECT_TRUE(sink::WasAllowed(path))
+		        << "constructed without allowed verdict: " << path;
+	}
+}
+
+TEST_F(MountTest, SwapConstructsOnlyTheValidatedImage)
+{
+	sink::HookCapture capture;
+
+	ASSERT_TRUE(Mount("T " + P("image.img") + " -t floppy").has_value());
+
+	write_dos1_floppy(test_file_path / "swap_disk.img");
+	const auto result = DriveSwap::Swap('T',
+	                                    P("swap_disk.img"),
+	                                    false,
+	                                    {},
+	                                    {std_fs::canonical(test_file_path)});
+	ASSERT_TRUE(result.ok) << result.error;
+
+	ASSERT_FALSE(sink::constructed.empty());
+	for (const auto& path : sink::constructed) {
+		EXPECT_TRUE(sink::WasAllowed(path))
+		        << "constructed without allowed verdict: " << path;
+	}
+}
+
+TEST_F(MountTest, InvariantCheckDetectsAnUnvalidatedConstruction)
+{
+	// The instrument proof: a door that skips the policy entirely must
+	// be visible to the invariant check, or the check proves nothing.
+	sink::HookCapture capture;
+
+	const auto drive = std::make_shared<fatDrive>(
+	        P("image.img").c_str(), 512, 0, 0, 0, 0xF0, true);
+	(void)drive;
+
+	ASSERT_FALSE(sink::constructed.empty());
+	EXPECT_FALSE(sink::WasAllowed(sink::constructed.front()));
+}
+
+#if !defined(WIN32)
+TEST_F(MountTest, SymlinkToDeviceIsRefusedByThePolicyItself)
+{
+	// The aug-cbly finding end to end: the hostile path must REACH the
+	// policy and be refused there, not get filtered out earlier by luck.
+	if (!std_fs::exists("/dev/zero")) {
+		GTEST_SKIP() << "/dev/zero not available";
+	}
+	sink::HookCapture capture;
+
+	const auto link    = test_file_path / "zero.img";
+	std::error_code ec = {};
+	std_fs::create_symlink("/dev/zero", link, ec);
+	ASSERT_FALSE(ec) << ec.message();
+
+	EXPECT_FALSE(Mount("Q " + link.string() + " -t floppy").has_value());
+
+	bool policy_refused_type = false;
+	for (const auto& v : sink::verdicts) {
+		if (!v.verdict.allowed &&
+		    v.verdict.reason == DenyReason::NotRegularFile) {
+			policy_refused_type = true;
+		}
+	}
+	EXPECT_TRUE(policy_refused_type);
+	EXPECT_TRUE(sink::constructed.empty());
+}
+#endif
 
 } // namespace

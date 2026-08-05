@@ -90,6 +90,16 @@ const std::vector<std::filesystem::path>& AllowedImageRoots();
 // accessors above.
 std::filesystem::path ConfAnchor();
 
+// Test-only observation hooks (aug-2yza), null in production. The unit
+// tests arm both to assert the sink invariant: no drive is constructed
+// from a host path without a preceding allowed verdict for that path.
+using VerdictHookFn = void (*)(const std::filesystem::path& raw_path,
+                               const MountVerdict& verdict);
+extern VerdictHookFn verdict_hook;
+
+using DriveConstructionHookFn = void (*)(const char* host_path);
+extern DriveConstructionHookFn drive_construction_hook;
+
 struct PolicyPaths {
 	std::vector<std::filesystem::path> allowed_bases       = {};
 	std::vector<std::filesystem::path> allowed_image_roots = {};

@@ -7,10 +7,11 @@
 #include <cstring>
 
 #include "cdrom.h"
-#include "dos_mscdex.h"
 #include "dos/dos_system.h"
-#include "utils/string_utils.h"
+#include "dos/programs/mount_policy.h"
+#include "dos_mscdex.h"
 #include "misc/support.h"
+#include "utils/string_utils.h"
 
 #define FLAGS1	((iso) ? de.fileFlags : de.timeZone)
 #define FLAGS2	((iso) ? de->fileFlags : de->timeZone)
@@ -146,6 +147,9 @@ isoDrive::isoDrive(char driveLetter, const char *fileName, uint8_t mediaid, int 
 	memset(sectorHashEntries, 0, sizeof(sectorHashEntries));
 	memset(&rootEntry, 0, sizeof(isoDirEntry));
 
+	if (MountPolicy::drive_construction_hook) {
+		MountPolicy::drive_construction_hook(fileName);
+	}
 	safe_strcpy(this->fileName, fileName);
 	type  = DosDriveType::Iso;
 	error = UpdateMscdex(driveLetter, fileName, subUnit);

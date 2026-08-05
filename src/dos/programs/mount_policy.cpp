@@ -363,10 +363,13 @@ bool ValidateDiskImageStructure(const std::filesystem::path& host_path)
 
 // -- Policy entry points --
 
-MountVerdict ValidateDirectoryMount(const std::filesystem::path& raw_path,
-                                    const std::filesystem::path& conf_anchor,
-                                    const std::vector<std::filesystem::path>& allowed_bases,
-                                    DirMountPolicy policy)
+VerdictHookFn verdict_hook                      = nullptr;
+DriveConstructionHookFn drive_construction_hook = nullptr;
+
+static MountVerdict ValidateDirectoryMountImpl(
+        const std::filesystem::path& raw_path,
+        const std::filesystem::path& conf_anchor,
+        const std::vector<std::filesystem::path>& allowed_bases, DirMountPolicy policy)
 {
 	auto verdict = MountVerdict{};
 
@@ -428,10 +431,10 @@ MountVerdict ValidateDirectoryMount(const std::filesystem::path& raw_path,
 	return verdict;
 }
 
-MountVerdict ValidateImagePath(const std::filesystem::path& raw_path,
-                               MountOrigin origin,
-                               const std::vector<std::filesystem::path>& allowed_image_roots,
-                               const std::filesystem::path& conf_anchor)
+static MountVerdict ValidateImagePathImpl(
+        const std::filesystem::path& raw_path, MountOrigin origin,
+        const std::vector<std::filesystem::path>& allowed_image_roots,
+        const std::filesystem::path& conf_anchor)
 {
 	auto verdict = MountVerdict{};
 
@@ -493,6 +496,36 @@ MountVerdict ValidateImagePath(const std::filesystem::path& raw_path,
 
 	verdict.allowed = true;
 	verdict.reason  = DenyReason::None;
+	return verdict;
+}
+
+MountVerdict ValidateDirectoryMount(const std::filesystem::path& raw_path,
+                                    const std::filesystem::path& conf_anchor,
+                                    const std::vector<std::filesystem::path>& allowed_bases,
+                                    DirMountPolicy policy)
+{
+	const auto verdict = ValidateDirectoryMountImpl(raw_path,
+	                                                conf_anchor,
+	                                                allowed_bases,
+	                                                policy);
+	if (verdict_hook) {
+		verdict_hook(raw_path, verdict);
+	}
+	return verdict;
+}
+
+MountVerdict ValidateImagePath(const std::filesystem::path& raw_path,
+                               MountOrigin origin,
+                               const std::vector<std::filesystem::path>& allowed_image_roots,
+                               const std::filesystem::path& conf_anchor)
+{
+	const auto verdict = ValidateImagePathImpl(raw_path,
+	                                           origin,
+	                                           allowed_image_roots,
+	                                           conf_anchor);
+	if (verdict_hook) {
+		verdict_hook(raw_path, verdict);
+	}
 	return verdict;
 }
 

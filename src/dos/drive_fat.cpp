@@ -9,6 +9,7 @@
 #include <ctime>
 
 #include "dos.h"
+#include "dos/programs/mount_policy.h"
 #include "ints/bios.h"
 #include "ints/bios_disk.h"
 #include "misc/support.h"
@@ -793,7 +794,10 @@ fatDrive::fatDrive(const char* sysFilename, uint32_t bytesector,
 		imgDTA    = new DOS_DTA(imgDTAPtr);
 	}
 	assert(sysFilename);
-	diskfile = fopen_wrap_ro_fallback(sysFilename, readonly);
+	if (MountPolicy::drive_construction_hook) {
+		MountPolicy::drive_construction_hook(sysFilename);
+	}
+	diskfile             = fopen_wrap_ro_fallback(sysFilename, readonly);
 	created_successfully = (diskfile != nullptr);
 	if (!created_successfully)
 		return;
