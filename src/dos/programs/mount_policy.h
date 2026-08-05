@@ -6,6 +6,7 @@
 #define DOSBOX_PROGRAM_MOUNT_POLICY_H
 
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -19,6 +20,7 @@ enum class DenyReason {
 	OutsideWhitelist,
 	NotADiskImage,
 	NotADirectory,
+	ReservedDeviceName,
 };
 
 struct MountVerdict {
@@ -48,6 +50,16 @@ bool IsUnderAnyRoot(const std::filesystem::path& canonical_path,
                     const std::vector<std::filesystem::path>& roots);
 
 bool ValidateDiskImageStructure(const std::filesystem::path& host_path);
+
+// Windows reserved-name and denylist construction (aug-4tvb). Pure
+// string logic compiled on every platform so the tests run everywhere;
+// only the validator call sites are Windows-gated. The reserved-name
+// check runs BEFORE canonicalize: stat'ing COM1 can block on a real
+// serial port, so a late check would itself be the denial of service.
+bool IsWindowsReservedDeviceName(const std::string& path_component);
+bool HasWindowsReservedComponent(const std::filesystem::path& raw_path);
+std::vector<std::filesystem::path> BuildWindowsSystemPaths(
+        const std::function<std::string(const char*)>& get_env);
 
 // Policy entry points
 

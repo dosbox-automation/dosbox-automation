@@ -15,39 +15,12 @@
 
 namespace MountPolicy {
 
-// Built from environment variables so the correct paths are blocked
-// regardless of which drive Windows is installed on.
+// Literal baseline unioned with the environment (BuildWindowsSystemPaths)
+// so a lying or unset variable never unblocks the standard install paths.
 inline const std::vector<std::filesystem::path>& SystemPaths()
 {
-	static const auto paths = []() {
-		auto result = std::vector<std::filesystem::path>{};
-
-		auto add = [&](const std::string& p) {
-			if (!p.empty()) {
-				result.push_back(p);
-			}
-		};
-
-		// %SYSTEMROOT% is the Windows directory (e.g. D:\Windows)
-		const auto sysroot = get_env_var("SYSTEMROOT");
-		add(sysroot);
-		if (!sysroot.empty()) {
-			add(sysroot + "\\System32");
-			add(sysroot + "\\SysWOW64");
-		}
-
-		add(get_env_var("ProgramFiles"));
-		add(get_env_var("ProgramFiles(x86)"));
-		add(get_env_var("ProgramData"));
-
-		// Recovery partition on the system drive
-		const auto sysdrive = get_env_var("SYSTEMDRIVE");
-		if (!sysdrive.empty()) {
-			add(sysdrive + "\\Recovery");
-		}
-
-		return result;
-	}();
+	static const auto paths = BuildWindowsSystemPaths(
+	        [](const char* var) { return get_env_var(var); });
 	return paths;
 }
 

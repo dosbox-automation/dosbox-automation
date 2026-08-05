@@ -256,6 +256,184 @@ TEST(MountPolicySystemPath, OptIsNotSystemPath)
 }
 #endif
 
+// -- Windows reserved device names (aug-4tvb) --
+// Pure string logic compiled on every platform; only the validator
+// call sites are Windows-gated, so these tests run on Linux too.
+
+TEST(WindowsReservedNames, RecognizesEveryReservedName)
+{
+	const char* reserved[] = {"CON",
+	                          "PRN",
+	                          "AUX",
+	                          "NUL",
+	                          "CLOCK$",
+	                          "CONIN$",
+	                          "CONOUT$",
+	                          "COM1",
+	                          "COM5",
+	                          "COM9",
+	                          "LPT1",
+	                          "LPT5",
+	                          "LPT9"};
+	for (const auto* name : reserved) {
+		EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName(name)) << name;
+	}
+}
+
+TEST(WindowsReservedNames, MatchesCaseInsensitive)
+{
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("con"));
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("Com1"));
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("lpt9"));
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("clock$"));
+}
+
+TEST(WindowsReservedNames, MatchesStemBeforeFirstDot)
+{
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("CON.txt"));
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("com1.img"));
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("NUL.tar.gz"));
+}
+
+TEST(WindowsReservedNames, TrimsTrailingDotsAndSpaces)
+{
+	// Win32 strips trailing dots and spaces before name resolution,
+	// so "CON." and "CON " reach the CON device.
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("CON."));
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("CON..."));
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("AUX   "));
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("COM1 .txt"));
+}
+
+TEST(WindowsReservedNames, MatchesSuperscriptDigits)
+{
+	// COM and LPT with superscript one, two, three are reserved too
+	// (Win32 file naming rules); UTF-8 encodings of U+00B9/B2/B3.
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("COM\xC2\xB9"));
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("COM\xC2\xB2"));
+	EXPECT_TRUE(MountPolicy::IsWindowsReservedDeviceName("LPT\xC2\xB3"));
+}
+
+TEST(WindowsReservedNames, RejectsNearMisses)
+{
+	const char* clean[] = {"COM0",
+	                       "COM10",
+	                       "LPT0",
+	                       "LPT10",
+	                       "COM",
+	                       "LPT",
+	                       "CONSOLE",
+	                       "NULL",
+	                       "CONX",
+	                       "XCON",
+	                       "CLOCK",
+	                       "CONIN",
+	                       "disk1.img",
+	                       ""};
+	for (const auto* name : clean) {
+		EXPECT_FALSE(MountPolicy::IsWindowsReservedDeviceName(name)) << name;
+	}
+}
+
+TEST(WindowsReservedNames, ChecksEveryPathComponent)
+{
+	EXPECT_TRUE(MountPolicy::HasWindowsReservedComponent(
+	        fs::path("C:\\games\\AUX\\disk.img")));
+	EXPECT_TRUE(MountPolicy::HasWindowsReservedComponent(fs::path("COM1.img")));
+	EXPECT_FALSE(MountPolicy::HasWindowsReservedComponent(
+	        fs::path("C:\\games\\doom\\disk.img")));
+}
+
+// -- Windows system path list construction (aug-4tvb) --
+
+static std::string FakeEnv(const char* var)
+{
+	const std::string name = var;
+	if (name == "SYSTEMROOT") {
+		return "C:\\Temp";
+	}
+	if (name == "TEMP") {
+		return "C:\\Users\\test\\AppData\\Local\\Temp";
+	}
+	return {};
+}
+
+TEST(WindowsSystemPaths, LiteralBaselineSurvivesLyingEnvironment)
+{
+	// SYSTEMROOT=C:\Temp must not unblock the real C:\Windows: the
+	// list is fixed literals UNIONED with the environment, never the
+	// environment alone.
+	const auto paths = MountPolicy::BuildWindowsSystemPaths(&FakeEnv);
+
+	auto contains = [&](const char* p) {
+		for (const auto& entry : paths) {
+			if (entry.string() == p) {
+				return true;
+			}
+		}
+		return false;
+	};
+
+	EXPECT_TRUE(contains("C:\\Windows"));
+	EXPECT_TRUE(contains("C:\\Windows\\System32"));
+	EXPECT_TRUE(contains("C:\\Windows\\SysWOW64"));
+	EXPECT_TRUE(contains("C:\\Program Files"));
+	EXPECT_TRUE(contains("C:\\Program Files (x86)"));
+	EXPECT_TRUE(contains("C:\\ProgramData"));
+	EXPECT_TRUE(contains("C:\\Temp"));
+	EXPECT_TRUE(contains("C:\\Users\\test\\AppData\\Local\\Temp"));
+}
+
+TEST(WindowsSystemPaths, TempBlockedOnEveryDriveLetter)
+{
+	const auto paths = MountPolicy::BuildWindowsSystemPaths(&FakeEnv);
+
+	auto contains = [&](const std::string& p) {
+		for (const auto& entry : paths) {
+			if (entry.string() == p) {
+				return true;
+			}
+		}
+		return false;
+	};
+
+	for (char drive = 'A'; drive <= 'Z'; ++drive) {
+		const auto d = std::string(1, drive);
+		EXPECT_TRUE(contains(d + ":\\Temp")) << drive;
+		EXPECT_TRUE(contains(d + ":\\TMP")) << drive;
+		EXPECT_TRUE(contains(d + ":\\TmpDir")) << drive;
+		EXPECT_TRUE(contains(d + ":\\Windows\\Temp")) << drive;
+	}
+}
+
+#if defined(WIN32)
+TEST(WindowsSystemPaths, HostsDirectoryCoveredByThePrefixes)
+{
+	// The hosts directory needs a test, not an entry: it lives under
+	// System32, so the prefix rules must reach it with no entry of
+	// its own. Prefix matching with backslash separators is compiled
+	// only on Windows, so this runs on the builder VM.
+	const auto paths = MountPolicy::BuildWindowsSystemPaths(&FakeEnv);
+	EXPECT_TRUE(MountPolicy::IsUnderAnyRoot(
+	        fs::path("C:\\Windows\\System32\\drivers\\etc"), paths));
+}
+#endif
+
+TEST(WindowsSystemPaths, EmptyEnvironmentStillYieldsLiterals)
+{
+	const auto paths = MountPolicy::BuildWindowsSystemPaths(
+	        [](const char*) { return std::string{}; });
+
+	ASSERT_FALSE(paths.empty());
+	bool has_windows = false;
+	for (const auto& entry : paths) {
+		if (entry.string() == "C:\\Windows") {
+			has_windows = true;
+		}
+	}
+	EXPECT_TRUE(has_windows);
+}
+
 // -- IsUnderAnyRoot --
 
 TEST_F(MountPolicyTest, PathUnderRoot)

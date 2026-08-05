@@ -256,6 +256,148 @@ bool IsUnderAnyRoot(const std::filesystem::path& canonical_path,
 	return false;
 }
 
+bool IsWindowsReservedDeviceName(const std::string& path_component)
+{
+	// Win32 strips trailing dots and spaces before name resolution and
+	// the stem before the first dot names the device, so "CON." and
+	// "COM1 .txt" both reach a device (Win32 file naming rules).
+	const auto end = path_component.find_last_not_of(" .");
+	if (end == std::string::npos) {
+		return false;
+	}
+	const auto trimmed = path_component.substr(0, end + 1);
+
+	const auto dot = trimmed.find('.');
+	auto stem = (dot == std::string::npos) ? trimmed : trimmed.substr(0, dot);
+	const auto stem_end = stem.find_last_not_of(' ');
+	if (stem_end == std::string::npos) {
+		return false;
+	}
+	stem = stem.substr(0, stem_end + 1);
+
+	auto upper = std::string();
+	upper.reserve(stem.size());
+	for (const char c : stem) {
+		upper.push_back(static_cast<char>(
+		        std::toupper(static_cast<unsigned char>(c))));
+	}
+
+	static constexpr std::array<const char*, 7> fixed_names = {
+	        "CON", "PRN", "AUX", "NUL", "CLOCK$", "CONIN$", "CONOUT$"};
+	for (const auto* name : fixed_names) {
+		if (upper == name) {
+			return true;
+		}
+	}
+
+	if (upper.size() >= 4 &&
+	    (upper.compare(0, 3, "COM") == 0 || upper.compare(0, 3, "LPT") == 0)) {
+		const auto tail = upper.substr(3);
+		if (tail.size() == 1 && tail[0] >= '1' && tail[0] <= '9') {
+			return true;
+		}
+		// Superscript one/two/three count too (U+00B9/B2/B3, UTF-8)
+		if (tail.size() == 2 && static_cast<unsigned char>(tail[0]) == 0xC2 &&
+		    (static_cast<unsigned char>(tail[1]) == 0xB9 ||
+		     static_cast<unsigned char>(tail[1]) == 0xB2 ||
+		     static_cast<unsigned char>(tail[1]) == 0xB3)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool HasWindowsReservedComponent(const std::filesystem::path& raw_path)
+{
+	// Split on both separators by hand: on POSIX builds (where the
+	// tests run) fs::path does not treat backslash as a separator.
+	const auto s = raw_path.string();
+	size_t start = 0;
+	while (start <= s.size()) {
+		auto sep = s.find_first_of("/\\", start);
+		if (sep == std::string::npos) {
+			sep = s.size();
+		}
+		if (sep > start &&
+		    IsWindowsReservedDeviceName(s.substr(start, sep - start))) {
+			return true;
+		}
+		if (sep == s.size()) {
+			break;
+		}
+		start = sep + 1;
+	}
+	return false;
+}
+
+std::vector<std::filesystem::path> BuildWindowsSystemPaths(
+        const std::function<std::string(const char*)>& get_env)
+{
+	auto result = std::vector<std::filesystem::path>{};
+
+	auto add = [&](const std::string& p) {
+		if (p.empty()) {
+			return;
+		}
+		for (const auto& existing : result) {
+			if (PathEquals(existing.string(), p)) {
+				return;
+			}
+		}
+		result.emplace_back(p);
+	};
+
+	// Literal baseline UNION environment, never environment alone: a
+	// lying variable (SYSTEMROOT=C:\Temp) must not unblock the real
+	// install paths, and an unset one must not empty its family.
+	// Entries are compared as strings and never stat'ed, so literals
+	// that do not exist on a given machine are inert.
+	add("C:\\Windows");
+	add("C:\\Windows\\System32");
+	add("C:\\Windows\\SysWOW64");
+	add("C:\\Program Files");
+	add("C:\\Program Files (x86)");
+	add("C:\\ProgramData");
+	add("C:\\Recovery");
+
+	auto add_env = [&](const char* var) {
+		const auto val = get_env(var);
+		if (val.empty()) {
+			LOG_WARNING("MOUNT_POLICY: %s unset - literal denylist covers it",
+			            var);
+			return std::string();
+		}
+		add(val);
+		return val;
+	};
+
+	const auto sysroot = add_env("SYSTEMROOT");
+	if (!sysroot.empty()) {
+		add(sysroot + "\\System32");
+		add(sysroot + "\\SysWOW64");
+	}
+	add_env("ProgramFiles");
+	add_env("ProgramFiles(x86)");
+	add_env("ProgramData");
+	const auto sysdrive = get_env("SYSTEMDRIVE");
+	if (!sysdrive.empty()) {
+		add(sysdrive + "\\Recovery");
+	}
+
+	// Temp is un-whitelistable on every drive letter
+	for (char drive = 'A'; drive <= 'Z'; ++drive) {
+		const auto d = std::string(1, drive) + ":";
+		add(d + "\\Temp");
+		add(d + "\\TMP");
+		add(d + "\\TmpDir");
+		add(d + "\\Windows\\Temp");
+	}
+	add(get_env("TEMP"));
+	add(get_env("TMP"));
+
+	return result;
+}
+
 // ISO 9660 primary volume descriptor at sector 16 (offset 0x8001)
 static constexpr std::array<uint8_t, 5> iso9660_magic = {'C', 'D', '0', '0', '1'};
 
@@ -374,6 +516,12 @@ static MountVerdict ValidateDirectoryMountImpl(
 	auto verdict = MountVerdict{};
 
 #if defined(WIN32)
+	// Reserved names come first: canonicalize stats the path, and
+	// stat'ing COM1 can block on a real serial port.
+	if (HasWindowsReservedComponent(raw_path)) {
+		verdict.reason = DenyReason::ReservedDeviceName;
+		return verdict;
+	}
 	if (IsDeviceNamespacePath(raw_path.string())) {
 		verdict.reason = DenyReason::SystemPath;
 		return verdict;
@@ -439,6 +587,12 @@ static MountVerdict ValidateImagePathImpl(
 	auto verdict = MountVerdict{};
 
 #if defined(WIN32)
+	// Reserved names come first: canonicalize stats the path, and
+	// stat'ing COM1 can block on a real serial port.
+	if (HasWindowsReservedComponent(raw_path)) {
+		verdict.reason = DenyReason::ReservedDeviceName;
+		return verdict;
+	}
 	if (IsDeviceNamespacePath(raw_path.string())) {
 		verdict.reason = DenyReason::SystemPath;
 		return verdict;
