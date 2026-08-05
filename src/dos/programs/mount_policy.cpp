@@ -396,6 +396,14 @@ MountVerdict ValidateDirectoryMount(const std::filesystem::path& raw_path,
 		return verdict;
 	}
 
+	// Type check belongs to the policy, not the caller (aug-slxw);
+	// runs in both modes because it is a type error, not a trust call.
+	auto ec = std::error_code();
+	if (!std::filesystem::is_directory(*canonical, ec) || ec) {
+		verdict.reason = DenyReason::NotADirectory;
+		return verdict;
+	}
+
 	// OwnerTrusted skips the whitelist: human at the keyboard,
 	// no webserver, no injector can exist
 	if (policy == DirMountPolicy::OwnerTrusted) {

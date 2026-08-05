@@ -14,6 +14,13 @@
 
 #include <gtest/gtest.h>
 
+#if !defined(WIN32)
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/un.h>
+#include <unistd.h>
+#endif
+
 namespace {
 
 namespace fs = std::filesystem;
@@ -440,6 +447,32 @@ TEST_F(MountPolicyTest, DirMountNonexistentPath)
 	EXPECT_EQ(verdict.reason, DenyReason::DoesNotResolve);
 }
 
+TEST_F(MountPolicyTest, DirMountRefusesRegularFile)
+{
+	const auto anchor = CreateDir("confdir");
+	const auto file   = CreateFile("confdir/notadir.txt", "x");
+
+	const auto verdict = MountPolicy::ValidateDirectoryMount(
+	        file, anchor, {}, DirMountPolicy::WhitelistEnforced);
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::NotADirectory);
+}
+
+TEST_F(MountPolicyTest, DirMountRefusesRegularFileEvenOwnerTrusted)
+{
+	// A type error is not a trust question; the check runs before the
+	// OwnerTrusted early-return by design.
+	const auto anchor = CreateDir("confdir");
+	const auto file   = CreateFile("confdir/notadir.txt", "x");
+
+	const auto verdict = MountPolicy::ValidateDirectoryMount(
+	        file, anchor, {}, DirMountPolicy::OwnerTrusted);
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::NotADirectory);
+}
+
 TEST_F(MountPolicyTest, DirMountThroughSymlink)
 {
 	if (!SymlinksAvailable()) {
@@ -582,6 +615,75 @@ TEST_F(MountPolicyTest, ImagePathSymlink)
 	EXPECT_FALSE(verdict.allowed);
 	EXPECT_EQ(verdict.reason, DenyReason::SymlinkComponent);
 }
+
+// Characterisation, not TDD: is_regular_file already refuses every
+// non-regular type; these pin that invariant per type (aug-slxw).
+#if !defined(WIN32)
+TEST_F(MountPolicyTest, ImagePathRefusesFifo)
+{
+	const auto fifo = tmp_dir / "pipe.img";
+	ASSERT_EQ(mkfifo(fifo.c_str(), 0600), 0);
+
+	const auto verdict =
+	        MountPolicy::ValidateImagePath(fifo, MountOrigin::Api, {}, {});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::NotRegularFile);
+}
+
+TEST_F(MountPolicyTest, ImagePathRefusesUnixSocket)
+{
+	const auto sock_path = tmp_dir / "sock.img";
+	const int fd         = socket(AF_UNIX, SOCK_STREAM, 0);
+	ASSERT_GE(fd, 0);
+
+	auto addr           = sockaddr_un{};
+	addr.sun_family     = AF_UNIX;
+	const auto path_str = sock_path.string();
+	ASSERT_LT(path_str.size(), sizeof(addr.sun_path));
+	std::strncpy(addr.sun_path, path_str.c_str(), sizeof(addr.sun_path) - 1);
+	ASSERT_EQ(bind(fd, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)), 0);
+	close(fd);
+
+	const auto verdict = MountPolicy::ValidateImagePath(sock_path,
+	                                                    MountOrigin::Api,
+	                                                    {},
+	                                                    {});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::NotRegularFile);
+}
+
+TEST_F(MountPolicyTest, ImagePathRefusesCharacterDevice)
+{
+	if (!fs::exists("/dev/zero")) {
+		GTEST_SKIP() << "/dev/zero not available";
+	}
+	const auto verdict = MountPolicy::ValidateImagePath(fs::path("/dev/zero"),
+	                                                    MountOrigin::Api,
+	                                                    {},
+	                                                    {});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::NotRegularFile);
+}
+
+TEST_F(MountPolicyTest, ImagePathRefusesSymlinkToCharacterDevice)
+{
+	// The aug-cbly finding as a unit test: the type check catches this
+	// before the symlink check ever runs, and must keep doing so.
+	if (!fs::exists("/dev/zero") || !SymlinksAvailable()) {
+		GTEST_SKIP() << "/dev/zero or symlinks not available";
+	}
+	const auto link = CreateSymlink(fs::path("/dev/zero"), "zero.img");
+
+	const auto verdict =
+	        MountPolicy::ValidateImagePath(link, MountOrigin::Api, {}, {});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::NotRegularFile);
+}
+#endif
 
 #if !defined(WIN32)
 TEST_F(MountPolicyTest, ImagePathUnderSystemDir)

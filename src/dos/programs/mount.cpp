@@ -988,6 +988,7 @@ static void LogMountDenied(const std::string& path, const MountVerdict& verdict)
 	case DenyReason::NotADiskImage:
 		reason_text = "not a recognized disk image";
 		break;
+	case DenyReason::NotADirectory: reason_text = "not a directory"; break;
 	case DenyReason::None: return;
 	}
 	LOG_WARNING("MOUNT: Blocked '%s' - %s", path.c_str(), reason_text);

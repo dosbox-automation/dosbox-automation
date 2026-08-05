@@ -18,6 +18,7 @@ enum class DenyReason {
 	SystemPath,
 	OutsideWhitelist,
 	NotADiskImage,
+	NotADirectory,
 };
 
 struct MountVerdict {
