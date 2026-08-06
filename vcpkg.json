@@ -27,7 +27,12 @@
       "name": "sdl3",
       "platform": "!linux"
     },
-    "sdl3-image",
+    {
+      "name": "sdl3-image",
+      "features": [
+        "png"
+      ]
+    },
     "speexdsp",
     "zlib",
     {

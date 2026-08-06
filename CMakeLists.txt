@@ -520,6 +520,10 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 # 3.4.0 floor: upstream mapper code uses SDL_SetDefaultTextureScaleMode
 find_package(SDL3 3.4.0 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
 find_package(SDL3_image CONFIG REQUIRED)
+if(NOT SDLIMAGE_PNG)
+  message(FATAL_ERROR "SDL3_image was built without PNG support. "
+    "The window icon requires it. Rebuild SDL3_image with PNG enabled.")
+endif()
 find_package(iir REQUIRED)
 find_package(PNG REQUIRED)
 find_package(OpenGL REQUIRED)
