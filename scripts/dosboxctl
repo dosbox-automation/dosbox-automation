@@ -1,0 +1,287 @@
+#!/usr/bin/env bash
+# This file is part of the dosbox-automation Project.
+# License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
+#
+
+set -euo pipefail
+
+PORT="${DOSBOX_PORT:-8386}"
+BASE_URL="http://127.0.0.1:$PORT"
+TOKEN_FILE="${HOME}/.config/dosbox-automation/webserver/api_token"
+
+resolve_token() {
+    if [[ -n "${DOSBOX_API_TOKEN:-}" ]]; then
+        echo "$DOSBOX_API_TOKEN"
+        return
+    fi
+    if [[ -f "$TOKEN_FILE" ]]; then
+        cat "$TOKEN_FILE"
+        return
+    fi
+    echo "error: no token (set DOSBOX_API_TOKEN or start dosbox with webserver_token_file=true)" >&2
+    return 1
+}
+
+api() {
+    local token
+    token="$(resolve_token)" || exit 1
+    local path="$1"; shift
+    curl -s -H "Authorization: Bearer $token" "${BASE_URL}${path}" "$@"
+}
+
+api_post() {
+    local path="$1"; shift
+    api "$path" -X POST "$@"
+}
+
+usage() {
+    cat <<'USAGE'
+dosboxctl - command line interface for dosbox-automation
+
+Usage: dosboxctl <command> [args]
+
+Session:
+  status                    API status
+  info                      Version and capabilities
+  shutdown                  Shut down the emulator
+
+Screen:
+  screen                    Print screen text (text mode only)
+  frame [file] [options]    Capture frame to file (default: frame.png)
+    --mode raw|rendered       Capture mode (default: raw)
+    --format png|jpeg         Image format (default: png)
+
+Input:
+  type <text>               Type text (appends Enter)
+  key <name>                Press and release a key (e.g. enter, down, f1)
+  keys <name> [count]       Press a key N times (default: 1)
+
+Lua scripting:
+  run <code>                Load and run a Lua snippet
+  file <path.lua>           Load and run a Lua file
+  script-status             Script state and output
+  script-stop               Stop running script
+  wait <text> [frames]      Wait for text on screen (default: 1800 frames)
+
+Recording:
+  record-start [mode]       Start video capture (raw or rendered, default: raw)
+  record-stop               Stop video capture
+  record-status             Capture status
+
+Drives:
+  swap <drive> <image>      Swap a floppy or CD image
+  mount-lock                Lock mount configuration
+
+Environment:
+  DOSBOX_API_TOKEN          API token (overrides token file)
+  DOSBOX_PORT               API port (default: 8386)
+
+Key names use the KBD_ prefix internally. dosboxctl adds it for you,
+so "dosboxctl key enter" works (sends KBD_enter).
+USAGE
+    exit 1
+}
+
+cmd_status() {
+    api /api/v1/status | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for k, v in sorted(d.items()):
+    print(f'{k}: {v}')
+"
+}
+
+cmd_info() {
+    api /api/v1/dosbox/info | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for k, v in sorted(d.items()):
+    if isinstance(v, dict):
+        print(f'{k}:')
+        for kk, vv in sorted(v.items()):
+            print(f'  {kk}: {vv}')
+    else:
+        print(f'{k}: {v}')
+"
+}
+
+cmd_shutdown() {
+    api_post /api/v1/dosbox/shutdown >/dev/null 2>&1
+    echo "shutdown sent"
+}
+
+cmd_screen() {
+    api /api/v1/video/text | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for line in d.get('text', '').splitlines():
+    s = line.rstrip()
+    if s:
+        print(s)
+"
+}
+
+cmd_frame() {
+    local out="frame.png"
+    local mode="raw"
+    local fmt="png"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --mode)   mode="$2"; shift 2 ;;
+            --format) fmt="$2"; shift 2 ;;
+            -*)       echo "unknown option: $1" >&2; exit 1 ;;
+            *)        out="$1"; shift ;;
+        esac
+    done
+
+    local token
+    token="$(resolve_token)" || exit 1
+    curl -s -H "Authorization: Bearer $token" \
+        "${BASE_URL}/api/v1/video/frame?format=${fmt}&mode=${mode}" \
+        -o "$out"
+    echo "saved: $out (mode=$mode, format=$fmt)"
+}
+
+cmd_type() {
+    local text="$*"
+    api_post /api/v1/input/type \
+        -H "Content-Type: application/json" \
+        -d "{\"text\": \"${text}\\n\"}" >/dev/null
+}
+
+cmd_key() {
+    local name="$1"
+    api_post /api/v1/input/sequence \
+        -H "Content-Type: application/json" \
+        -d "{\"events\": [
+            {\"type\": \"key\", \"key\": \"KBD_${name}\", \"pressed\": true},
+            {\"type\": \"delay\", \"ms\": 100},
+            {\"type\": \"key\", \"key\": \"KBD_${name}\", \"pressed\": false}
+        ]}" >/dev/null
+}
+
+cmd_keys() {
+    local name="$1"
+    local count="${2:-1}"
+    for (( i = 0; i < count; i++ )); do
+        cmd_key "$name"
+        sleep 0.15
+    done
+}
+
+cmd_run() {
+    local code="$*"
+    api_post /api/v1/script/load \
+        -H "Content-Type: text/plain" \
+        -d "$code" >/dev/null
+    api_post /api/v1/script/start >/dev/null
+}
+
+cmd_file() {
+    local path="$1"
+    if [[ ! -f "$path" ]]; then
+        echo "error: file not found: $path" >&2
+        exit 1
+    fi
+    api_post /api/v1/script/load \
+        -H "Content-Type: text/plain" \
+        --data-binary "@$path" >/dev/null
+    api_post /api/v1/script/start >/dev/null
+}
+
+cmd_script_status() {
+    api /api/v1/script/status | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+print(f\"state: {d.get('state', '?')}\")
+if d.get('error'):
+    print(f\"error: {d['error']}\")
+out = d.get('output', {})
+if out:
+    for k, v in sorted(out.items()):
+        print(f'  {k} = {v}')
+"
+}
+
+cmd_script_stop() {
+    api_post /api/v1/script/stop >/dev/null
+    echo "script stopped"
+}
+
+cmd_wait() {
+    local text="$1"
+    local timeout="${2:-1800}"
+    cmd_run "dosbox.wait_for_text(\"$text\", $timeout)"
+}
+
+cmd_record_start() {
+    local mode="${1:-raw}"
+    if [[ "$mode" != "raw" && "$mode" != "rendered" ]]; then
+        echo "error: mode must be 'raw' or 'rendered'" >&2
+        exit 1
+    fi
+    api_post /api/v1/capture/video/start \
+        -H "Content-Type: application/json" \
+        -d "{\"mode\": \"$mode\"}" >/dev/null
+    echo "recording started (mode=$mode)"
+}
+
+cmd_record_stop() {
+    api_post /api/v1/capture/video/stop >/dev/null
+    echo "recording stopped"
+}
+
+cmd_record_status() {
+    api /api/v1/capture/video/status | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for k, v in sorted(d.items()):
+    print(f'{k}: {v}')
+"
+}
+
+cmd_swap() {
+    local drive="$1"
+    local image="$2"
+    api_post /api/v1/drive/swap \
+        -H "Content-Type: application/json" \
+        -d "{\"drive\": \"$drive\", \"image\": \"$image\"}" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+if d.get('error'):
+    print(f\"error: {d['error']}\", file=sys.stderr)
+    sys.exit(1)
+print(f\"swapped {d.get('drive', '?')}: to {d.get('image', '?')}\")
+"
+}
+
+cmd_mount_lock() {
+    api_post /api/v1/mount/lock >/dev/null
+    echo "mount configuration locked"
+}
+
+[[ $# -lt 1 ]] && usage
+
+case "$1" in
+    status)         cmd_status ;;
+    info)           cmd_info ;;
+    shutdown)       cmd_shutdown ;;
+    screen)         cmd_screen ;;
+    frame)          shift; cmd_frame "$@" ;;
+    type)           shift; cmd_type "$@" ;;
+    key)            shift; cmd_key "$1" ;;
+    keys)           shift; cmd_keys "$@" ;;
+    run)            shift; cmd_run "$@" ;;
+    file)           shift; cmd_file "$1" ;;
+    script-status)  cmd_script_status ;;
+    script-stop)    cmd_script_stop ;;
+    wait)           shift; cmd_wait "$@" ;;
+    record-start)   shift; cmd_record_start "${1:-raw}" ;;
+    record-stop)    cmd_record_stop ;;
+    record-status)  cmd_record_status ;;
+    swap)           shift; cmd_swap "$1" "$2" ;;
+    mount-lock)     cmd_mount_lock ;;
+    help|--help|-h) usage ;;
+    *)              echo "unknown command: $1" >&2; usage ;;
+esac
