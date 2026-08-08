@@ -10,7 +10,7 @@ Original works authored by the dosbox-automation project are also
 licensed under GPL-2.0-or-later to maintain compatibility with the
 upstream codebase and other DOSBox forks.
 
-The full license text is in licenses/GPL-2.0-or-later.txt.
+The full license text is in THIRD_PARTY_LICENSES.txt.
 
 
 Third-party components
@@ -21,8 +21,8 @@ bundled programs under various open-source licenses. All are compatible
 with the GPL-2.0-or-later as confirmed by the GNU license compatibility
 guidelines.
 
-See THIRD_PARTY_LICENSES.txt for the complete inventory, and the
-licenses/ directory for the full text of each license.
+See THIRD_PARTY_LICENSES.txt for the complete inventory and the full
+text of each license.
 
 The license of each individual source file is stated in its first few
 lines, either as a house-format header or an SPDX-License-Identifier.

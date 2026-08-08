@@ -19,8 +19,8 @@ These are compiled directly into the dosbox-automation binary.
 --------------------------------------------------------------------------------
 MIT License
 --------------------------------------------------------------------------------
-Used by: base64, clap, enet, httplib (cpp-httplib), json (nlohmann),
-         PL_MPEG, simde, simpleini, stb_truetype, whereami
+Used by: base64, clap, enet, httplib (cpp-httplib), imgui (Dear ImGui),
+         json (nlohmann), PL_MPEG, simde, simpleini, stb_truetype, whereami
 
   base64         Base64 encoder/decoder
                  Copyright (c) 2019 Tobias Locker
@@ -32,8 +32,11 @@ Used by: base64, clap, enet, httplib (cpp-httplib), json (nlohmann),
                  Copyright (c) 2002-2016 Lee Salzman
                  Copyright (c) 2017-2022 Vladyslav Hrytsenko, Dominik Madarasz
 
-  httplib        C++ HTTP/HTTPS library (cpp-httplib 0.48.0)
+  httplib        C++ HTTP/HTTPS library (cpp-httplib)
                  Copyright (c) 2017 yhirose
+
+  imgui          Dear ImGui immediate-mode GUI (optional debugger UI)
+                 Copyright (c) 2014-2026 Omar Cornut
 
   json           JSON for Modern C++
                  Copyright (c) 2013-2026 Niels Lohmann
