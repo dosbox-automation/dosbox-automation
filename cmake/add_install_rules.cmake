@@ -40,8 +40,10 @@ function(add_install_rules)
         RENAME "${INSTALL_ICON_NAME}.png")
     endforeach()
 
-    # Bundle the resources
-    install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${RESOURCE_COPY_PATH}"
+    # Bundle the resources (trailing slash = copy contents, not the
+    # directory itself, so shaders/ lands at share/<project>/shaders/
+    # rather than share/<project>/resources/shaders/).
+    install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${RESOURCE_COPY_PATH}/"
             DESTINATION "${INSTALL_DIR_RESOURCES}")
 
     # Bundle required licenses. Upstream collected per-dependency
