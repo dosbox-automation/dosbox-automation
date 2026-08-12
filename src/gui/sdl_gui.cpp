@@ -891,6 +891,20 @@ static bool is_using_kmsdrm_driver()
 	return driver_str == "kmsdrm";
 }
 
+static bool is_using_offscreen_driver()
+{
+	assert(SDL_WasInit(SDL_INIT_VIDEO));
+
+	const auto driver = SDL_GetCurrentVideoDriver();
+	if (!driver) {
+		return false;
+	}
+
+	std::string driver_str = driver;
+	lowcase(driver_str);
+	return driver_str == "offscreen" || driver_str == "dummy";
+}
+
 static bool check_kmsdrm_setting()
 {
 	// Do we have read access to the event subsystem
@@ -1051,6 +1065,11 @@ void GFX_SetMouseRawInput([[maybe_unused]] const bool requested_raw_input)
 
 void GFX_SetMouseCapture(const bool requested_capture)
 {
+	if (is_using_offscreen_driver()) {
+		LOG_MSG("MOUSE: Skipping capture in headless mode (no pointer device)");
+		return;
+	}
+
 	if (!SDL_SetWindowRelativeMouseMode(sdl.window, requested_capture)) {
 		SDL_ShowCursor();
 
