@@ -25,6 +25,17 @@ dosbox-automation
 
 ---
 
+## Getting started
+
+Download from the [releases page](https://github.com/dosbox-automation/dosbox-automation/releases), unpack, run. Linux ships as a portable tarball and AppImage, Windows as a zip and installer.
+
+To use the API, add `webserver_enabled = true` to the `[webserver]` section in your config. The Swagger UI is then at `http://localhost:8386` with every endpoint documented and testable.
+
+The [project manual](https://www.dosbox-automation.org/) has the rest.
+
+
+---
+
 <p align="center">
   <img src="https://www.dosbox-automation.org/imgs/gallery/vga/budokan-vga.png" width="48%" alt="Budokan (VGA)">
   <img src="https://www.dosbox-automation.org/imgs/gallery/ega/commander-keen-4-ega.png" width="48%" alt="Commander Keen 4 (EGA)">
@@ -140,16 +151,6 @@ Recorded and scripted with the included reference harness, driving the emulator 
 
 ---
 
-## Getting started
-
-Download from the [releases page](https://github.com/dosbox-automation/dosbox-automation/releases), unpack, run. Linux ships as a portable tarball and AppImage, Windows as a zip and installer.
-
-To use the API, add `webserver_enabled = true` to the `[webserver]` section in your config. The Swagger UI is then at `http://localhost:8386` with every endpoint documented and testable.
-
-The [project manual](https://www.dosbox-automation.org/) has the rest.
-
----
-
 ## Security
 
 An HTTP server inside an emulator is an attack surface and we treat it as one: bearer-token auth on every endpoint, host header validation, and mount restrictions that limit what the guest can reach on the host. The [security policy](https://www.dosbox-automation.org/0.84-da4/automation/security/) has the details.
@@ -171,80 +172,6 @@ dosbox-automation's upstream code, its modifications and contributors is license
 
 ---
 
-<details>
-<summary><strong>Screenshot gallery</strong> - one reel per graphics era, from Hercules to SVGA</summary>
-<br>
-
-### Hercules
-
 <p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/hercules/blockout-hercules.png" width="48%" alt="Blockout (Hercules)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/hercules/msflightsim4-hercules.png" width="48%" alt="Flight Simulator 4 (Hercules)">
-</p>
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/hercules/simant-hercules.png" width="48%" alt="SimAnt (Hercules)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/hercules/wonderland-hercules.png" width="48%" alt="Wonderland (Hercules)">
-</p>
-
-### CGA
-
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/cga/popcorn-cga.png" width="48%" alt="Popcorn (CGA)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/cga/pharaohs-tomb-cga.png" width="48%" alt="Pharaoh's Tomb (CGA)">
-</p>
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/cga/simcity-cga.png" width="48%" alt="SimCity (CGA)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/cga/tetris-cga.png" width="48%" alt="Tetris (CGA)">
-</p>
-
-### Tandy
-
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/tandy/zeliard-tandy.png" width="48%" alt="Zeliard (Tandy)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/tandy/grand-prix-circuit-tandy.png" width="48%" alt="Grand Prix Circuit (Tandy)">
-</p>
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/tandy/maniac-mansion-tandy.png" width="48%" alt="Maniac Mansion (Tandy)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/tandy/silpheed-tandy.png" width="48%" alt="Silpheed (Tandy)">
-</p>
-
-### EGA
-
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/ega/outrun-ega.png" width="48%" alt="OutRun (EGA)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/ega/death-knights-of-krynn-ega.png" width="48%" alt="Death Knights of Krynn (EGA)">
-</p>
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/ega/commander-keen-4-ega.png" width="48%" alt="Commander Keen 4 (EGA)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/ega/space-quest-3-ega.png" width="48%" alt="Space Quest III (EGA)">
-</p>
-
-### VGA
-
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/vga/legend-of-kyrandia-2-hand-of-fate-vga.png" width="48%" alt="Legend of Kyrandia: Hand of Fate (VGA)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/vga/budokan-vga.png" width="48%" alt="Budokan (VGA)">
-</p>
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/vga/epic-pinball-super-android-1-vga.png" width="48%" alt="Epic Pinball (VGA)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/vga/the-incredible-machine-vga.png" width="48%" alt="The Incredible Machine (VGA)">
-</p>
-
-### SVGA
-
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/svga/simcity-2000-svga.png" width="48%" alt="SimCity 2000 (SVGA)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/svga/warcraft-2-svga.png" width="48%" alt="Warcraft II (SVGA)">
-</p>
-<p align="center">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/svga/panzer-general-svga.png" width="48%" alt="Panzer General (SVGA)">
-  <img src="https://www.dosbox-automation.org/imgs/gallery/svga/master-of-orion-2-svga.png" width="48%" alt="Master of Orion II (SVGA)">
-</p>
-
-</details>
-
----
-
-<p align="center">
-  <sub>This project is developed with tooled assistance, but tested, reviewed and signed off by a human developer.</sub>
+  <sub>This project is developed with the help of tooled assistance, but tested, reviewed and signed off by a human developer.</sub>
 </p>
