@@ -1,6 +1,6 @@
 #!/bin/bash
 # This file is part of the dosbox-automation Project.
-# License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
+# License: GPL-3.0-or-later. Contact: dosbox-automation-project@trinity2k.net
 #
 # Relocatable tarball: non-system libraries bundle into bin/lib, where
 # the binary's RUNPATH ($ORIGIN/lib) looks.

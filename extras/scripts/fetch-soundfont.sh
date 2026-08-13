@@ -1,6 +1,6 @@
 #!/bin/bash
 # This file is part of the dosbox-automation Project.
-# License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
+# License: GPL-3.0-or-later. Contact: dosbox-automation-project@trinity2k.net
 #
 
 # Fetch the FluidR3_GM SoundFont (bundled default for MIDI playback).

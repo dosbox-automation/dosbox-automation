@@ -6,9 +6,11 @@ of DOSBox. All works derived from the DOSBox project carry the same
 license terms as granted by the DOSBox authors: the GNU General Public
 License version 2 or later (GPL-2.0-or-later).
 
-Original works authored by the dosbox-automation project are also
-licensed under GPL-2.0-or-later to maintain compatibility with the
-upstream codebase and other DOSBox forks.
+Original works authored by the dosbox-automation project are licensed
+under the GNU General Public License version 3 or later
+(GPL-3.0-or-later), beginning with release 0.84-da4. Files derived
+from upstream keep their GPL-2.0-or-later terms; the "or later"
+clause makes the two combinable.
 
 The full license text is in THIRD_PARTY_LICENSES.txt.
 
@@ -38,7 +40,9 @@ FAQ [2], the following license upgrades are permitted:
   LGPL-3.0-or-later -> GPL-3.0-or-later
 
 Taken as a whole, the compiled binaries of dosbox-automation are
-covered by the terms of GPL-2.0-or-later.
+covered by the terms of GPL-3.0-or-later: the GPL-2.0-or-later
+upstream code grants distribution under version 3, and the project's
+own files require it.
 
 [1] https://www.gnu.org/licenses/quick-guide-gplv3.en.html
 [2] https://www.gnu.org/licenses/gpl-faq.html#AllCompatibility
