@@ -1,5 +1,5 @@
 // This file is part of the dosbox-automation Project.
-// License: GPL-3.0-or-later. Contact: dosbox-automation-project@trinity2k.net
+// License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
 //
 
 #ifndef DOSBOX_LUA_DEBUG_LOG_H

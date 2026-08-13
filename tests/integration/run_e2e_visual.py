@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # This file is part of the dosbox-automation Project.
-# License: GPL-3.0-or-later. Contact: dosbox-automation-project@trinity2k.net
+# License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
 #
 
 """Run an E2E installer test on screen with ZMBV recording.
