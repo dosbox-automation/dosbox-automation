@@ -1,15 +1,20 @@
 # Building on macOS
 
-> [!WARNING]
-> These instructions are taken verbatim from upstream DOSBox Staging and
-> have not been tested with dosbox-automation. Nobody on the project
-> currently builds on macOS. They should work, since the build system is
-> shared with upstream, but you are in untested territory - reports and
-> fixes are welcome.
+> [!NOTE]
+> These instructions came from upstream DOSBox Staging. A release build has
+> since been completed and run on macOS 26.6 / Apple Silicon (M3 Pro, Apple
+> clang 21, CMake 4.4.2) — all vcpkg dependencies and the project itself
+> compiled without errors, and the emulator, web server and REST API all
+> work. That build was configured manually rather than through
+> `--preset=release-macos`, because the Xcode generator was not usable on
+> that machine; see [Troubleshooting tips](#troubleshooting-tips). macOS is
+> still not covered by CI and no macOS binaries are published, so reports and
+> fixes remain welcome.
 
-macOS builds can be created using the CMake build tool, compiled using the
-Clang compiler, and provided with dependencies using the Homebrew or MacPorts
-package managers.
+macOS builds can be created using the CMake build tool and compiled using the
+Clang compiler. Build tools come from the Homebrew or MacPorts package
+managers; the library dependencies themselves come from vcpkg, which the
+macOS presets require (see [Installing vcpkg](#installing-vcpkg)).
 
 We recommend using CMake with presets because they're CI-tested and produce a
 binary using consistent compiler flags. Run `cmake --list-presets` to list the
@@ -74,13 +79,28 @@ agreements again if the CMake build step fails.
     sudo port install cmake ccache pkgconfig python314
     ```
 
-## Building
+## Installing vcpkg
 
-Once you have dependencies installed using either environment, clone the
-repository:
+Every macOS preset sets `CMAKE_TOOLCHAIN_FILE` to
+`$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake`, so vcpkg provides the
+library dependencies (SDL3, fluidsynth, libmt32emu, opusfile and the rest,
+per `vcpkg.json`) and `VCPKG_ROOT` must be set before configuring:
 
 ```shell
-git clone https://github.com/dosbox-staging/dosbox-staging.git
+git clone https://github.com/microsoft/vcpkg.git
+./vcpkg/bootstrap-vcpkg.sh
+export VCPKG_ROOT="$PWD/vcpkg"
+```
+
+The first configure builds all dependencies from source, which takes a while;
+later configures reuse the binary cache.
+
+## Building
+
+Once you have the build tools and vcpkg installed, clone the repository:
+
+```shell
+git clone https://github.com/dosbox-automation/dosbox-automation.git
 ```
 
 To build the debug version, execute the following from the repo root:
@@ -105,6 +125,35 @@ cmake --build --preset=release-macos
 - **Random CMake errors**. --- You might need to run `sudo xcodebuild
   -license` to accept the license agreements again. This usually happens after
   an Xcode upgrade.
+
+- **The macOS presets fail with "No CMAKE_C_COMPILER could be found".** ---
+  All four macOS presets use the Xcode generator, so this is the same
+  first-launch problem as above rather than anything preset-specific; check
+  it with `xcodebuild -checkFirstLaunchStatus` (a non-zero exit means the
+  components are missing) and fix it with `sudo xcodebuild -runFirstLaunch`.
+  A quick way to tell the generator apart from the project is to configure a
+  two-line CMake project with `-G Xcode`; if that also fails, the toolchain is
+  at fault. If you cannot complete the first launch, configuring by hand with
+  another generator works and produces a usable binary:
+
+    ```shell
+    cmake -S . -B build/release-macos -G "Unix Makefiles" \
+      -DIS_PRESET_USED=TRUE \
+      -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+      -DVCPKG_TARGET_TRIPLET=arm64-osx \
+      -DCMAKE_OSX_ARCHITECTURES=arm64 \
+      -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+      -DCMAKE_BUILD_TYPE=Release
+    cmake --build build/release-macos -j$(sysctl -n hw.ncpu)
+    ```
+
+- **`RENDER: Error setting fallback shaders, exiting` on first run.** --- A
+  CMake build tree is not a self-contained install; `resources/` is located
+  relative to the working directory (or `<binary>/../Resources`). Running the
+  freshly built binary from inside `build/<preset>/` therefore finds no GLSL
+  shaders, and the missing fallback shader is fatal. Run it from the repo
+  root, or copy `resources/shaders` and `resources/shader-presets` into
+  `~/Library/Preferences/dosbox-automation/`.
 
 
 ## Offline documentation
