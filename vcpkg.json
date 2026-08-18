@@ -5,7 +5,6 @@
   "version": "0.84.0",
   "dependencies": [
     "asio",
-    "gtest",
     "iir1",
     "libjpeg-turbo",
     "libmt32emu",
@@ -40,5 +39,13 @@
       "host": true
     }
   ],
+  "features": {
+    "tests": {
+      "description": "Dependencies required for unit tests",
+      "dependencies": [
+        "gtest"
+      ]
+    }
+  },
   "builtin-baseline": "8defa4b8bc4c35071c678e87a0e140dd433489bb"
 }
