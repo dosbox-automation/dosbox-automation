@@ -286,6 +286,8 @@ it clear. See the [clang-format](#clang-format) section to learn how.
    log statements out, or better yet, introduce define switches per topic
    (e.g., `#define DEBUG_VGA_DRAW`).
 
+7. New code uses augra-log for logging: `augra::log_info("component", "msg")`.
+
 
 ### Code style examples
 

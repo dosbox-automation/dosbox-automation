@@ -566,12 +566,16 @@ add_copy_assets()
 add_library(project_headers INTERFACE)
 target_include_directories(project_headers INTERFACE
   src
+  src/libs/augra-log
   ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
 add_library(dosboxcommon STATIC)
 target_link_libraries(dosboxcommon PUBLIC project_headers)
 
+# augra-log: prefer a vcpkg or system install, fall back to the
+# vendored copy in src/libs/augra-log/.
+find_package(augra-log CONFIG QUIET)
 
 # Add tests before src so that the dosbox_tests target is
 # available for target_sources()
@@ -595,7 +599,7 @@ if (LIBATOMIC)
   target_link_libraries(dosboxcommon PRIVATE ${LIBATOMIC})
 endif()
 
-target_link_libraries(dosboxcommon PUBLIC loguru)
+target_link_libraries(dosboxcommon PUBLIC loguru augra-log)
 target_link_libraries(dosboxcommon PRIVATE
   $<IF:$<TARGET_EXISTS:iir::iir>,iir::iir,iir::iir_static>
   decoders

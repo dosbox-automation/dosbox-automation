@@ -49,6 +49,7 @@
 #include "mount_policy_linux.h"
 #endif
 
+#include "augra/log.h"
 #include "config/config.h"
 #include "dosbox.h"
 #include "misc/support.h"
@@ -363,8 +364,8 @@ std::vector<std::filesystem::path> BuildWindowsSystemPaths(
 	auto add_env = [&](const char* var) {
 		const auto val = get_env(var);
 		if (val.empty()) {
-			LOG_WARNING("MOUNT_POLICY: %s unset - literal denylist covers it",
-			            var);
+			augra::log_warn("mount-policy", "%s unset - literal denylist covers it",
+			                var);
 			return std::string();
 		}
 		add(val);
@@ -738,23 +739,23 @@ static void ParsePathList(const std::string& val,
 
 		auto expanded = ExpandPolicyEnvVars(entry);
 		if (expanded.empty()) {
-			LOG_WARNING("MOUNT_POLICY: Dropped '%s' - env var unset",
-			            entry.c_str());
+			augra::log_warn("mount-policy", "dropped '%s' - env var unset",
+			                entry.c_str());
 			continue;
 		}
 
 		auto ec        = std::error_code();
 		auto canonical = std::filesystem::canonical(expanded, ec);
 		if (ec) {
-			LOG_WARNING("MOUNT_POLICY: Dropped '%s' - does not resolve",
-			            expanded.c_str());
+			augra::log_warn("mount-policy", "dropped '%s' - does not resolve",
+			                expanded.c_str());
 			continue;
 		}
 
 		if (static_cast<int>(out.size()) >= max_entries) {
-			LOG_WARNING("MOUNT_POLICY: Ignoring '%s' - max %d entries",
-			            expanded.c_str(),
-			            max_entries);
+			augra::log_warn("mount-policy", "ignoring '%s' - max %d entries",
+			                expanded.c_str(),
+			                max_entries);
 			continue;
 		}
 		out.push_back(canonical);
@@ -827,10 +828,10 @@ void InitPolicyConfig(const std::filesystem::path& primary_config_path)
 	}
 
 	for (const auto& p : policy_paths.allowed_bases) {
-		LOG_MSG("MOUNT_POLICY: Allowed base: %s", p.string().c_str());
+		augra::log_info("mount-policy", "allowed base: %s", p.string().c_str());
 	}
 	for (const auto& p : policy_paths.allowed_image_roots) {
-		LOG_MSG("MOUNT_POLICY: Allowed image root: %s", p.string().c_str());
+		augra::log_info("mount-policy", "allowed image root: %s", p.string().c_str());
 	}
 }
 

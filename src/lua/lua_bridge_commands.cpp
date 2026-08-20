@@ -9,6 +9,7 @@
 
 #include "libs/json/json.h"
 
+#include "augra/log.h"
 #include "misc/cross.h"
 #include "misc/logging.h"
 
@@ -47,9 +48,9 @@ void ScriptManager::ReportStateTransition(const uint64_t frame_number,
 			                        : "ok");
 			debug_log.Close();
 		}
-		LOG_MSG("LUA: Script '%s' %s",
-		        params.name.c_str(),
-		        ScriptStateName(new_state));
+		augra::log_info("lua", "script '%s' %s",
+		                params.name.c_str(),
+		                ScriptStateName(new_state));
 	}
 }
 
@@ -115,14 +116,14 @@ void LuaLoadCommand::Execute()
 		const auto log_dir = (get_config_dir() / "logs").string();
 		mgr.Log().Open(log_dir, params.name);
 		if (mgr.Log().IsOpen()) {
-			LOG_MSG("LUA: Debug log at %s",
-			        mgr.Log().FilePath().c_str());
+			augra::log_info("lua", "debug log at %s",
+			                mgr.Log().FilePath().c_str());
 		}
 	} else {
 		mgr.Log().Close();
 	}
 
-	LOG_MSG("LUA: Script '%s' loaded", params.name.c_str());
+	augra::log_info("lua", "script '%s' loaded", params.name.c_str());
 }
 
 void LuaLoadCommand::Post(const httplib::Request& req, httplib::Response& res)
@@ -221,7 +222,7 @@ void LuaStartCommand::Execute()
 		mgr.Log().Trace(0, "script started: %s", mgr.Params().name.c_str());
 	}
 
-	LOG_MSG("LUA: Script '%s' started", mgr.Params().name.c_str());
+	augra::log_info("lua", "script '%s' started", mgr.Params().name.c_str());
 }
 
 void LuaStartCommand::Post(const httplib::Request&, httplib::Response& res)
@@ -250,7 +251,7 @@ void LuaStopCommand::Execute()
 	mgr.Coroutine().Stop();
 	mgr.Log().Close();
 
-	LOG_MSG("LUA: Script stopped");
+	augra::log_info("lua", "script stopped");
 }
 
 void LuaStopCommand::Post(const httplib::Request&, httplib::Response& res)

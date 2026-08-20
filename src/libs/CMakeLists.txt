@@ -15,6 +15,7 @@ function(disable_warnings target)
   )
 endfunction()
 
+add_subdirectory(augra-log)
 add_subdirectory(base64)
 add_subdirectory(clap)
 add_subdirectory(decoders)

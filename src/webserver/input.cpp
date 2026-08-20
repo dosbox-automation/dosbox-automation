@@ -6,6 +6,8 @@
 #include "bridge.h"
 #include "webserver.h"
 
+#include "augra/log.h"
+
 #include "gui/osd/osd.h"
 #include "gui/private/common.h"
 #include "gui/titlebar.h"
@@ -220,13 +222,13 @@ static void pic_input_handler(uint32_t)
 	const double wall_drift = wall_ms - dispatched_ev.t_ms;
 
 	if (pending_dispatched % 100 == 0 || pending_dispatched == pending_total) {
-		LOG_MSG("REPLAY [%zu/%zu] t=%.1fms pic=%+.2fms wall=%+.2fms (pic-wall=%+.2fms)",
-		        pending_dispatched,
-		        pending_total,
-		        dispatched_ev.t_ms,
-		        pic_drift,
-		        wall_drift,
-		        pic_ms - wall_ms);
+		augra::log_info("replay", "[%zu/%zu] t=%.1fms pic=%+.2fms wall=%+.2fms (pic-wall=%+.2fms)",
+		                pending_dispatched,
+		                pending_total,
+		                dispatched_ev.t_ms,
+		                pic_drift,
+		                wall_drift,
+		                pic_ms - wall_ms);
 	}
 
 	dispatch_input_event(dispatched_ev);
@@ -237,11 +239,11 @@ static void pic_input_handler(uint32_t)
 		PIC_AddEvent(pic_input_handler, delay);
 	} else {
 		TITLEBAR_NotifyApiReplayStatus(false);
-		LOG_MSG("REPLAY chain complete: %zu/%zu events dispatched, pic=%+.2fms wall=%+.2fms",
-		        pending_dispatched,
-		        pending_total,
-		        pic_drift,
-		        wall_drift);
+		augra::log_info("replay", "chain complete: %zu/%zu events dispatched, pic=%+.2fms wall=%+.2fms",
+		                pending_dispatched,
+		                pending_total,
+		                pic_drift,
+		                wall_drift);
 	}
 }
 
@@ -322,10 +324,10 @@ void InputSequenceCommand::ExecuteFrameBased()
 		frame_replay_active     = true;
 		TITLEBAR_NotifyApiReplayStatus(true);
 		OSD::OsdManager::Instance().SetIcon(OSD::IconId::ReplayActive, true);
-		LOG_MSG("REPLAY (frame) starting: %zu events, normalized from frame %llu (%.1fms offset removed)",
-		        frame_pending_total,
-		        static_cast<unsigned long long>(frame_base),
-		        t_base);
+		augra::log_info("replay", "(frame) starting: %zu events, normalized from frame %llu (%.1fms offset removed)",
+		                frame_pending_total,
+		                static_cast<unsigned long long>(frame_base),
+		                t_base);
 	}
 }
 
@@ -876,21 +878,21 @@ void ReplayDispatchFrame(uint64_t current_frame)
 
 		if (frame_pending_dispatched % 100 == 0 ||
 		    dispatched_this_frame >= 10) {
-			LOG_MSG("REPLAY frame %llu: %d events (%zu/%zu), "
-			        "wall=%.1fms expected=%.1fms drift=%+.1fms",
-			        static_cast<unsigned long long>(relative_frame),
-			        dispatched_this_frame,
-			        frame_pending_dispatched,
-			        frame_pending_total,
-			        wall_ms,
-			        expected_ms,
-			        wall_drift);
+			augra::log_info("replay", "frame %llu: %d events (%zu/%zu), "
+			                "wall=%.1fms expected=%.1fms drift=%+.1fms",
+			                static_cast<unsigned long long>(relative_frame),
+			                dispatched_this_frame,
+			                frame_pending_dispatched,
+			                frame_pending_total,
+			                wall_ms,
+			                expected_ms,
+			                wall_drift);
 		}
 	}
 
 	if (dispatched_this_frame >= 500) {
-		LOG_WARNING("WEBSERVER: Replay frame %llu hit 500-event cap",
-		            static_cast<unsigned long long>(relative_frame));
+		augra::log_warn("replay", "frame %llu hit 500-event cap",
+		                static_cast<unsigned long long>(relative_frame));
 	}
 
 	if (frame_pending_events.empty()) {
@@ -904,14 +906,14 @@ void ReplayDispatchFrame(uint64_t current_frame)
 		const double expected_ms = last_dispatched_t_ms -
 		                           frame_replay_first_t_ms;
 		const double wall_drift = wall_ms - expected_ms;
-		LOG_MSG("REPLAY (frame) complete: %zu/%zu events, %llu frames, "
-		        "wall=%.1fms expected=%.1fms drift=%+.1fms",
-		        frame_pending_dispatched,
-		        frame_pending_total,
-		        static_cast<unsigned long long>(relative_frame),
-		        wall_ms,
-		        expected_ms,
-		        wall_drift);
+		augra::log_info("replay", "(frame) complete: %zu/%zu events, %llu frames, "
+		                "wall=%.1fms expected=%.1fms drift=%+.1fms",
+		                frame_pending_dispatched,
+		                frame_pending_total,
+		                static_cast<unsigned long long>(relative_frame),
+		                wall_ms,
+		                expected_ms,
+		                wall_drift);
 	}
 }
 

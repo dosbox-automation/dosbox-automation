@@ -5,6 +5,7 @@
 #include "lua/lua_coroutine.h"
 #include "lua/lua_api.h"
 
+#include "augra/log.h"
 #include "gui/osd/osd.h"
 #include "hardware/input/keyboard.h"
 #include "misc/logging.h"
@@ -323,10 +324,10 @@ ScriptState LuaCoroutine::ReapStalledWaits()
 		if (now < wait_text_wall_deadline) {
 			return state;
 		}
-		LOG_MSG("LUA: wait_for_text('%s') wall ceiling elapsed at frame "
-		        "%llu; resuming with timeout (off-frame reaper)",
-		        wait_text_pattern.c_str(),
-		        static_cast<unsigned long long>(current_frame));
+		augra::log_info("lua", "wait_for_text('%s') wall ceiling elapsed at frame "
+		                "%llu; resuming with timeout (off-frame reaper)",
+		                wait_text_pattern.c_str(),
+		                static_cast<unsigned long long>(current_frame));
 		waiting_for_text = false;
 		OSD_ClearCommand();
 		lua_pushboolean(coroutine, false);
@@ -336,10 +337,10 @@ ScriptState LuaCoroutine::ReapStalledWaits()
 	if (now < type_wall_deadline) {
 		return state;
 	}
-	LOG_MSG("LUA: type() wall ceiling elapsed at frame %llu with %zu keys "
-	        "undelivered; resuming (off-frame reaper)",
-	        static_cast<unsigned long long>(current_frame),
-	        pending_keys.size());
+	augra::log_info("lua", "type() wall ceiling elapsed at frame %llu with %zu keys "
+	                "undelivered; resuming (off-frame reaper)",
+	                static_cast<unsigned long long>(current_frame),
+	                pending_keys.size());
 	return FinishTypeInjection();
 }
 

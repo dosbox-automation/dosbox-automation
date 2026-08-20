@@ -1087,7 +1087,11 @@ Public License instead of this License.
 --------------------------------------------------------------------------------
 GPL-3.0-or-later
 --------------------------------------------------------------------------------
-Used by: mverb
+Used by: augra-log, mverb
+
+  augra-log      Component-based logging library
+                 Copyright (c) 2026 augra-project contributors
+                 https://github.com/augra-project/augra-log
 
   mverb          Reverb effect
                  See src/libs/mverb/ for copyright details

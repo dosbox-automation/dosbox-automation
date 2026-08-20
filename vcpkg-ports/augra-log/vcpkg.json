@@ -1,0 +1,7 @@
+{
+  "name": "augra-log",
+  "version": "0.1.0",
+  "description": "Component-based logging library",
+  "homepage": "https://github.com/augra-project/augra-log",
+  "license": "GPL-3.0-or-later"
+}

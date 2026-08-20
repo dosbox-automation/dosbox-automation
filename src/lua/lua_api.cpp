@@ -16,6 +16,7 @@
 #include "hardware/input/keyboard.h"
 #include "hardware/input/mouse.h"
 #include "hardware/memory.h"
+#include "augra/log.h"
 #include "ints/int10.h"
 #include "misc/logging.h"
 
@@ -761,7 +762,7 @@ static int LuaOsdClear(lua_State* L)
 static int LuaLog(lua_State* L)
 {
 	const char* msg = luaL_checkstring(L, 1);
-	LOG_MSG("LUA: %s", msg);
+	augra::log_info("lua", "%s", msg);
 
 	auto* dl = GetDebugLog(L);
 	if (dl && dl->IsOpen()) {

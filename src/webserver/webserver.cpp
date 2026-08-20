@@ -45,6 +45,7 @@
 #include "config/config.h"
 #include "dosbox.h"
 #include "misc/cross.h"
+#include "augra/log.h"
 #include "misc/logging.h"
 #include "misc/support.h"
 
@@ -250,9 +251,9 @@ static bool write_token_file(const std::string& token)
 	std::error_code ec;
 	fs::create_directories(dir, ec);
 	if (ec) {
-		LOG_WARNING("WEBSERVER: Cannot create token dir '%s': %s",
-		            dir.string().c_str(),
-		            ec.message().c_str());
+		augra::log_warn("webserver", "cannot create token dir '%s': %s",
+		                dir.string().c_str(),
+		                ec.message().c_str());
 		return false;
 	}
 
@@ -261,8 +262,8 @@ static bool write_token_file(const std::string& token)
 	{
 		auto out = std::ofstream(tmp, std::ios::binary | std::ios::trunc);
 		if (!out.is_open()) {
-			LOG_WARNING("WEBSERVER: Cannot write token file '%s'",
-			            tmp.string().c_str());
+			augra::log_warn("webserver", "cannot write token file '%s'",
+			                tmp.string().c_str());
 			return false;
 		}
 		out << token;
@@ -271,8 +272,8 @@ static bool write_token_file(const std::string& token)
 #if !defined(WIN32)
 	fs::permissions(tmp, fs::perms::owner_read | fs::perms::owner_write, ec);
 	if (ec) {
-		LOG_WARNING("WEBSERVER: Cannot set permissions on '%s'",
-		            tmp.string().c_str());
+		augra::log_warn("webserver", "cannot set permissions on '%s'",
+		                tmp.string().c_str());
 		fs::remove(tmp, ec);
 		return false;
 	}
@@ -280,8 +281,8 @@ static bool write_token_file(const std::string& token)
 
 	fs::rename(tmp, path, ec);
 	if (ec) {
-		LOG_WARNING("WEBSERVER: Cannot rename token file: %s",
-		            ec.message().c_str());
+		augra::log_warn("webserver", "cannot rename token file: %s",
+		                ec.message().c_str());
 		fs::remove(tmp, ec);
 		return false;
 	}
@@ -351,8 +352,8 @@ static void setup_security(const std::string& addr, int port,
 		const auto host = strip_port(req.get_header_value("Host"));
 
 		if (allowed_hosts.find(host) == allowed_hosts.end()) {
-			LOG_WARNING("WEBSERVER: Rejected request with Host header '%s'",
-			            req.get_header_value("Host").c_str());
+			augra::log_warn("webserver", "rejected request with Host header '%s'",
+			                req.get_header_value("Host").c_str());
 			res.status = httplib::StatusCode::Forbidden_403;
 			res.set_content("Forbidden", "text/plain");
 			return httplib::Server::HandlerResponse::Handled;
@@ -368,7 +369,7 @@ static void setup_security(const std::string& addr, int port,
 		        req.get_header_value("Authorization"));
 
 		if (!ConstantTimeEquals(token, api_token)) {
-			LOG_WARNING("WEBSERVER: Rejected request with invalid token");
+			augra::log_warn("webserver", "rejected request with invalid token");
 			res.status = httplib::StatusCode::Unauthorized_401;
 			res.set_content("Unauthorized", "text/plain");
 			return httplib::Server::HandlerResponse::Handled;
@@ -405,9 +406,9 @@ static void run(const std::string addr, const int port,
 			api_token      = std::move(candidate);
 			token_from_env = true;
 		} else {
-			LOG_WARNING(
-			        "WEBSERVER: DOSBOX_API_TOKEN set but invalid "
-			        "(need 64 hex chars), generating token");
+			augra::log_warn("webserver",
+			                "DOSBOX_API_TOKEN set but invalid "
+			                "(need 64 hex chars), generating token");
 		}
 	}
 
@@ -443,24 +444,24 @@ static void run(const std::string addr, const int port,
 	// can read it without scraping stderr.
 	if (use_token_file && !token_from_env) {
 		if (write_token_file(api_token)) {
-			LOG_MSG("WEBSERVER: Token written to %s",
-			        token_file_path.string().c_str());
+			augra::log_info("webserver", "token written to %s",
+			                token_file_path.string().c_str());
 		} else {
-			LOG_MSG("WEBSERVER: API token: %.8s...", api_token.c_str());
+			augra::log_info("webserver", "API token: %.8s...", api_token.c_str());
 		}
 	} else if (token_from_env) {
-		LOG_MSG("WEBSERVER: Using API token from DOSBOX_API_TOKEN");
+		augra::log_info("webserver", "using API token from DOSBOX_API_TOKEN");
 	} else {
-		LOG_MSG("WEBSERVER: API token: %.8s...", api_token.c_str());
+		augra::log_info("webserver", "API token: %.8s...", api_token.c_str());
 	}
 
-	LOG_INFO("WEBSERVER: Starting HTTP REST API on http://%s:%d",
-	         addr.c_str(),
-	         port);
+	augra::log_info("webserver", "starting HTTP REST API on http://%s:%d",
+	                addr.c_str(),
+	                port);
 
 	auto ok = server.listen(addr, port);
 	if (!ok) {
-		LOG_WARNING("WEBSERVER: Failed to bind to %s:%d", addr.c_str(), port);
+		augra::log_warn("webserver", "failed to bind to %s:%d", addr.c_str(), port);
 	}
 }
 
@@ -553,18 +554,17 @@ void WEBSERVER_Init()
 
 		if (is_remote_address(addr) &&
 		    !section->GetBool("webserver_allow_remote")) {
-			LOG_WARNING(
-			        "WEBSERVER: Refusing to bind to %s without "
-			        "webserver_allow_remote=true",
-			        addr.c_str());
+			augra::log_warn("webserver",
+			                "refusing to bind to %s without "
+			                "webserver_allow_remote=true",
+			                addr.c_str());
 			return;
 		}
 
 		if (is_remote_address(addr)) {
-			LOG_WARNING(
-			        "WEBSERVER: Binding to %s — API is exposed "
-			        "to the network",
-			        addr.c_str());
+			augra::log_warn("webserver",
+			                "binding to %s - API is exposed to the network",
+			                addr.c_str());
 		}
 
 		is_webserver_enabled = true;

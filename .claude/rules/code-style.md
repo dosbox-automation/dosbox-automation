@@ -110,3 +110,10 @@ conventions — do not reformat it.
 
 - End-of-line comments only for tabular data
 - Debug logging: wrap with `#if 0` / `#endif` or per-topic define switches
+
+# Logging
+
+Use augra-log for all new code. The free functions are:
+`augra::log_info("component", "format", ...)`,
+`augra::log_warn`, `augra::log_error`, `augra::log_debug`,
+`augra::log_trace`.

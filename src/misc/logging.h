@@ -66,50 +66,84 @@ struct LOG
 void GFX_ShowMsg(const char* format, ...)
         GCC_ATTRIBUTE(__format__(__printf__, 1, 2));
 
-// Keep for compatibility
-#define LOG_MSG(...)	LOG_F(INFO, __VA_ARGS__)
+#include "augra/log.h"
+#include <cstdarg>
 
-#define LOG_INFO(...)		LOG_F(INFO, __VA_ARGS__)
-#define LOG_WARNING(...)	LOG_F(WARNING, __VA_ARGS__)
-#define LOG_ERR(...)		LOG_F(ERROR, __VA_ARGS__)
+// C-style varargs shim so that packed struct fields (which cannot
+// bind to C++ template references) pass through LOG_MSG unchanged.
+namespace augra_compat {
+
+GCC_ATTRIBUTE(__format__(__printf__, 2, 3))
+inline void log_info(const char* component, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    char buf[2048];
+    std::vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    augra::Logger::instance().log(augra::LogLevel::Info, component, buf);
+}
+
+GCC_ATTRIBUTE(__format__(__printf__, 2, 3))
+inline void log_warn(const char* component, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    char buf[2048];
+    std::vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    augra::Logger::instance().log(augra::LogLevel::Warn, component, buf);
+}
+
+GCC_ATTRIBUTE(__format__(__printf__, 2, 3))
+inline void log_error(const char* component, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    char buf[2048];
+    std::vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    augra::Logger::instance().log(augra::LogLevel::Error, component, buf);
+}
+
+GCC_ATTRIBUTE(__format__(__printf__, 2, 3))
+inline void log_debug(const char* component, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    char buf[2048];
+    std::vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    augra::Logger::instance().log(augra::LogLevel::Debug, component, buf);
+}
+
+GCC_ATTRIBUTE(__format__(__printf__, 2, 3))
+inline void log_trace(const char* component, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    char buf[2048];
+    std::vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    augra::Logger::instance().log(augra::LogLevel::Trace, component, buf);
+}
+
+} // namespace augra_compat
+
+#define LOG_MSG(...)	augra_compat::log_info("dosbox", __VA_ARGS__)
+
+#define LOG_INFO(...)		augra_compat::log_info("dosbox", __VA_ARGS__)
+#define LOG_WARNING(...)	augra_compat::log_warn("dosbox", __VA_ARGS__)
+#define LOG_ERR(...)		augra_compat::log_error("dosbox", __VA_ARGS__)
 
 #endif // C_DEBUGGER
 
 #ifdef NDEBUG
-// LOG_DEBUG exists only for messages useful during development, and not to
-// be redirected into internal DOSBox debugger for DOS programs (C_DEBUGGER feature).
 #define LOG_DEBUG(...)
 #define LOG_TRACE(...)
 #else
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wformat-security"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-security"
-
-template <typename... Args>
-void LOG_DEBUG(const std::string& format, const Args&... args) noexcept
-{
-	const auto format_green = std::string(loguru::terminal_green()) +
-	                          loguru::terminal_bold() + format +
-	                          loguru::terminal_reset();
-
-	DLOG_F(INFO, format_green.c_str(), args...);
-}
-
-template <typename... Args>
-void LOG_TRACE(const std::string& format, const Args&... args) noexcept
-{
-	const auto format_purple = std::string(loguru::terminal_purple()) +
-	                           loguru::terminal_bold() + format +
-	                           loguru::terminal_reset();
-
-	DLOG_F(INFO, format_purple.c_str(), args...);
-}
-
-#pragma GCC diagnostic pop
-#pragma clang diagnostic pop
-
+#define LOG_DEBUG(...)	augra_compat::log_debug("dosbox", __VA_ARGS__)
+#define LOG_TRACE(...)	augra_compat::log_trace("dosbox", __VA_ARGS__)
 #endif // NDEBUG
 
 #endif
