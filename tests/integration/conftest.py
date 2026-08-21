@@ -3,12 +3,10 @@ import secrets
 import shutil
 import socket
 import subprocess
-import textwrap
 import threading
 from pathlib import Path
 
 import pytest
-
 from dosbox_client import DosboxClient
 
 SETTING_SECTIONS = {

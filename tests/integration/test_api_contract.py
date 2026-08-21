@@ -11,9 +11,7 @@ import struct
 import time
 from io import BytesIO
 
-import pytest
 from PIL import Image
-
 
 # ---------------------------------------------------------------------------
 # Status & info endpoints
@@ -489,7 +487,7 @@ def test_capture_compression_set_rejected_while_recording(dosbox):
 # ---------------------------------------------------------------------------
 
 def test_drive_swap_missing_drive(dosbox):
-    r = dosbox.drive_swap_raw(json.dumps({"image": "/tmp/fake.img"}))
+    r = dosbox.drive_swap_raw(json.dumps({"image": "/tmp/fake.img"}))  # nosec B108 - fixture path, rejected by the API
     assert r.status_code == 400
 
 
@@ -499,12 +497,12 @@ def test_drive_swap_missing_image(dosbox):
 
 
 def test_drive_swap_invalid_drive_letter(dosbox):
-    r = dosbox.drive_swap("1", "/tmp/fake.img")
+    r = dosbox.drive_swap("1", "/tmp/fake.img")  # nosec B108 - fixture path, rejected by the API
     assert r.status_code == 400
 
 
 def test_drive_swap_nonexistent_file(dosbox):
-    r = dosbox.drive_swap("A", "/tmp/does-not-exist-ever.img")
+    r = dosbox.drive_swap("A", "/tmp/does-not-exist-ever.img")  # nosec B108 - fixture path, rejected by the API
     assert r.status_code == 400
 
 
@@ -588,7 +586,7 @@ def test_token_auth_rejects_wrong_token(dosbox):
         dosbox._url("/api/v1/status"),
         headers={
             "Host": "127.0.0.1",
-            "Authorization": "Bearer 0000000000000000000000000000000000000000000000000000000000000000",
+            "Authorization": "Bearer " + "0" * 64,
         },
         timeout=dosbox.timeout,
     )
@@ -603,11 +601,12 @@ def test_security_headers_present(dosbox):
 
 def test_options_preflight_rejected(dosbox):
     import requests as req
+    token = dosbox.session.headers.get("Authorization", "").replace("Bearer ", "")
     r = req.options(
         dosbox._url("/api/v1/status"),
         headers={
             "Host": "127.0.0.1",
-            "Authorization": f"Bearer {dosbox.session.headers.get('Authorization', '').replace('Bearer ', '')}",
+            "Authorization": f"Bearer {token}",
         },
         timeout=dosbox.timeout,
     )
@@ -628,6 +627,6 @@ def test_event_array_at_limit(dosbox):
 
 
 def test_drive_swap_no_path_leak(dosbox):
-    r = dosbox.drive_swap("A", "/tmp/does-not-exist-ever.img")
+    r = dosbox.drive_swap("A", "/tmp/does-not-exist-ever.img")  # nosec B108 - fixture path, rejected by the API
     assert r.status_code == 400
-    assert "/tmp" not in r.json().get("image", "")
+    assert "/tmp" not in r.json().get("image", "")  # nosec B108 - fixture path, rejected by the API

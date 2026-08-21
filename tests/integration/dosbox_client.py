@@ -108,7 +108,12 @@ class DosboxClient:
                     {"t": t + delay_ms / 2, "type": "key", "key": k, "pressed": False}
                 )
                 if need_shift:
-                    events.append({"t": t + delay_ms / 2, "type": "key", "key": "KBD_leftshift", "pressed": False})
+                    events.append({
+                        "t": t + delay_ms / 2,
+                        "type": "key",
+                        "key": "KBD_leftshift",
+                        "pressed": False,
+                    })
                 t += delay_ms
         return self.input_sequence(events)
 

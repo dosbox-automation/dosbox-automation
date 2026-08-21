@@ -27,7 +27,7 @@ import warnings
 from pathlib import Path
 
 import pytest
-
+from conftest import WORKSPACE
 from e2e_helpers import (
     GameManifest,
     collect_provenance,
@@ -38,8 +38,6 @@ from e2e_helpers import (
     save_run_stats,
     write_provenance_readme,
 )
-
-from conftest import WORKSPACE
 
 DISKS_DIR = Path(__file__).resolve().parents[1] / "files" / "disks"
 
@@ -239,12 +237,12 @@ def _dump_diagnostics(slug, instance, client, status, lua_script,
         if r.status_code == 200:
             screen = r.json().get("text", "")
             if screen.strip():
-                print(f"  --- screen text at end ---")
+                print("  --- screen text at end ---")
                 for line in screen.splitlines():
                     stripped = line.rstrip()
                     if stripped:
                         print(f"  | {stripped}")
-                print(f"  --- end screen text ---")
+                print("  --- end screen text ---")
     except Exception:
         pass
 
@@ -261,7 +259,7 @@ def _dump_diagnostics(slug, instance, client, status, lua_script,
             print(f"  --- dosbox stderr (last {len(tail)} lines) ---")
             for line in tail:
                 print(f"  | {line}")
-            print(f"  --- end stderr ---")
+            print("  --- end stderr ---")
         except Exception:
             pass
 

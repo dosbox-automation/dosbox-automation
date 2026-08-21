@@ -15,7 +15,6 @@ scoped 'dosbox' fixture from conftest.py.
 
 import pytest
 
-
 # -----------------------------------------------------------------------
 # Static file serving: encoded traversal
 # -----------------------------------------------------------------------
@@ -81,7 +80,7 @@ DRIVE_SWAP_PATHS = [
     ("traversal-image",  "../../../../../../etc/passwd"),
     ("unc-path",         "\\\\127.0.0.1\\c$\\windows\\system32"),
     ("windows-abs",      "C:\\Windows\\System32\\config\\SAM"),
-    ("null-in-path",     "/tmp/normal.img\x00/etc/passwd"),
+    ("null-in-path",     "/tmp/normal.img\x00/etc/passwd"),  # nosec B108 - fixture path, rejected by the API
     ("dev-null",         "/dev/null"),
 ]
 

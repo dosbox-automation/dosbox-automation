@@ -16,7 +16,9 @@
 extra_bash_files=()
 
 list_bash_files () {
-	git ls-files \
+	# --others picks up files written this session; a listing of tracked
+	# files only silently skips exactly the code most in need of checking.
+	git ls-files --cached --others --exclude-standard \
 		| xargs file \
 		| grep "Bourne-Again shell script" \
 		| cut -d ':' -f 1

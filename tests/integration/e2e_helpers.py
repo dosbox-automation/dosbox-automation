@@ -399,7 +399,7 @@ def download_disk_images(manifest: GameManifest, game_dir: Path) -> bool:
         # Download the archive.
         ext = ".7z" if ".7z" in url else ".zip"
         archive_path = tmp_dir / f"download{ext}"
-        urllib.request.urlretrieve(url, archive_path)
+        urllib.request.urlretrieve(url, archive_path)  # nosec B310 - URL comes from the recipe manifest
 
         if manifest.media == "zip":
             # The zip itself is the disc image. Copy it directly.
@@ -594,6 +594,12 @@ def write_provenance_readme(provenance_dir: Path, slug: str,
         pairs = ", ".join(f"{k}={v}" for k, v in manifest.settings.items())
         settings_block = f"Game settings: {pairs}\n"
 
+    disks_note = (
+        "They can be downloaded automatically from the source URL above."
+        if manifest.source_url
+        else "Disk images must be provided manually."
+    )
+
     readme_path.write_text(f"""\
 # Provenance: {manifest.name}
 
@@ -643,7 +649,7 @@ License: {manifest.license}
        .venv/bin/pip install pytest requests
 
 3. Make sure disk images are in `tests/files/disks/{slug}/`.
-   {f"They can be downloaded automatically from the source URL above." if manifest.source_url else "Disk images must be provided manually."}
+   {disks_note}
 
 4. Run the E2E test:
 

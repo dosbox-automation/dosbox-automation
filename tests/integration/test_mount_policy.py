@@ -408,7 +408,7 @@ def test_drive_swap_null_byte_rejected(dosbox_e2e, tmp_path):
     game_dir.mkdir()
 
     inst = dosbox_e2e(conf_dir=game_dir)
-    r = inst.client.drive_swap("A", "/tmp/safe.img\x00/etc/passwd")
+    r = inst.client.drive_swap("A", "/tmp/safe.img\x00/etc/passwd")  # nosec B108 - fixture path, rejected by the API
     assert r.status_code == 400
 
 
@@ -422,7 +422,7 @@ def test_drive_swap_very_long_path(dosbox_e2e, tmp_path):
     game_dir.mkdir()
 
     inst = dosbox_e2e(conf_dir=game_dir)
-    long_path = "/tmp/" + "A" * 8192 + ".img"
+    long_path = "/tmp/" + "A" * 8192 + ".img"  # nosec B108 - fixture path, rejected by the API
     r = inst.client.drive_swap("A", long_path)
     assert r.status_code in (400, 403, 413, 414)
 

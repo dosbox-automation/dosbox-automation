@@ -9,7 +9,6 @@ in the terminal when done — the recording is saved to a JSON file.
 import json
 import os
 import re
-import signal
 import socket
 import subprocess
 import sys

@@ -222,22 +222,6 @@ TODO
 
 The instructions are up to date for macOS Sequioa 15.5.
 
-#### markdownlint
-
-Used by `scripts/linting/verify-markdown.sh`.
-
-> [!NOTE]
-> These commands will also set MacPorts Ruby as the system default.
-> If you don't want that, you'll probably need to do some symlinking (figuring
-> that out is an exercise for the reader :sunglasses:).
-
-```shell
-sudo port install ruby34
-sudo port select --set ruby ruby34
-sudo gem update --system 3.6.9
-sudo gem install mdl
-```
-
 #### shellcheck
 
 Used by `scripts/linting/verify-bash.sh`.
@@ -246,14 +230,12 @@ Used by `scripts/linting/verify-bash.sh`.
 sudo port install shellcheck
 ```
 
-#### pylint
+#### ruff and bandit
 
-Used by `scripts/linting/verify-python.sh`. Make sure to set up MacPorts
-Python as described in the **mkdocs** section first.
+Used by `scripts/linting/verify-python.sh`.
 
 ```shell
-sudo port install py313-pylint
-sudo port select --set pylint pylint313
+python3 -m pip install ruff bandit
 ```
 
 #### GNU sed

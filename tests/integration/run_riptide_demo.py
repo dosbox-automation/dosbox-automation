@@ -6,7 +6,6 @@ Run this directly to watch the installation demo.
 
 import os
 import re
-import shutil
 import socket
 import subprocess
 import sys

@@ -6,8 +6,6 @@
 
 import time
 
-import pytest
-
 
 def test_capture_status_when_idle(dosbox):
     r = dosbox.capture_status()

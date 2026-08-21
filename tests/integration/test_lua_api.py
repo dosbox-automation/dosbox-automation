@@ -6,8 +6,6 @@
 
 import time
 
-import pytest
-
 
 def test_script_load_valid(dosbox):
     r = dosbox.script_load("dosbox.log('hello')", name="test-load")

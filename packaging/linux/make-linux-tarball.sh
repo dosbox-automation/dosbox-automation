@@ -59,6 +59,7 @@ if [ ! -f "$source_dir/CMakeLists.txt" ]; then
     echo "error: source tree '$source_dir' not readable; cannot determine the release suffix" >&2
     exit 1
 fi
+# shellcheck disable=SC2016 # matching the literal ${PROJECT_VERSION} text in CMakeLists
 suffix=$(sed -n 's/^set(DOSBOX_VERSION \${PROJECT_VERSION}-\([A-Za-z0-9]*\))/\1/p' "$source_dir/CMakeLists.txt")
 if [ -z "$suffix" ]; then
     echo "error: no DOSBOX_VERSION suffix in $source_dir/CMakeLists.txt" >&2

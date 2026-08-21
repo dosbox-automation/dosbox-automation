@@ -16,8 +16,7 @@ from pathlib import Path
 
 import pytest
 import requests
-
-from conftest import find_free_port, start_dosbox_instance, WORKSPACE
+from conftest import find_free_port
 
 
 def start_with_token_file(work_dir, use_env_token=False):
@@ -28,9 +27,8 @@ def start_with_token_file(work_dir, use_env_token=False):
     """
     import secrets
     import subprocess
-    import threading
 
-    from conftest import DOSBOX_BIN, StderrCapture, DosboxInstance
+    from conftest import DOSBOX_BIN, DosboxInstance, StderrCapture
     from dosbox_client import DosboxClient
 
     port = find_free_port()
