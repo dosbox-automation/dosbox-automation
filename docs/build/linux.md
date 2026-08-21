@@ -83,8 +83,8 @@ These are generic, distro-independent building instructions.
 - Git
 - CMake
 - pkg-config
-- Python 3 with the `venv` module (only needed if you want to build the
-  [offline documentation](#offline-documentation); install `python3-venv` on
+- Python 3 with the `venv` module (only needed for the Python integration
+  test harness in `tests/integration/`; install `python3-venv` on
   Debian/Ubuntu)
 
 ### Install the dependencies (development packages are needed, too)

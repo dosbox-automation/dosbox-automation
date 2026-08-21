@@ -38,13 +38,6 @@ you build a binary optimized for gaming.
 
 ## Build using Visual Studio with CMake
 
-### Prerequisites
-
-- Python 3 with pip (only needed if you want to build the
-  [offline documentation](#offline-documentation)). Download the installer from
-  <https://www.python.org/downloads/> and make sure to check **"Add Python to
-  PATH"** during installation.
-
 ### Importing the CMake project
 
 1. Remove any existing dosbox-automation projects from Visual Studio.

@@ -161,8 +161,10 @@ Security reports go to the contact address in the policy. Everything else goes o
 
 ## Build from source
 
-- [Linux](docs/build-linux.md)
-- [Windows](docs/build-windows.md)
+- [General instructions](docs/build/README.md)
+- [Linux](docs/build/linux.md)
+- [Windows](docs/build/windows.md)
+- [macOS](docs/build/macos.md)
 
 ---
 

@@ -160,101 +160,10 @@ cmake --build --preset=release-macos
   `~/Library/Preferences/dosbox-automation/`.
 
 
-## Offline documentation
-
-Self-contained offline HTML documentation can optionally be built as part of the
-CMake build. The output appears in the build directory at
-`build/<preset>/Resources/docs/` — this is the same documentation bundled with
-the release packages.
-
-Documentation building is **off by default**. To enable it:
-
-```bash
-cmake --preset=debug-macos -DOPT_DOCUMENTATION=ON
-cmake --build --preset=debug-macos
-```
-
-To rebuild just the documentation after editing content:
-
-```bash
-cmake --build --preset debug-macos --target rebuild_documentation
-```
-
-### Prerequisites
-
-Python 3 with the `venv` module is required. Both ship with the Xcode Command
-Line Tools and Homebrew — no extra packages are needed on macOS.
-
-### Best-effort
-
-If Python is not available or is missing required modules (`venv`, `ensurepip`),
-the build proceeds normally without documentation — a warning is shown during
-CMake configuration, but the build is **never aborted**.
-
-### Caching
-
-There are two independent cache layers that make successive builds fast:
-
-1. **Python venv and pip packages** — stored in the build directory at
-   `_mkdocs_venv/`. The virtual environment is created once per build directory.
-   pip only re-runs when `extras/documentation/mkdocs-package-requirements.txt`
-   is modified.
-
-2. **Downloaded external assets** — the mkdocs-material privacy plugin caches
-   downloaded web fonts, images, and scripts in `website/.cache/` in the source
-   tree (this directory is git-ignored). Because it lives outside the build
-   directory, it persists across clean builds and across different build
-   configurations (debug, release, etc.).
-
-> [!IMPORTANT]
-> The privacy plugin only downloads assets from a small set of trusted
-> sources: **Google Fonts** (fonts.googleapis.com, fonts.gstatic.com),
-> **www.dosbox-staging.org** (our GitHub Pages website, completely under our
-> control), and a few well-known CDNs used by the MkDocs Material theme
-> (cdn.jsdelivr.net, unpkg.com, mirrors.creativecommons.org). No content from
-> untrusted origins is ever fetched. The build uses the system CA certificate
-> bundle instead of Python's built-in certifi bundle, so VPNs that perform
-> SSL inspection work without issues. If the build fails with certificate
-> errors, set the `SSL_CERT_FILE` environment variable to your
-> organisation's CA bundle path.
-
-### Rebuilding after documentation changes
-
-Changes to markdown files under `website/docs/` do not automatically trigger a
-rebuild — globbing hundreds of files into CMake's dependency tracking would be
-impractical. To rebuild after editing documentation content:
-
-```bash
-# Option 1: Use the dedicated rebuild target
-cmake --build --preset debug-macos --target rebuild_documentation
-
-# Option 2: Invalidate the build stamp (triggers rebuild on next normal build)
-touch website/mkdocs.yml
-```
-
-### Forcing a full rebuild
-
-To rebuild documentation from scratch, delete the build stamp from the build
-directory:
-
-```bash
-rm build/debug-macos/_mkdocs_build_stamp
-```
-
-### Cleaning all documentation caches
-
-To remove all MkDocs caches from the source tree (`website/.cache`,
-`website/__pycache__`, `website/site`):
-
-```bash
-cmake --build --preset debug-macos --target clean-manual
-```
-
-
 ## Permissions and running
 
-When running DOSBox Staging for the first time, you'll get lots of pop-up
-dialogs asking for granting DOSBox Staging access to various folders. Just
+When running dosbox-automation for the first time, you'll get lots of pop-up
+dialogs asking for granting it access to various folders. Just
 allow access to all these folders.
 
 
@@ -262,7 +171,7 @@ allow access to all these folders.
 
 We use [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to ensure
 the consistent formatting of our code. See the
-[Code formatting](https://github.com/dosbox-staging/dosbox-staging/blob/main/docs/CONTRIBUTING.md#code-formatting)
+[Code formatting](../CONTRIBUTING.md#code-formatting)
 section of our contributor guidelines for more info.
 
 
@@ -285,7 +194,7 @@ Once installed, clang-format will be available as `clang-format-mp-20`. But
 it's usually more convenient to have it available under the standard
 `clang-format` name, so we'll need to do a few more extra steps.
 
-DOSBox Staging uses Apple clang, so we don't want to switch over to MacPorts
+dosbox-automation uses Apple clang, so we don't want to switch over to MacPorts
 clang with [clang-select](https://ports.macports.org/port/clang_select/).
 The best way is to create a symlink (aliases only work in interactive shells,
 not in scripts):
@@ -456,7 +365,7 @@ to the FluidSynth MIDI synth or NE2000 networking via Slirp.
 
   > [!IMPORTANT]
   > The `xattr` command is very important! Without that, macOS Gatekeeper
-  > won't let DOSBox Staging load the dynamic libraries at runtime when
+  > won't let dosbox-automation load the dynamic libraries at runtime when
   > enabling FluidSynth by setting `mididevice = fluidsynth` or NE2000
   > networking by `ne2000 = on`.
 
