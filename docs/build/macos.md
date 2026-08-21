@@ -27,12 +27,6 @@ presets.
 We recommend using Homebrew and Clang because Apple's Core SDKs can be used
 only with Apple's fork of the Clang compiler.
 
-> [!NOTE]
-> CMake support is currently an experimental internal-only, work-in-progress
-> feature; it's not ready for public consumption yet. Please ignore the
-> `CMakeLists.txt` files in the source tree.
-
-
 ## Installing Xcode
 
 Before installing either Homebrew or MacPorts, Apple's Xcode Command Line

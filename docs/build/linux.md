@@ -234,7 +234,7 @@ Release build:
 ```bash
 sudo apt-get install git build-essential pkg-config cmake curl ninja-build \
              autoconf autoconf-archive automake bison libtool libgl1-mesa-dev \
-             libsdl3-dev python3-venv
+             python3-venv
 ```
 
 ### Install the vcpkg tool
