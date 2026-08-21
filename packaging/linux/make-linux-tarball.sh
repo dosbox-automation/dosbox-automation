@@ -5,7 +5,7 @@
 # Relocatable tarball: non-system libraries bundle into bin/lib, where
 # the binary's RUNPATH ($ORIGIN/lib) looks.
 #
-# Usage: make-linux-tarball.sh BUILD_DIR [OUT_DIR] [BUILD_ID]
+# Usage: make-linux-tarball.sh BUILD_DIR [OUT_DIR] [BUILD_ID] [FLAG]
 #
 # BUILD_ID goes into the archive name after the version, so a release
 # artifact can name the commit it came from like the Windows ones do.
@@ -19,20 +19,29 @@ for tool in cmake ldd tar xz realpath sed mktemp cp uname; do
     fi
 done
 
-if [ $# -lt 1 ] || [ $# -gt 3 ]; then
-    echo "Usage: $0 BUILD_DIR [OUT_DIR] [BUILD_ID]" >&2
+if [ $# -lt 1 ] || [ $# -gt 4 ]; then
+    echo "Usage: $0 BUILD_DIR [OUT_DIR] [BUILD_ID] [FLAG]" >&2
     exit 1
 fi
 
 build_dir=$(realpath "$1")
 out_dir=$(realpath "${2:-.}")
 build_id="${3:-}"
+# Naming-scheme flag appended to the artifact name, e.g. "compat" for the
+# glibc 2.28 build. Distinguishes tiers that otherwise render the same name.
+flag="${4:-}"
 
 # The build id becomes part of a path, so keep it to characters that
 # cannot escape the staging directory or confuse tar.
 case "$build_id" in
     *[!A-Za-z0-9._-]*)
         echo "error: build id '$build_id' may only contain letters, digits, dot, underscore and dash" >&2
+        exit 1
+        ;;
+esac
+case "$flag" in
+    *[!A-Za-z0-9-]*)
+        echo "error: flag '$flag' may only contain letters, digits and dash" >&2
         exit 1
         ;;
 esac
@@ -67,7 +76,7 @@ if [ -z "$suffix" ]; then
 fi
 
 arch=$(uname -m)
-name="dosbox-automation-${version}-${suffix}${build_id:+-$build_id}-linux-${arch}"
+name="dosbox-automation-${version}-${suffix}${build_id:+-$build_id}-linux-${arch}${flag:+-$flag}"
 
 # Resolve libraries the way the build was configured, not the way this
 # host would: the configure-time CMAKE_PREFIX_PATH lib dirs take
