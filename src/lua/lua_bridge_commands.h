@@ -11,9 +11,9 @@
 #include "lua/script_validator.h"
 #include "webserver/bridge.h"
 
-#include "libs/http/http.h"
+#include "http/http.h"
 
-#include "libs/json/json.h"
+#include "json/json.h"
 
 #include <chrono>
 #include <mutex>

@@ -1,6 +1,6 @@
 # Vendored third-party libraries
 
-All code under `src/libs/` is vendored third-party code. It should be kept
+All code under `vendor/` is vendored third-party code. It should be kept
 as close to upstream as possible — avoid modifying vendored source files.
 
 ## Warning suppression
@@ -61,7 +61,7 @@ add_library(mylib INTERFACE)
 target_include_directories(mylib SYSTEM INTERFACE ..)
 ```
 
-The `INTERFACE ..` exposes `src/libs/` as the include base so consumers
+The `INTERFACE ..` exposes `vendor/` as the include base so consumers
 write `#include "mylib/header.h"`. The `SYSTEM` keyword suppresses
 warnings.
 
@@ -97,4 +97,4 @@ subdirectory as above.
 - Use double quotes for vendored headers: `#include "libname/header.h"`
 - Do not use angle brackets — those are for actual system headers
 - Do not use a `libs/` prefix — includes resolve through the library
-  targets, not through a global `src/libs` include path
+  targets, not through a global `vendor` include path

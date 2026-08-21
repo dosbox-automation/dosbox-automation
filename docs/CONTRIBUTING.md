@@ -103,7 +103,7 @@ creating a new issue ticket.
 
 ## Contributing code
 
-These rules apply to code in `src/` and `include/` directories. Vendored libraries in `src/libs/` follow their own conventions: do not reformat them.
+These rules apply to code in `src/` and `include/` directories. Vendored libraries in `vendor/` follow their own conventions: do not reformat them.
 
 The rules below apply to new code landing in the `main` branch.
 

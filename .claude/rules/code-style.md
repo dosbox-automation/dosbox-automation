@@ -39,7 +39,7 @@ This is an emulator with a REST API. The webserver is an attack surface.
 
 # Scope
 
-These rules apply to `src/` only. Vendored code in `src/libs/` follows its own
+These rules apply to `src/` only. Vendored code in `vendor/` follows its own
 conventions — do not reformat it.
 
 # After any code change, verify:

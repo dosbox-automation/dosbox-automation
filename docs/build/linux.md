@@ -103,7 +103,7 @@ These are generic, distro-independent building instructions.
 - SpeexDSP
 - zlib
 
-Lua 5.5 is vendored in `src/libs/lua` and built as part of dosbox-automation.
+Lua 5.5 is vendored in `vendor/lua` and built as part of dosbox-automation.
 No system Lua package is needed or used, in either build method.
 
 Mind the SDL and FluidSynth versions: the code uses SDL functions

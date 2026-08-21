@@ -6,7 +6,7 @@
 #define DOSBOX_WEBSERVER_DRIVE_H
 
 #include "bridge.h"
-#include "libs/http/http.h"
+#include "http/http.h"
 
 #include <string>
 

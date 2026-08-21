@@ -5,7 +5,7 @@
 #ifndef DOSBOX_WEBSERVER_VIDEO_H
 #define DOSBOX_WEBSERVER_VIDEO_H
 
-#include "libs/http/http.h"
+#include "http/http.h"
 
 #include "webserver/bridge.h"
 

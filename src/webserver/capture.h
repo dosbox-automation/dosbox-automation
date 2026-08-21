@@ -6,7 +6,7 @@
 #define DOSBOX_WEBSERVER_CAPTURE_H
 
 #include "webserver/bridge.h"
-#include "libs/http/http.h"
+#include "http/http.h"
 
 #include "capture/capture.h"
 

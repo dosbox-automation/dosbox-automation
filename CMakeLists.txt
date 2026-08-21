@@ -46,7 +46,7 @@ endif()
 #
 # Warning flags are set globally via add_compile_options() rather than
 # per-target because the project wants consistent diagnostics across all
-# compiled code. Vendored third-party libraries under src/libs/ opt out
+# compiled code. Vendored third-party libraries under vendor/ opt out
 # via disable_warnings() which applies -w to suppress all warnings.
 if (MSVC)
   # /W4 displays level 1, level 2, and level 3 warnings, and all level 4
@@ -56,7 +56,7 @@ if (MSVC)
   # Disable cl/clangcl warnings about insecure C functions
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
-  # Lua 5.5 (vendored, src/libs/lua) is built as C, so lua_yield
+  # Lua 5.5 (vendored, vendor/lua) is built as C, so lua_yield
   # and luaL_error leave a C function through setjmp/longjmp. On Windows
   # MSVC's longjmp unwinds C++ frames, and the default /EHsc includes /EHc,
   # which tells the compiler extern "C" functions never throw - so it drops
@@ -566,7 +566,7 @@ add_copy_assets()
 add_library(project_headers INTERFACE)
 target_include_directories(project_headers INTERFACE
   src
-  src/libs/augra-log
+  vendor/augra-log
   ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
@@ -574,8 +574,10 @@ add_library(dosboxcommon STATIC)
 target_link_libraries(dosboxcommon PUBLIC project_headers)
 
 # augra-log: prefer a vcpkg or system install, fall back to the
-# vendored copy in src/libs/augra-log/.
+# vendored copy in vendor/augra-log/.
 find_package(augra-log CONFIG QUIET)
+
+add_subdirectory(vendor)
 
 # Add tests before src so that the dosbox_tests target is
 # available for target_sources()

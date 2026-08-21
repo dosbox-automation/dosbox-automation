@@ -11,7 +11,7 @@ subdirectory, that file is authoritative for that component.
 
 
 ================================================================================
-VENDORED LIBRARIES (src/libs/)
+VENDORED LIBRARIES (vendor/)
 ================================================================================
 
 These are compiled directly into the dosbox-automation binary.
@@ -167,7 +167,7 @@ BSD 3-Clause License
 Used by: libslirp headers
 
   libslirp       User-mode networking library headers
-                 See src/libs/libslirp/ for specific copyright holders
+                 See vendor/include/slirp/ for specific copyright holders
 
 BSD 3-Clause "New" or "Revised" License
 
@@ -213,10 +213,10 @@ LGPL-2.1-or-later
 Used by: ESFMu, Nuked OPL3
 
   ESFMu          Enhanced Standard FM synthesizer emulator
-                 See src/libs/ESFMu/ for copyright details
+                 See vendor/ESFMu/ for copyright details
 
   Nuked OPL3     Cycle-accurate Yamaha OPL3 emulator
-                 See src/libs/nuked/ for copyright details
+                 See vendor/nuked/ for copyright details
 
 
                   GNU LESSER GENERAL PUBLIC LICENSE
@@ -738,7 +738,7 @@ GPL-2.0-or-later
 Used by: residfp, tal-chorus
 
   residfp        MOS 6581/8580 SID chip emulator
-                 See src/libs/residfp/ for copyright details
+                 See vendor/residfp/ for copyright details
 
   tal-chorus     Chorus effect DSP (from TAL-NoiseMaker)
                  Copyright (c) 2005-2010 Patrick Kunz, Togu Audio Line, Inc.
@@ -1094,7 +1094,7 @@ Used by: augra-log, mverb
                  https://github.com/augra-project/augra-log
 
   mverb          Reverb effect
-                 See src/libs/mverb/ for copyright details
+                 See vendor/mverb/ for copyright details
 
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
