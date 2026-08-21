@@ -56,7 +56,7 @@ static size_t wav_read(void* pUserData, void* pBufferOut, size_t bytesToRead)
 
 static drwav_bool32 wav_seek(void* pUserData, int offset, drwav_seek_origin origin)
 {
-    const int whence = (origin == drwav_seek_origin_start) ? SDL_IO_SEEK_SET : SDL_IO_SEEK_CUR;
+    const int whence = (origin == DRWAV_SEEK_SET) ? SDL_IO_SEEK_SET : SDL_IO_SEEK_CUR;
     Sound_Sample *sample = (Sound_Sample *) pUserData;
     Sound_SampleInternal *internal = (Sound_SampleInternal *) sample->opaque;
     return (SDL_SeekIO(internal->rw, offset, whence) != -1) ? DRWAV_TRUE : DRWAV_FALSE;
@@ -91,7 +91,7 @@ static int WAV_open(Sound_Sample *sample, const char *ext)
     (void) ext; // deliberately unused, but present for API compliance
     Sound_SampleInternal *internal = (Sound_SampleInternal *) sample->opaque;
     drwav* dr = SDL_malloc(sizeof(drwav));
-    drwav_result result = drwav_init_ex(dr, wav_read, wav_seek, NULL, sample, NULL, 0, NULL);
+    drwav_result result = drwav_init_ex(dr, wav_read, wav_seek, NULL, NULL, sample, NULL, 0, NULL);
     internal->decoder_private = dr;
 
     if (result == DRWAV_TRUE) {

@@ -48,7 +48,7 @@ static size_t flac_read(void* pUserData, void* pBufferOut, size_t bytesToRead)
 
 static drflac_bool32 flac_seek(void* pUserData, int offset, drflac_seek_origin origin)
 {
-    const int whence = (origin == drflac_seek_origin_start) ? SDL_IO_SEEK_SET : SDL_IO_SEEK_CUR;
+    const int whence = (origin == DRFLAC_SEEK_SET) ? SDL_IO_SEEK_SET : SDL_IO_SEEK_CUR;
     Sound_Sample *sample = (Sound_Sample *) pUserData;
     Sound_SampleInternal *internal = (Sound_SampleInternal *) sample->opaque;
     return (SDL_SeekIO(internal->rw, offset, whence) != -1) ? DRFLAC_TRUE : DRFLAC_FALSE;
@@ -70,7 +70,7 @@ static int FLAC_open(Sound_Sample *sample, const char *ext)
 {
     (void) ext; // deliberately unused, but present for API compliance
     Sound_SampleInternal *internal = (Sound_SampleInternal *) sample->opaque;
-    drflac *dr = drflac_open(flac_read, flac_seek, sample, NULL);
+    drflac *dr = drflac_open(flac_read, flac_seek, NULL, sample, NULL);
 
     if (!dr) {
         BAIL_IF_MACRO(sample->flags & SOUND_SAMPLEFLAG_ERROR, ERR_IO_ERROR, 0);

@@ -47,7 +47,7 @@ static size_t mp3_read(void* const pUserData, void* const pBufferOut, const size
 
 static drmp3_bool32 mp3_seek(void* const pUserData, const Sint32 offset, const drmp3_seek_origin origin)
 {
-    const SDL_IOWhence whence = (origin == drmp3_seek_origin_start) ? SDL_IO_SEEK_SET : SDL_IO_SEEK_CUR;
+    const SDL_IOWhence whence = (origin == DRMP3_SEEK_SET) ? SDL_IO_SEEK_SET : SDL_IO_SEEK_CUR;
     Sound_Sample* const sample = static_cast<Sound_Sample*>(pUserData);
     Sound_SampleInternal* const internal = static_cast<Sound_SampleInternal*>(sample->opaque);
     return (SDL_SeekIO(internal->rw, offset, whence) != -1) ? DRMP3_TRUE : DRMP3_FALSE;
@@ -100,7 +100,7 @@ static int32_t MP3_open(Sound_Sample* const sample, const char* const ext)
     p_mp3->p_dr = new drmp3;
 
     // Open the MP3
-    if (drmp3_init(p_mp3->p_dr, mp3_read, mp3_seek, sample, nullptr) != DRMP3_TRUE) {
+    if (drmp3_init(p_mp3->p_dr, mp3_read, mp3_seek, nullptr, nullptr, sample, nullptr) != DRMP3_TRUE) {
         SNDDBG(("MP3: Failed to open the data stream.\n"));
         delete p_mp3->p_dr;
         delete p_mp3;
