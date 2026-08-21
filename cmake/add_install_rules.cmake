@@ -21,11 +21,11 @@ function(add_install_rules)
       DESTINATION "${INSTALL_DIR_MAN}/man1")
 
     # Application menu entry
-    install(FILES "extras/linux/${INSTALL_ICON_NAME}.desktop"
+    install(FILES "packaging/linux/${INSTALL_ICON_NAME}.desktop"
       DESTINATION "${INSTALL_DIR_DESKTOP}")
 
     # Software component information
-    install(FILES "extras/linux/${INSTALL_ICON_NAME}.metainfo.xml"
+    install(FILES "packaging/linux/${INSTALL_ICON_NAME}.metainfo.xml"
       DESTINATION "${INSTALL_DIR_METAINFO}")
 
     # Scalable icon

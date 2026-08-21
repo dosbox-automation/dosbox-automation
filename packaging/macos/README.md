@@ -12,16 +12,16 @@ background image (among a few other things).
 
 ### If you only want to change the background image
 
-1. Make edits to `extras/macos/background/background.svg` in Inkscape. Make
+1. Make edits to `packaging/macos/background/background.svg` in Inkscape. Make
    sure you have the font [Open Sans][open-sans] installed.
 
    [open-sans]: https://fonts.google.com/specimen/Open+Sans
 
-2. Export it twice using the "Page" export mode to `extras/macos/background`
+2. Export it twice using the "Page" export mode to `packaging/macos/background`
    at 96 and 192 dpi as `background-1x.png` and `background-2x.png`,
    respectively.
 
-3. In `extras/macos/background` run `merge-background.sh` to re-generate
+3. In `packaging/macos/background` run `merge-background.sh` to re-generate
    `background.tiff`, which is a multi-resolution TIFF file (needed for Retina
    support)
 
@@ -48,7 +48,7 @@ background image (among a few other things).
    [dmg-guide]: https://www.ej-technologies.com/resources/install4j/help/doc/concepts/dmgStyling.html
 
 5. When you're done, copy the hidden `.DS_Store` from the root of the mounted
-   volume and overwrite `extras/macos/DS_Store` with it.
+   volume and overwrite `packaging/macos/DS_Store` with it.
 
 6. Commit & push the new background image, then rebuild the DMG.
 

@@ -222,47 +222,6 @@ TODO
 
 The instructions are up to date for macOS Sequioa 15.5.
 
-#### mkdocs
-
-Tools used for building our website and documentation (see
-[DOCUMENTATION.md](DOCUMENTATION.md)).
-
-
-> [!NOTE]
-> These commands will also set MacPorts Python and Pip as the system default.
-> If you don't want that, you'll probably need to do some symlinking (figuring
-> that out is an exercise for the reader :sunglasses:).
-
-```shell
-sudo port install python313 python_select-313
-sudo port select --set python  python313
-sudo port select --set python3 python313
-
-sudo port install py-pip
-sudo port select --set pip  pip313
-sudo port select --set pip3 pip313
-
-pip install -r extras/documentation/mkdocs-package-requirements.txt
-```
-
-You'll also need to add the Python programs installed by pip to the path (so
-you can just execute `mkdocs` from the shell). Append the following to your
-`.zshrc`:
-
-```shell
-export PATH="$PATH:$HOME/Library/Python/3.13/bin/"
-```
-
-#### sass
-
-Only necessary if you want to make changes to our customised MkDocs Material
-theme.
-
-```shell
-sudo port install npm11
-sudo npm install -g sass
-```
-
 #### markdownlint
 
 Used by `scripts/linting/verify-markdown.sh`.

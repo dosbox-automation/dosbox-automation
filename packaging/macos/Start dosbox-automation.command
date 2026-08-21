@@ -3,7 +3,7 @@
 CWD=$(dirname "$0")
 COMMAND=$(basename "$0")
 
-open -a DOSBox\ Staging --args --working-dir "$CWD"
+open -a dosbox-automation --args --working-dir "$CWD"
 
 (sleep 0.1 ; osascript <<END
 tell application "Terminal"

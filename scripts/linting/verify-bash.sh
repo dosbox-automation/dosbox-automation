@@ -13,9 +13,7 @@
 # Added extra_bash_files array, for files that should be shellchecked but
 # are not identified by file, e.g. bash-completion shell function script.
 
-extra_bash_files=(
-	extras/linux/bash-completion/dosbox
-)
+extra_bash_files=()
 
 list_bash_files () {
 	git ls-files \

@@ -265,7 +265,7 @@ dosbox-automation should be able to handle non-normalized translation files, and
 normally text editors save normalized files already, it is still highly
 recommended to normalize the updated `PO` file.
 
-In the `extras/translations` directory, you'll find two scripts: `normalize.sh`
+In the `scripts/translations` directory, you'll find two scripts: `normalize.sh`
 (for Linux and macOS) and `normalize.bat` (for Windows). The scripts convert
 the translation files in the `resources/translations` directory to the
 NFC-normalized form (recommended and used by default by most

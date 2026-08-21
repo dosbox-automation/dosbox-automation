@@ -2339,7 +2339,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 ================================================================================
-BUNDLED DOS PROGRAMS (extras/dos-programs/, resources/)
+BUNDLED DOS PROGRAMS (vendor/dos-programs/, resources/)
 ================================================================================
 
   debug.com      FreeDOS debugger (v2.50)

@@ -6,22 +6,22 @@
 	<string>en</string>
 
 	<key>CFBundleDisplayName</key>
-	<string>DOSBox Staging</string>
+	<string>dosbox-automation</string>
 
 	<key>CFBundleExecutable</key>
 	<string>dosbox</string>
 
 	<key>CFBundleIconFile</key>
-	<string>dosbox-staging.icns</string>
+	<string>dosbox-automation.icns</string>
 
 	<key>CFBundleIdentifier</key>
-	<string>io.github.dosbox-staging</string>
+	<string>org.dosbox_automation.dosbox_automation</string>
 
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 
 	<key>CFBundleName</key>
-	<string>DOSBox Staging</string>
+	<string>dosbox-automation</string>
 
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
@@ -65,7 +65,7 @@
 			<string>Editor</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>org.dosbox-staging.dosbox-package</string>
+				<string>org.dosbox_automation.dosbox-package</string>
 			</array>
 			<key>LSTypeIsPackage</key>
 			<true/>
@@ -82,7 +82,7 @@
 			<key>UTTypeDescription</key>
 			<string>DOSBox Staging Package</string>
 			<key>UTTypeIdentifier</key>
-			<string>org.dosbox-staging.dosbox-package</string>
+			<string>org.dosbox_automation.dosbox-package</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
