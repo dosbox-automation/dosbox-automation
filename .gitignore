@@ -5,22 +5,8 @@
 *.gch
 *.pch
 
-# Other
-compile
-documentation
-build.log
-clean.log
-make.log
-.previous_build
-.current_build
-*.defines
-missed.txt
-
 # Default CMake build dir
 /build
-
-# Meson subprojects (build-time deps)
-/subprojects
 
 # VCPKG
 vcpkg_installed
@@ -41,24 +27,12 @@ vcpkg_installed
 # Local History for Visual Studio Code
 .history/
 
-# GNU Global tags, used by some VSCode/Codium plugins
-GPATH
-GRTAGS
-GTAGS
-
 # Common editor temp/backup files
 *~
 *.swp
 *.tmp
 *.orig
 *.rej
-
-# PVS static analysis outputs or ephemerals
-pvs-*
-!pvs-studio.yml
-strace_out
-suppress_base.json
-.PVS-Studio
 
 # macOS directory prefs
 .DS_Store
@@ -77,19 +51,6 @@ suppress_base.json
 .clangd
 .cache
 compile_commands.json
-
-tools/find_magical_f_code
-tools/find_magical_f_code.exe
-tools/is_magical_asset
-tools/is_magical_asset.exe
-tools/superanalyze_mpeg_ps
-tools/superanalyze_mpeg_ps.exe
-tools/unlock_the_magic_mpeg_ps
-tools/unlock_the_magic_mpeg_ps.exe
-
-# Debian build artifacts
-obj-*.-linux-gnu
-debian
 
 # CMake
 CMakeUserPresets.json

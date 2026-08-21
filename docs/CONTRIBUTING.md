@@ -22,7 +22,6 @@ ways to participate, and we appreciate all of them.
 - [Tools](#tools)
   - [compile-commits](#compile-commits)
   - [clang-format](#clang-format)
-  - [count-warnings](#count-warnings)
 
 
 ## AI Usage
@@ -472,13 +471,7 @@ Outside of your editor, format code by invoking the tool directly:
     $ clang-format -i file.cpp
 
 Better not to reformat entire files at once. Target specific line ranges
-(run `clang-format --help`), or use our helper script to format C/C++ code
-touched by your latest commit:
-
-    $ git commit -m "Edit some C++ code"
-    $ ./scripts/tools/format-commit.sh
-
-Run `./scripts/tools/format-commit.sh --help` for available options.
+(run `clang-format --help`).
 
 
 #### Vim integration
@@ -501,15 +494,3 @@ support.
 #### MSVC integration
 
 [ClangFormat extension on VisualStudio Marketplace](https://marketplace.visualstudio.com/items?itemName=LLVMExtensions.ClangFormat)
-
-
-### count-warnings
-
-Our quality gating tracks the number of warnings per OS/compiler. To see a
-summary of warnings in your build, do a clean build and use the script
-`./scripts/ci/count-warnings.py`:
-
-    make -j "$(nproc)" |& tee build.log
-    ./scripts/ci/count-warnings.py build.log
-
-Run `./scripts/ci/count-warnings.py --help` for available options.

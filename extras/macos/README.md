@@ -1,18 +1,5 @@
 # macOS DMG disk image guide
 
-## Create DMG CI step
-
-The macOS DMG disk image is built by the "Package" and "Create dmg" steps of
-the [.github/workflows/macos.yml](/.github/workflows/macos.yml) GitHub action:
-
-1. The "Package" step calls [scripts/packaging/create-package.sh](/scripts/packaging/create-package.sh).
-   The `pkg_macos` function of that script prepares the contents of the DMG
-   file, so if you want to make changes to it (e.g. add/rename files), this is
-   the function to modify.
-
-2. The "Create dmg" step then creates the actual DMG disk image.
-
-
 ## macOS DMG disk image customisations
 
 We're doing a few nifty things here to customise the looks of the Finder
@@ -38,13 +25,12 @@ background image (among a few other things).
    `background.tiff`, which is a multi-resolution TIFF file (needed for Retina
    support)
 
-4. Commit & push the new background image, and let the GitHub CI workflow
-   build the new DMG image.
+4. Commit & push the new background image, then rebuild the DMG.
 
 
 ### To fully customise the appearance of the Finder window
 
-1. Download the latest DMG image from the GitHub CI workflow.
+1. Take a locally built DMG image.
 
 2. Create a writeable copy of it with the following command:
 
@@ -64,6 +50,5 @@ background image (among a few other things).
 5. When you're done, copy the hidden `.DS_Store` from the root of the mounted
    volume and overwrite `extras/macos/DS_Store` with it.
 
-6. Commit & push the new background image, and let the GitHub CI workflow
-   build the new DMG image.
+6. Commit & push the new background image, then rebuild the DMG.
 

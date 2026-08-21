@@ -44,7 +44,8 @@ conventions — do not reformat it.
 
 # After any code change, verify:
 
-1. `clang-format -i <changed files>` or `./scripts/tools/format-commit.sh`
+1. `clang-format -i <changed files>` (our own files only, never whole
+   upstream files)
 
 # Language
 
