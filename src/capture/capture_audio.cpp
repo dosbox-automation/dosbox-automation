@@ -6,7 +6,9 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 
+#include "augra/log.h"
 #include "config/setup.h"
 #include "gui/titlebar.h"
 #include "hardware/memory.h"
@@ -57,9 +59,25 @@ static uint8_t wav_header[] = {
 };
 // clang-format on
 
+static std::string pending_output_path = {};
+
+void capture_audio_set_output_path(const std::string& path)
+{
+	pending_output_path = path;
+}
+
 static void create_wave_file(const uint32_t sample_rate_hz)
 {
-	wave.handle = CAPTURE_CreateFile(CaptureType::Audio);
+	if (!pending_output_path.empty()) {
+		wave.handle = fopen(pending_output_path.c_str(), "wb");
+		if (wave.handle) {
+			augra::log_info("capture", "capturing audio output to '%s'",
+			                pending_output_path.c_str());
+		}
+		pending_output_path.clear();
+	} else {
+		wave.handle = CAPTURE_CreateFile(CaptureType::Audio);
+	}
 	if (!wave.handle) {
 		return;
 	}

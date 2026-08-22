@@ -9,6 +9,8 @@
 #include "capture/capture.h"
 
 #include "json/json.h"
+#include "dos/programs/mount_policy.h"
+#include "misc/std_filesystem.h"
 
 using json = nlohmann::json;
 
@@ -122,6 +124,103 @@ void CaptureStatusCommand::Get(const httplib::Request&, httplib::Response& res)
 	result["mode"] = (cmd.mode == VideoCaptureMode::Rendered) ? "rendered"
 	                                                          : "raw";
 	result["last_stop_reason"] = to_string(cmd.end_reason);
+	send_json(res, result);
+}
+
+// --- AudioCaptureStartCommand ---
+
+void AudioCaptureStartCommand::Execute()
+{
+	CAPTURE_StartAudioCapture(output_path);
+}
+
+void AudioCaptureStartCommand::Post(const httplib::Request& req, httplib::Response& res)
+{
+	AudioCaptureStartCommand cmd;
+
+	if (!req.body.empty()) {
+		const auto j = json::parse(req.body);
+		cmd.output_path = j.value("path", "");
+	}
+
+	if (!cmd.output_path.empty()) {
+		std::error_code ec;
+		const auto parent = std_fs::canonical(
+			std_fs::path(cmd.output_path).parent_path(), ec);
+		if (ec || MountPolicy::IsUnderSystemPath(parent)) {
+			res.status = 403;
+			json err;
+			err["error"] = "output path rejected by system path policy";
+			send_json(res, err);
+			return;
+		}
+	}
+
+	cmd.WaitForCompletion(1000);
+
+	if (!cmd.error.empty()) {
+		res.status = 500;
+		json err;
+		err["error"] = cmd.error;
+		send_json(res, err);
+		return;
+	}
+
+	json result;
+	result["status"] = "recording";
+	if (!cmd.output_path.empty()) {
+		result["path"] = cmd.output_path;
+	}
+	send_json(res, result);
+}
+
+// --- AudioCaptureStopCommand ---
+
+void AudioCaptureStopCommand::Execute()
+{
+	CAPTURE_StopAudioCapture();
+}
+
+void AudioCaptureStopCommand::Post(const httplib::Request&, httplib::Response& res)
+{
+	AudioCaptureStopCommand cmd;
+	cmd.WaitForCompletion(1000);
+
+	if (!cmd.error.empty()) {
+		res.status = 500;
+		json err;
+		err["error"] = cmd.error;
+		send_json(res, err);
+		return;
+	}
+
+	json result;
+	result["status"] = "stopped";
+	send_json(res, result);
+}
+
+// --- AudioCaptureStatusCommand ---
+
+void AudioCaptureStatusCommand::Execute()
+{
+	capturing = CAPTURE_IsCapturingAudio();
+}
+
+void AudioCaptureStatusCommand::Get(const httplib::Request&, httplib::Response& res)
+{
+	AudioCaptureStatusCommand cmd;
+	cmd.WaitForCompletion(250);
+
+	if (!cmd.error.empty()) {
+		res.status = 500;
+		json err;
+		err["error"] = cmd.error;
+		send_json(res, err);
+		return;
+	}
+
+	json result;
+	result["capturing"] = cmd.capturing;
 	send_json(res, result);
 }
 

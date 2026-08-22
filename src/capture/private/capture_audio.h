@@ -5,6 +5,10 @@
 #ifndef DOSBOX_CAPTURE_AUDIO_H
 #define DOSBOX_CAPTURE_AUDIO_H
 
+#include <string>
+
+void capture_audio_set_output_path(const std::string& path);
+
 void capture_audio_add_data(uint32_t sample_rate_hz, uint32_t num_sample_frames,
                             const int16_t* sample_frames);
 

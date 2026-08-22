@@ -8,6 +8,7 @@
 #include "lua/lua_debug_log.h"
 #include "lua/text_input.h"
 
+#include "audio/mixer.h"
 #include "capture/capture.h"
 #include "gui/osd/osd.h"
 
@@ -799,6 +800,152 @@ static int LuaAbort(lua_State* L)
 }
 
 // ================================================================
+// Audio mixer
+// ================================================================
+
+// dosbox.mixer_info() -> table
+static int LuaMixerInfo(lua_State* L)
+{
+	lua_newtable(L);
+
+	const auto master = MIXER_GetMasterVolume();
+	lua_newtable(L);
+	lua_pushnumber(L, static_cast<double>(master.left));
+	lua_setfield(L, -2, "left");
+	lua_pushnumber(L, static_cast<double>(master.right));
+	lua_setfield(L, -2, "right");
+	lua_setfield(L, -2, "master_volume");
+
+	lua_pushboolean(L, MIXER_IsManuallyMuted());
+	lua_setfield(L, -2, "muted");
+
+	lua_pushinteger(L, MIXER_GetSampleRate());
+	lua_setfield(L, -2, "sample_rate");
+
+	lua_newtable(L);
+	int idx = 1;
+	for (const auto& [name, ch] : MIXER_GetChannels()) {
+		lua_newtable(L);
+
+		lua_pushstring(L, ch->GetName().c_str());
+		lua_setfield(L, -2, "name");
+
+		const auto uv = ch->GetUserVolume();
+		lua_newtable(L);
+		lua_pushnumber(L, static_cast<double>(uv.left));
+		lua_setfield(L, -2, "left");
+		lua_pushnumber(L, static_cast<double>(uv.right));
+		lua_setfield(L, -2, "right");
+		lua_setfield(L, -2, "user_volume");
+
+		const auto av = ch->GetAppVolume();
+		lua_newtable(L);
+		lua_pushnumber(L, static_cast<double>(av.left));
+		lua_setfield(L, -2, "left");
+		lua_pushnumber(L, static_cast<double>(av.right));
+		lua_setfield(L, -2, "right");
+		lua_setfield(L, -2, "app_volume");
+
+		lua_pushboolean(L, ch->is_enabled.load());
+		lua_setfield(L, -2, "enabled");
+
+		lua_pushinteger(L, ch->GetSampleRate());
+		lua_setfield(L, -2, "sample_rate");
+
+		lua_rawseti(L, -2, idx++);
+	}
+	lua_setfield(L, -2, "channels");
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		dl->Trace(CurrentFrame(L), "dosbox.mixer_info()");
+	}
+
+	return 1;
+}
+
+// dosbox.mixer_volume(left, right)
+static int LuaMixerVolume(lua_State* L)
+{
+	AudioFrame vol;
+	vol.left  = static_cast<float>(luaL_checknumber(L, 1));
+	vol.right = static_cast<float>(luaL_checknumber(L, 2));
+
+	if (vol.left < 0.0f || vol.right < 0.0f) {
+		return luaL_error(L, "mixer_volume: values must be non-negative");
+	}
+
+	MIXER_SetMasterVolume(vol);
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		dl->Trace(CurrentFrame(L),
+		          "dosbox.mixer_volume(%.2f, %.2f)",
+		          static_cast<double>(vol.left),
+		          static_cast<double>(vol.right));
+	}
+
+	return 0;
+}
+
+// dosbox.mixer_channel_volume(name, left, right)
+static int LuaMixerChannelVolume(lua_State* L)
+{
+	const char* name = luaL_checkstring(L, 1);
+	AudioFrame vol;
+	vol.left  = static_cast<float>(luaL_checknumber(L, 2));
+	vol.right = static_cast<float>(luaL_checknumber(L, 3));
+
+	if (vol.left < 0.0f || vol.right < 0.0f) {
+		return luaL_error(L, "mixer_channel_volume: values must be non-negative");
+	}
+
+	auto ch = MIXER_FindChannel(name);
+	if (!ch) {
+		return luaL_error(L, "mixer_channel_volume: channel not found: %s", name);
+	}
+
+	ch->SetUserVolume(vol);
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		dl->Trace(CurrentFrame(L),
+		          "dosbox.mixer_channel_volume(\"%s\", %.2f, %.2f)",
+		          name,
+		          static_cast<double>(vol.left),
+		          static_cast<double>(vol.right));
+	}
+
+	return 0;
+}
+
+// dosbox.mixer_mute()
+static int LuaMixerMute(lua_State* L)
+{
+	MIXER_Mute();
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		dl->Trace(CurrentFrame(L), "dosbox.mixer_mute()");
+	}
+
+	return 0;
+}
+
+// dosbox.mixer_unmute()
+static int LuaMixerUnmute(lua_State* L)
+{
+	MIXER_Unmute();
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		dl->Trace(CurrentFrame(L), "dosbox.mixer_unmute()");
+	}
+
+	return 0;
+}
+
+// ================================================================
 // Capture
 // ================================================================
 
@@ -835,6 +982,53 @@ static int LuaCaptureStop(lua_State* L)
 	auto* dl = GetDebugLog(L);
 	if (dl && dl->IsOpen()) {
 		dl->Trace(CurrentFrame(L), "dosbox.capture_stop()");
+	}
+	return 0;
+}
+
+// dosbox.audio_capture_start([path])
+static int LuaAudioCaptureStart(lua_State* L)
+{
+	std::string output_path;
+	if (lua_gettop(L) >= 1 && !lua_isnil(L, 1)) {
+		output_path = luaL_checkstring(L, 1);
+
+		if (!output_path.empty()) {
+			std::error_code ec;
+			const auto parent = std::filesystem::canonical(
+				std::filesystem::path(output_path).parent_path(), ec);
+			if (ec || MountPolicy::IsUnderSystemPath(parent)) {
+				return luaL_error(L,
+				                  "audio_capture_start: output path rejected by system path policy");
+			}
+		}
+	}
+
+	OSD_ShowCommand("audio_capture_start", CurrentFrame(L));
+	CAPTURE_StartAudioCapture(output_path);
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		if (output_path.empty()) {
+			dl->Trace(CurrentFrame(L), "dosbox.audio_capture_start()");
+		} else {
+			dl->Trace(CurrentFrame(L),
+			          "dosbox.audio_capture_start(\"%s\")",
+			          output_path.c_str());
+		}
+	}
+	return 0;
+}
+
+// dosbox.audio_capture_stop()
+static int LuaAudioCaptureStop(lua_State* L)
+{
+	OSD_ShowCommand("audio_capture_stop", CurrentFrame(L));
+	CAPTURE_StopAudioCapture();
+
+	auto* dl = GetDebugLog(L);
+	if (dl && dl->IsOpen()) {
+		dl->Trace(CurrentFrame(L), "dosbox.audio_capture_stop()");
 	}
 	return 0;
 }
@@ -904,6 +1098,22 @@ void RegisterDosboxApi(lua_State* L, LuaCoroutine* coroutine, DebugLog* debug_lo
 	lua_setfield(L, -2, "capture_start");
 	lua_pushcfunction(L, LuaCaptureStop);
 	lua_setfield(L, -2, "capture_stop");
+	lua_pushcfunction(L, LuaAudioCaptureStart);
+	lua_setfield(L, -2, "audio_capture_start");
+	lua_pushcfunction(L, LuaAudioCaptureStop);
+	lua_setfield(L, -2, "audio_capture_stop");
+
+	// Mixer
+	lua_pushcfunction(L, LuaMixerInfo);
+	lua_setfield(L, -2, "mixer_info");
+	lua_pushcfunction(L, LuaMixerVolume);
+	lua_setfield(L, -2, "mixer_volume");
+	lua_pushcfunction(L, LuaMixerChannelVolume);
+	lua_setfield(L, -2, "mixer_channel_volume");
+	lua_pushcfunction(L, LuaMixerMute);
+	lua_setfield(L, -2, "mixer_mute");
+	lua_pushcfunction(L, LuaMixerUnmute);
+	lua_setfield(L, -2, "mixer_unmute");
 
 	// Output table
 	lua_newtable(L);

@@ -90,6 +90,8 @@ enum class VideoCaptureEndReason : uint8_t {
 };
 VideoCaptureEndReason CAPTURE_GetVideoCaptureEndReason();
 
+void CAPTURE_StartAudioCapture(const std::string& path = {});
+void CAPTURE_StopAudioCapture();
 bool CAPTURE_IsCapturingAudio();
 bool CAPTURE_IsCapturingImage();
 bool CAPTURE_IsCapturingPostRenderImage();

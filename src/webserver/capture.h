@@ -36,6 +36,28 @@ public:
 	VideoCaptureEndReason end_reason = VideoCaptureEndReason::NotEnded;
 };
 
+class AudioCaptureStartCommand : public Command {
+public:
+	void Execute() override;
+	static void Post(const httplib::Request& req, httplib::Response& res);
+
+	std::string output_path = {};
+};
+
+class AudioCaptureStopCommand : public Command {
+public:
+	void Execute() override;
+	static void Post(const httplib::Request& req, httplib::Response& res);
+};
+
+class AudioCaptureStatusCommand : public Command {
+public:
+	void Execute() override;
+	static void Get(const httplib::Request& req, httplib::Response& res);
+
+	bool capturing = false;
+};
+
 class CaptureCompressionGetCommand : public Command {
 public:
 	void Execute() override;

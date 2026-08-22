@@ -6,6 +6,7 @@
 #include "bridge.h"
 #include "capture.h"
 #include "control.h"
+#include "mixer.h"
 #include "drive.h"
 #include "input.h"
 #include "private/auth.h"
@@ -177,6 +178,16 @@ static void setup_api_handlers()
 	server.Get("/api/v1/capture/video/status", CaptureStatusCommand::Get);
 	server.Get("/api/v1/capture/video/compression", CaptureCompressionGetCommand::Get);
 	server.Put("/api/v1/capture/video/compression", CaptureCompressionSetCommand::Put);
+
+	server.Post("/api/v1/capture/audio/start", AudioCaptureStartCommand::Post);
+	server.Post("/api/v1/capture/audio/stop", AudioCaptureStopCommand::Post);
+	server.Get("/api/v1/capture/audio/status", AudioCaptureStatusCommand::Get);
+
+	server.Get("/api/v1/mixer", MixerStatusCommand::Get);
+	server.Put("/api/v1/mixer/volume", MixerSetVolumeCommand::Put);
+	server.Post("/api/v1/mixer/mute", MixerMuteCommand::Post);
+	server.Post("/api/v1/mixer/unmute", MixerUnmuteCommand::Post);
+	server.Put("/api/v1/mixer/channel/:name", MixerSetChannelVolumeCommand::Put);
 }
 
 static std::string strip_port(const std::string& host)

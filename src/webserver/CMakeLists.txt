@@ -10,6 +10,7 @@ target_sources(dosboxcommon PRIVATE
   frame_tap.cpp
   io_port.cpp
   memory.cpp
+  mixer.cpp
   video.cpp
   webserver.cpp)
 

@@ -530,22 +530,21 @@ void CAPTURE_AddMidiData(const bool sysex, const size_t len, const uint8_t* data
 	capture_midi_add_data(sysex, len, data);
 }
 
-static void handle_capture_audio_event(bool pressed)
+void CAPTURE_StartAudioCapture(const std::string& path)
 {
-	// Ignore key-release events
-	if (!pressed) {
-		return;
-	}
-
-	switch (capture.state.audio) {
-	case CaptureState::Off:
-		// Capturing the audio output will start in the next few
-		// milliseconds when CAPTURE_AddAudioData is called
+	if (capture.state.audio == CaptureState::Off) {
+		if (!path.empty()) {
+			capture_audio_set_output_path(path);
+		}
 		capture.state.audio = CaptureState::Pending;
-		break;
+	}
+}
+
+void CAPTURE_StopAudioCapture()
+{
+	switch (capture.state.audio) {
+	case CaptureState::Off: break;
 	case CaptureState::Pending:
-		// It's practically impossible to hit this branch; handling it
-		// for completeness only
 		capture.state.audio = CaptureState::Off;
 		LOG_MSG("CAPTURE: Cancelled pending audio output capture");
 		break;
@@ -554,6 +553,19 @@ static void handle_capture_audio_event(bool pressed)
 		capture.state.audio = CaptureState::Off;
 		LOG_MSG("CAPTURE: Stopped capturing audio output");
 		break;
+	}
+}
+
+static void handle_capture_audio_event(bool pressed)
+{
+	if (!pressed) {
+		return;
+	}
+
+	if (capture.state.audio == CaptureState::Off) {
+		CAPTURE_StartAudioCapture();
+	} else {
+		CAPTURE_StopAudioCapture();
 	}
 }
 
