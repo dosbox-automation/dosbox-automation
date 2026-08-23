@@ -24,6 +24,10 @@ if (DOSBOX_PLATFORM_WINDOWS)
   add_subdirectory(platform/windows)
 endif()
 
+if (DOSBOX_PLATFORM_LINUX)
+  add_subdirectory(wayland-decor)
+endif()
+
 if (OPT_TESTS)
   target_sources(dosbox_tests PRIVATE dosbox.cpp)
 endif()
