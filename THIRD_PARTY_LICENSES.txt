@@ -46,6 +46,8 @@ Used by: base64, clap, enet, httplib (cpp-httplib), imgui (Dear ImGui),
                  Copyright (c) 2018-2021 Jonas Ådahl
                  Copyright (c) 2019-2021 Christian Rauch
                  Copyright (c) 2024 Colin Kinloch
+                 src/wayland-decor/decor-augra.c is adapted from its
+                 cairo plugin (MIT); see the header of that file.
 
   PL_MPEG        MPEG1 video decoder
                  Copyright (c) Dominic Szablewski
