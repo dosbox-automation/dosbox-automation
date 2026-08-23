@@ -20,7 +20,7 @@ These are compiled directly into the dosbox-automation binary.
 MIT License
 --------------------------------------------------------------------------------
 Used by: base64, clap, enet, httplib (cpp-httplib), imgui (Dear ImGui),
-         json (nlohmann), PL_MPEG, simde, simpleini, stb_truetype, whereami
+         json (nlohmann), libdecor, PL_MPEG, simde, simpleini, stb_truetype, whereami
 
   base64         Base64 encoder/decoder
                  Copyright (c) 2019 Tobias Locker
@@ -40,6 +40,12 @@ Used by: base64, clap, enet, httplib (cpp-httplib), imgui (Dear ImGui),
 
   json           JSON for Modern C++
                  Copyright (c) 2013-2026 Niels Lohmann
+
+  libdecor       Client-side window decorations for Wayland
+                 Copyright (c) 2017-2018 Red Hat Inc.
+                 Copyright (c) 2018-2021 Jonas Ådahl
+                 Copyright (c) 2019-2021 Christian Rauch
+                 Copyright (c) 2024 Colin Kinloch
 
   PL_MPEG        MPEG1 video decoder
                  Copyright (c) Dominic Szablewski
@@ -2462,6 +2468,11 @@ FONTS USED IN SPLASH SCREENS
 
   Raleway        Sans-serif font
                  Used in splash screen graphics
+
+  noto-sans      Noto Sans Regular, titlebar font for the Wayland
+                 decoration plugin, embedded at build time
+
+Copyright 2022 The Noto Project Authors (Noto Sans)
 
 Copyright © 2010 by Dharma Type.
 

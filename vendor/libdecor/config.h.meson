@@ -1,0 +1,15 @@
+/* Version number of package */
+#mesondefine VERSION
+
+/* Plugin directiory path */
+#mesondefine LIBDECOR_PLUGIN_DIR
+
+/* Plugin API version */
+#mesondefine LIBDECOR_PLUGIN_API_VERSION
+
+#mesondefine HAS_DBUS
+
+#mesondefine HAVE_MKOSTEMP
+#mesondefine HAVE_POSIX_FALLOCATE
+#mesondefine HAVE_MEMFD_CREATE
+#mesondefine HAVE_GETTID

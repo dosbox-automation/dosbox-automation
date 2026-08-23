@@ -1,0 +1,12 @@
+Vendored for the Wayland decoration plugin (aug-egq3).
+Recorded 2026-08-23.
+
+libdecor/        upstream gitlab.freedesktop.org/libdecor/libdecor
+                 pinned commit 59c498aff477a3c23dcb5bfaa101c5d3287da629
+                 (2026-03-22), MIT. demo/ and .git dropped.
+noto-sans/       NotoSans-Regular.ttf, SIL Open Font License 1.1.
+                 Titlebar font for the decoration plugin, embedded at
+                 build time. Source: Debian fonts-noto-core; OFL.txt from
+                 google/fonts ofl/notosans.
+stb_truetype.h   already vendored (public domain); reused by the plugin
+                 for glyph rasterization. No new copy added.
