@@ -20,7 +20,7 @@ ways to participate, and we appreciate all of them.
 - [Writing style](#writing-style)
 - [Versioning](#versioning)
 - [Tools](#tools)
-  - [compile-commits](#compile-commits)
+  - [format-commit](#format-commit)
   - [clang-format](#clang-format)
 
 
@@ -360,9 +360,8 @@ Submit code changes via GitHub PRs. The key points:
    blocks (more than 10-20 lines), create a separate reformat commit first,
    followed by the actual code change in a second commit.
 
-2. Make sure all your commits compile individually. This is critical for
-   bisecting, and we enforce it. Run `scripts/tools/compile-commits.sh` to
-   compile all commits of the PR you're working on.
+2. The branch tip must compile and pass the full test suite. Individual
+   commits do not need to compile on their own.
 
 3. New source files written for this project get our two-line license
    header (see any file under `src/lua/` or `src/webserver/` for the
@@ -454,11 +453,16 @@ Full product name example: `dosbox-automation 0.83-da3`.
 
 ## Tools
 
-### compile-commits
+### format-commit
 
-Make sure that all your commits compile individually. This is critical for
-bisecting, and we enforce it. Run `scripts/tools/compile-commits.sh` to
-compile all commits of the PR you're working on.
+`scripts/tools/format-commit.sh` reformats C and C++ lines touched by
+recent commits to match the project's `.clang-format` rules. Only the
+changed lines are reformatted, not entire files.
+
+    $ scripts/tools/format-commit.sh
+
+Run it before submitting if you want your formatting to match automatically.
+It is not required, but it saves review round-trips.
 
 
 ### clang-format
