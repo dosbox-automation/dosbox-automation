@@ -1,5 +1,6 @@
 target_sources(dosboxcommon PRIVATE
   clipboard.cpp
+  desktop_integration.cpp
   mapper.cpp
   sdl_gui.cpp
   titlebar.cpp

@@ -33,6 +33,26 @@ To use the API, add `webserver_enabled = true` to the `[webserver]` section in y
 
 The [project manual](https://www.dosbox-automation.org/) has the rest.
 
+## Platform support
+
+Applies to the next release after 0.84-da4 and to builds from the current sources.
+
+| Distribution | Environment | Icon | Decoration |
+|---|---|---|---|
+| Debian 13 | X11 / KDE | yes | yes |
+| Ubuntu 22.04 LTS | Wayland / GNOME | yes (1) | yes (2) |
+| Ubuntu 26.04 LTS | Wayland / GNOME | yes (1) | yes (2) |
+| Fedora 44 GNOME | Wayland / GNOME | yes (1) | yes (2) |
+| Pop!_OS 22.04 | X11 / GNOME | yes (1) | yes |
+| Arch (vanilla) | XLibre / LXQt | yes | yes |
+| Windows 10 | Windows DWM | yes | yes |
+
+(1) User will be asked for permission to install the application icon for the dock.
+(2) CSD decoration, light/dark aware, with XWayland native decoration without fallback.
+
+Running a combination not listed here? Open an issue with a screenshot showing the dock icon and title bar, plus the log lines where dosbox-automation prints the detected session type and display server. We will add verified setups to the table.
+
+Linux ships as a portable tarball and AppImage. Windows ships as a setup installer and a portable zip. macOS is not available.
 
 ---
 

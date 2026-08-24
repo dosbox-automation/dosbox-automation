@@ -35,6 +35,7 @@
 #include "gui/render/opengl_renderer.h"
 #include "gui/render/render.h"
 #include "gui/render/sdl_renderer.h"
+#include "gui/desktop_integration.h"
 #include "gui/titlebar.h"
 #include "hardware/input/keyboard.h"
 #include "hardware/input/mouse.h"
@@ -1982,6 +1983,8 @@ void GFX_InitSdl()
 	const auto video_driver = SDL_GetCurrentVideoDriver();
 	LOG_MSG("SDL: %s video initialised", video_driver);
 
+	MaybeOfferAppIconInstallation();
+
 #if defined(LINUX)
 	LogSystemInfo(video_driver ? video_driver : "");
 #endif
@@ -3020,6 +3023,12 @@ static void init_sdl_config_settings(SectionProp& section)
 	        "\n"
 	        "Note: The '--erasemapper' command line option only deletes the default mapper\n"
 	        "      file.");
+
+	pbool = section.AddBool("ask_for_appicon_installation", OnlyAtStart, true);
+	pbool->SetHelp(
+	        "On GNOME Wayland, offer to install a desktop file and icons so the\n"
+	        "dock and task switcher show the application icon ('on' by default).\n"
+	        "Set to 'off' to suppress the dialog.");
 
 	pstring = section.AddString("screensaver", Always, "auto");
 	pstring->SetHelp(
