@@ -91,6 +91,13 @@ for p in "${prefixes[@]}"; do
     done
 done
 
+# FetchContent builds place shared libraries in _deps/<name>-build/.
+if [ -d "$build_dir/_deps" ]; then
+    while IFS= read -r d; do
+        search_path="${search_path:+$search_path:}$d"
+    done < <(find "$build_dir/_deps" -name "*.so*" -printf '%h\n' | sort -u)
+fi
+
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 

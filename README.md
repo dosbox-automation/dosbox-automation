@@ -44,6 +44,7 @@ Applies to the next release after 0.84-da4 and to builds from the current source
 | Ubuntu 26.04 LTS | Wayland / GNOME | yes (1) | yes (2) |
 | Fedora 44 GNOME | Wayland / GNOME | yes (1) | yes (2) |
 | Pop!_OS 22.04 | X11 / GNOME | yes (1) | yes |
+| Linux Mint 21 | X11 / XFCE | yes | yes |
 | Arch (vanilla) | XLibre / LXQt | yes | yes |
 | Windows 10 | Windows DWM | yes | yes |
 

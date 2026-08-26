@@ -99,7 +99,6 @@ else()
   # Warning flags only valid for the C++ code
   set(WARNING_FLAGS_CXX
       ${WARNING_FLAGS_COMMON}
-      "-Weffc++"
       "-Wextra-semi"
       "-Wimplicit-fallthrough"
   )
@@ -384,6 +383,11 @@ endif()
 
 set(C_PER_PAGE_W_OR_X ON)
 
+option(OPT_FETCH_DEPS
+  "Download and build SDL3, SDL3_image, iir1, mt32emu, and FluidSynth from source when system versions are too old or missing"
+  OFF
+)
+
 option(OPT_OPENGL "Enable OpenGL render backend" ON)
 if (OPT_OPENGL)
   set(C_OPENGL ON)
@@ -392,7 +396,27 @@ endif()
 option(OPT_MT32EMU "Enable Roland MT-32 emulation support" ON)
 if (OPT_MT32EMU)
   set(C_MT32EMU ON)
-  find_package(MT32Emu REQUIRED)
+  find_package(MT32Emu QUIET)
+  if(NOT MT32Emu_FOUND)
+    if(OPT_FETCH_DEPS)
+      include(FetchContent)
+      message(STATUS "mt32emu not found, fetching from source...")
+      FetchContent_Declare(mt32emu
+        GIT_REPOSITORY https://github.com/munt/munt.git
+        GIT_TAG        libmt32emu_2_7_3
+        GIT_SHALLOW    TRUE
+        SOURCE_SUBDIR  mt32emu
+      )
+      FetchContent_MakeAvailable(mt32emu)
+      if(NOT TARGET MT32Emu::mt32emu)
+        add_library(MT32Emu::mt32emu ALIAS mt32emu)
+      endif()
+    else()
+      message(FATAL_ERROR
+        "mt32emu not found. Install it, or pass -DOPT_FETCH_DEPS=ON to download and build automatically."
+      )
+    endif()
+  endif()
 endif()
 
 if (OPT_DEBUGGER)
@@ -517,18 +541,129 @@ endif()
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 
 # Find common external dependencies
+#
+# SDL3, SDL3_image, iir1, and FluidSynth can be fetched from source when
+# the system versions are too old or missing. Pass -DOPT_FETCH_DEPS=ON to
+# enable this. MT32Emu uses the same mechanism (see its OPT_MT32EMU block
+# above). Everything else (zlib, libpng, OpenGL, ALSA, SpeexDSP, GTest)
+# stays a system package requirement.
+
 # 3.4.0 floor: upstream mapper code uses SDL_SetDefaultTextureScaleMode
-find_package(SDL3 3.4.0 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
-find_package(SDL3_image CONFIG REQUIRED)
+find_package(SDL3 3.4.0 QUIET CONFIG COMPONENTS SDL3)
+if(NOT SDL3_FOUND)
+  if(OPT_FETCH_DEPS)
+    include(FetchContent)
+    message(STATUS "SDL3 3.4.0+ not found, fetching from source...")
+    set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+    set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(SDL3
+      GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+      GIT_TAG        release-3.4.8
+      GIT_SHALLOW    TRUE
+      OVERRIDE_FIND_PACKAGE
+    )
+    FetchContent_MakeAvailable(SDL3)
+  else()
+    message(FATAL_ERROR
+      "SDL3 3.4.0+ not found. Install it, or pass -DOPT_FETCH_DEPS=ON to download and build automatically."
+    )
+  endif()
+endif()
+
+find_package(SDL3_image QUIET CONFIG)
+if(NOT SDL3_image_FOUND)
+  if(OPT_FETCH_DEPS)
+    include(FetchContent)
+    message(STATUS "SDL3_image not found, fetching from source...")
+    set(SDL3IMAGE_TESTS OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(SDL3_image
+      GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
+      GIT_TAG        release-3.4.4
+      GIT_SHALLOW    TRUE
+      OVERRIDE_FIND_PACKAGE
+    )
+    FetchContent_MakeAvailable(SDL3_image)
+  else()
+    message(FATAL_ERROR
+      "SDL3_image not found. Install it, or pass -DOPT_FETCH_DEPS=ON to download and build automatically."
+    )
+  endif()
+endif()
 if(NOT SDLIMAGE_PNG)
   message(FATAL_ERROR "SDL3_image was built without PNG support. "
     "The window icon requires it. Rebuild SDL3_image with PNG enabled.")
 endif()
-find_package(iir REQUIRED)
+
+find_package(iir QUIET)
+if(NOT iir_FOUND)
+  if(OPT_FETCH_DEPS)
+    include(FetchContent)
+    message(STATUS "iir1 not found, fetching from source...")
+    set(IIR1_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    set(IIR1_BUILD_DEMO OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(iir1
+      GIT_REPOSITORY https://github.com/berndporr/iir1.git
+      GIT_TAG        1.10.0
+      GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(iir1)
+    if(NOT TARGET iir::iir_static AND TARGET iir_static)
+      add_library(iir::iir_static ALIAS iir_static)
+    endif()
+    if(NOT TARGET iir::iir AND TARGET iir)
+      add_library(iir::iir ALIAS iir)
+    endif()
+  else()
+    message(FATAL_ERROR
+      "iir1 not found. Install it, or pass -DOPT_FETCH_DEPS=ON to download and build automatically."
+    )
+  endif()
+endif()
+
 find_package(PNG REQUIRED)
 find_package(OpenGL REQUIRED)
+
 # 2.5 floor: upstream midi code uses fluid_synth_set_portamento_time_mode
-find_package(FluidSynth 2.5 REQUIRED CONFIG)
+find_package(FluidSynth 2.5 QUIET CONFIG)
+if(NOT FluidSynth_FOUND)
+  if(OPT_FETCH_DEPS)
+    include(FetchContent)
+    message(STATUS "FluidSynth 2.5+ not found, fetching from source...")
+    set(enable-tests OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(fluidsynth
+      GIT_REPOSITORY https://github.com/FluidSynth/fluidsynth.git
+      GIT_TAG        v2.5.4
+      GIT_SHALLOW    TRUE
+    )
+    FetchContent_GetProperties(fluidsynth)
+    if(NOT fluidsynth_POPULATED)
+      FetchContent_Populate(fluidsynth)
+      # FluidSynth unconditionally registers its own tests via add_test().
+      # Those tests are EXCLUDE_FROM_ALL (never built by default) so they
+      # show up as ghost failures in ctest. Redirect add_test to a no-op
+      # for the duration of FluidSynth's subdirectory, then restore the
+      # original. Nothing else may go between the two macro() blocks.
+      macro(add_test)
+      endmacro()
+      set(CMAKE_SKIP_INSTALL_RULES ON)
+      add_subdirectory(${fluidsynth_SOURCE_DIR} ${fluidsynth_BINARY_DIR} EXCLUDE_FROM_ALL)
+      set(CMAKE_SKIP_INSTALL_RULES OFF)
+      macro(add_test)
+        _add_test(${ARGN})
+      endmacro()
+    endif()
+    set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
+    if(NOT TARGET FluidSynth::libfluidsynth)
+      add_library(FluidSynth::libfluidsynth ALIAS libfluidsynth)
+    endif()
+  else()
+    message(FATAL_ERROR
+      "FluidSynth 2.5+ not found. Install it, or pass -DOPT_FETCH_DEPS=ON to download and build automatically.\n"
+      "Note: FluidSynth itself requires glib2 and libsndfile as system packages."
+    )
+  endif()
+endif()
 if (C_ALSA)
   find_package(ALSA REQUIRED)
 endif()
@@ -602,8 +737,10 @@ if (LIBATOMIC)
 endif()
 
 target_link_libraries(dosboxcommon PUBLIC loguru augra-log)
-target_link_libraries(dosboxcommon PRIVATE
+target_link_libraries(dosboxcommon PUBLIC
   $<IF:$<TARGET_EXISTS:iir::iir>,iir::iir,iir::iir_static>
+)
+target_link_libraries(dosboxcommon PRIVATE
   decoders
 )
 

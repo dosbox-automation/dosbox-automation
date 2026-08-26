@@ -9,5 +9,6 @@ if(TARGET augra::log)
 endif()
 
 add_library(augra-log STATIC log.cpp)
-target_include_directories(augra-log PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(augra-log SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(augra::log ALIAS augra-log)
+disable_warnings(augra-log)
