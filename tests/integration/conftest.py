@@ -52,7 +52,7 @@ class StderrCapture(threading.Thread):
             if self._log_fh:
                 self._log_fh.write(line + "\n")
                 self._log_fh.flush()
-            if "WEBSERVER:" in line and ("API token" in line or "Token written" in line):
+            if "webserver:" in line.lower() and ("API token" in line or "Token written" in line):
                 self.ready.set()
         if self._log_fh:
             self._log_fh.close()

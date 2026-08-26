@@ -327,3 +327,35 @@ class DosboxClient:
 
     def capture_status(self) -> requests.Response:
         return self._get("/api/v1/capture/video/status")
+
+    # --- Audio Capture ---
+
+    def audio_capture_start(self, path: str = "") -> requests.Response:
+        body = {"path": path} if path else {}
+        return self._post("/api/v1/capture/audio/start", json=body)
+
+    def audio_capture_stop(self) -> requests.Response:
+        return self._post("/api/v1/capture/audio/stop")
+
+    def audio_capture_status(self) -> requests.Response:
+        return self._get("/api/v1/capture/audio/status")
+
+    # --- Mixer ---
+
+    def mixer_info(self) -> requests.Response:
+        return self._get("/api/v1/mixer")
+
+    def mixer_volume(self, left: int, right: int) -> requests.Response:
+        return self._put("/api/v1/mixer/volume",
+                         json={"left": left, "right": right})
+
+    def mixer_mute(self) -> requests.Response:
+        return self._post("/api/v1/mixer/mute")
+
+    def mixer_unmute(self) -> requests.Response:
+        return self._post("/api/v1/mixer/unmute")
+
+    def mixer_channel_volume(self, name: str, left: int,
+                             right: int) -> requests.Response:
+        return self._put(f"/api/v1/mixer/channel/{name}",
+                         json={"left": left, "right": right})

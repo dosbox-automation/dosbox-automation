@@ -2625,3 +2625,9 @@ BUNDLED DOS UTILITIES (resources/drives/y/dos/)
 
 END OF THIRD-PARTY LICENSES
 ================================================================================
+
+CDPLAY 1.0
+  Author: Jani Ponkko
+  Source: Simtel MSDOS, CDROM/CDPLAY10.ZIP (baked into test disc image)
+  License: Freeware
+  Used in: tests/files/audiocd/ (CD audio decoder test disc, data track)
