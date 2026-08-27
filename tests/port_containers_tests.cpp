@@ -122,16 +122,11 @@ TEST(port_containers, empty_writes)
 	write_byte_to_port(unregistered, 0);
 }
 
-// The following tests are temporarily disabled as they
-// are currently failing on all platforms.
-// Investigations have revealed the test cases rely on 
-// state in earlier test cases, which seemed to work 
-// for meson test, but not ctest.
-// TODO: Fix test cases so they are independent of other 
-// test cases.
-
-TEST(port_containers, DISABLED_adjacent_word_read)
+TEST(port_containers, adjacent_word_read)
 {
+	IO_RegisterWriteHandler(byte_port_start, write_byte_new, io_width_t::byte);
+	IO_RegisterReadHandler(byte_port_start, read_byte_new, io_width_t::byte);
+
 	constexpr uint8_t val = 0x1;
 
 	write_byte_to_port(byte_port_start, val);
@@ -155,8 +150,11 @@ TEST(port_containers, DISABLED_adjacent_word_read)
 	EXPECT_EQ(read_dword_from_port(byte_port_start - 3), expected);
 }
 
-TEST(port_containers, DISABLED_adjacent_dword_read)
+TEST(port_containers, adjacent_dword_read)
 {
+	IO_RegisterWriteHandler(word_port_start, write_word_new, io_width_t::word);
+	IO_RegisterReadHandler(word_port_start, read_word_new, io_width_t::word);
+
 	constexpr uint16_t val = 0x1;
 
 	write_word_to_port(word_port_start, val);
@@ -168,8 +166,11 @@ TEST(port_containers, DISABLED_adjacent_dword_read)
 	EXPECT_EQ(read_dword_from_port(word_port_start - 2), expected);
 }
 
-TEST(port_containers, DISABLED_adjacent_word_write)
+TEST(port_containers, adjacent_word_write)
 {
+	IO_RegisterWriteHandler(byte_port_start, write_byte_new, io_width_t::byte);
+	IO_RegisterReadHandler(byte_port_start, read_byte_new, io_width_t::byte);
+
 	constexpr uint16_t val = 2 << 8;
 
 	write_word_to_port(byte_port_start - 1, val);
@@ -177,8 +178,11 @@ TEST(port_containers, DISABLED_adjacent_word_write)
 	EXPECT_EQ(read_byte_from_port(byte_port_start), val >> 8);
 }
 
-TEST(port_containers, DISABLED_adjacent_dword_write)
+TEST(port_containers, adjacent_dword_write)
 {
+	IO_RegisterWriteHandler(word_port_start, write_word_new, io_width_t::word);
+	IO_RegisterReadHandler(word_port_start, read_word_new, io_width_t::word);
+
 	constexpr uint32_t val = 2 << 16;
 
 	write_dword_to_port(word_port_start - 2, val);
