@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText:  2024-2026 The DOSBox Staging Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "mode.h"
 
 #include <algorithm>
+#include <map>
 #include <set>
 #include <string>
 
@@ -38,6 +40,51 @@ static bool is_valid_video_mode(const std::string& mode)
 {
 	// All modes are supported on the S3 SVGA adapter
 	return video_mode_map_svga_s3.contains(mode);
+}
+
+// BIOS mode numbers per RBIL INT 10/AH=00h, table 00010
+const std::map<std::string, uint16_t> symbolic_video_modes = {
+        {"bw40", 0x00}, {"co40", 0x01}, {"bw80", 0x02}, {"co80", 0x03}, {"mono", 0x07}};
+
+static bool is_symbolic_video_mode(const std::string& name)
+{
+	return symbolic_video_modes.contains(name);
+}
+
+std::optional<uint16_t> ResolveSymbolicVideoMode(const std::string& name,
+                                                 const MachineType machine_type)
+{
+	const auto it = symbolic_video_modes.find(name);
+	if (it == symbolic_video_modes.end()) {
+		return {};
+	}
+	const auto mode = it->second;
+
+	switch (machine_type) {
+	case MachineType::Ega:
+	case MachineType::Vga: return mode;
+
+	case MachineType::CgaMono:
+	case MachineType::CgaColor:
+	case MachineType::Pcjr:
+	case MachineType::Tandy:
+		// No mono adapter present; the BIOS rejects 07h on CGA and
+		// silently substitutes 00h on PCjr/Tandy, neither is MODE MONO.
+		if (mode == 0x07) {
+			return {};
+		}
+		return mode;
+
+	case MachineType::Hercules:
+		// 80x25 mono is the only text mode the card has
+		if (mode == 0x02 || mode == 0x03 || mode == 0x07) {
+			return 0x07;
+		}
+		return {};
+
+	case MachineType::None: return {};
+	}
+	return {};
 }
 
 static void set_8x8_font()
@@ -200,15 +247,20 @@ void MODE::HandleSetDisplayMode()
 	//   80,25
 	mode_str = replace(mode_str, ',', 'x');
 
-	// Map symbolic mode names to COLxLINES format. We don't bother with
-	// setting monochrome modes on CGA adapters (BW40, BW80, and MONO
-	// options); we just want to set a standard 40/80 column mode for
-	// compatibility with batch scripts (e.g., game installers).
-	if (mode_str == "40" || mode_str == "bw40" || mode_str == "co40") {
-		mode_str = "40x25";
+	// Symbolic names set their own BIOS mode so the BDA mode byte is
+	// the one the name promises; the WxH map would alias BW to CO.
+	if (is_symbolic_video_mode(mode_str)) {
+		const auto maybe_mode = ResolveSymbolicVideoMode(mode_str, machine);
+		if (!maybe_mode || !INT10_SetVideoMode(*maybe_mode)) {
+			WriteOut(MSG_Get("PROGRAM_MODE_UNSUPPORTED_DISPLAY_MODE"),
+			         mode_str.c_str());
+		}
+		return;
+	}
 
-	} else if (mode_str == "80" || mode_str == "bw80" ||
-	           mode_str == "co80" || mode_str == "mono") {
+	if (mode_str == "40") {
+		mode_str = "40x25";
+	} else if (mode_str == "80") {
 		mode_str = "80x25";
 	}
 
@@ -333,6 +385,11 @@ void MODE::AddMessages()
 	        "      EGA                40x25, 80x25, 80x43\n"
 	        "      SVGA (non-S3)      40x25, 80x25, 80x28, 80x30, 80x34, 80x43, 80x50\n"
 	        "      SVGA (S3)          40x25, all 80 and 132-column modes\n"
+	        "\n"
+	        "  - Valid symbolic mode names per graphics adapter:\n"
+	        "      Hercules           MONO (BW80 and CO80 select it as well)\n"
+	        "      CGA, PCjr, Tandy   CO40, CO80, BW40, BW80\n"
+	        "      EGA, SVGA          CO40, CO80, BW40, BW80, MONO\n"
 	        "\n"
 	        "  - The 132x28, 132x30, and 132x34 modes are only available if `vesa_modes` is\n"
 	        "    set to `all`.\n"

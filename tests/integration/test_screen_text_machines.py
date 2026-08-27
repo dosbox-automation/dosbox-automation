@@ -12,11 +12,11 @@ byte at 0040:0049 is the mode we expect, and the column count at
 address handling (CGA at 0xB8000, Hercules at 0xB0000) and in column and
 mode detection.
 
-The DOS `mode` command only reaches the color text modes 01h (40x25) and
-03h (80x25); `bw40`/`bw80` resolve to the same color modes, not the
-mono-suppressed 00h/02h. Mode 07h is the mono adapter default. The true
-00h/02h modes and all graphics modes need an INT 10h driver and live in
-the graphics-mode matrix, not here.
+The symbolic `mode` names set the BIOS modes they are named after
+(bw40=00h, co40=01h, bw80=02h, co80=03h, mono=07h). Adapters without a
+mode refuse it and keep the current one: CGA, PCjr and Tandy have no
+mono adapter, Hercules has nothing but mode 7. Graphics modes need an
+INT 10h driver and live in the graphics-mode matrix, not here.
 """
 
 import time
@@ -69,16 +69,31 @@ def build_script(mode_cmd):
 
 # id, machine, mode command (None = boot default), expected mode byte, expected cols
 TEXT_MODE_MATRIX = [
-    ("cga_80",      "cga",      None,        0x03, 80),
-    ("cga_40",      "cga",      "mode co40", 0x01, 40),
-    ("cga_mono_80", "cga_mono", None,        0x03, 80),
-    ("ega_80",      "ega",      None,        0x03, 80),
-    ("ega_40",      "ega",      "mode co40", 0x01, 40),
-    ("tandy_80",    "tandy",    None,        0x03, 80),
-    ("tandy_40",    "tandy",    "mode co40", 0x01, 40),
-    ("vga_80",      "svga_s3",  None,        0x03, 80),
-    ("vga_40",      "svga_s3",  "mode co40", 0x01, 40),
-    ("hercules_70", "hercules", None,        0x07, 80),
+    ("cga_80",             "cga",      None,        0x03, 80),
+    ("cga_40",             "cga",      "mode co40", 0x01, 40),
+    ("cga_bw40",           "cga",      "mode bw40", 0x00, 40),
+    ("cga_bw80",           "cga",      "mode bw80", 0x02, 80),
+    ("cga_mono_refused",   "cga",      "mode mono", 0x03, 80),
+    ("cga_mono_80",        "cga_mono", None,        0x03, 80),
+    ("cga_mono_bw80",      "cga_mono", "mode bw80", 0x02, 80),
+    ("ega_80",             "ega",      None,        0x03, 80),
+    ("ega_40",             "ega",      "mode co40", 0x01, 40),
+    ("ega_bw80",           "ega",      "mode bw80", 0x02, 80),
+    ("ega_mono",           "ega",      "mode mono", 0x07, 80),
+    ("tandy_80",           "tandy",    None,        0x03, 80),
+    ("tandy_40",           "tandy",    "mode co40", 0x01, 40),
+    ("tandy_bw40",         "tandy",    "mode bw40", 0x00, 40),
+    ("tandy_mono_refused", "tandy",    "mode mono", 0x03, 80),
+    ("pcjr_bw80",          "pcjr",     "mode bw80", 0x02, 80),
+    ("pcjr_mono_refused",  "pcjr",     "mode mono", 0x03, 80),
+    ("vga_80",             "svga_s3",  None,        0x03, 80),
+    ("vga_40",             "svga_s3",  "mode co40", 0x01, 40),
+    ("vga_bw40",           "svga_s3",  "mode bw40", 0x00, 40),
+    ("vga_bw80",           "svga_s3",  "mode bw80", 0x02, 80),
+    ("vga_mono",           "svga_s3",  "mode mono", 0x07, 80),
+    ("hercules_70",        "hercules", None,        0x07, 80),
+    ("hercules_co80",      "hercules", "mode co80", 0x07, 80),
+    ("hercules_co40_refused", "hercules", "mode co40", 0x07, 80),
 ]
 
 
