@@ -70,13 +70,13 @@ if [ ! -f "$source_dir/CMakeLists.txt" ]; then
 fi
 # shellcheck disable=SC2016 # matching the literal ${PROJECT_VERSION} text in CMakeLists
 suffix=$(sed -n 's/^set(DOSBOX_VERSION \${PROJECT_VERSION}-\([A-Za-z0-9]*\))/\1/p' "$source_dir/CMakeLists.txt")
-if [ -z "$suffix" ]; then
-    echo "error: no DOSBOX_VERSION suffix in $source_dir/CMakeLists.txt" >&2
-    exit 1
-fi
 
 arch=$(uname -m)
-name="dosbox-automation-${version}-${suffix}${build_id:+-$build_id}-linux-${arch}${flag:+-$flag}"
+if [ -n "$suffix" ]; then
+    name="dosbox-automation-${version}-${suffix}${build_id:+-$build_id}-linux-${arch}${flag:+-$flag}"
+else
+    name="dosbox-automation-${version}${build_id:+-$build_id}-linux-${arch}${flag:+-$flag}"
+fi
 
 # Resolve libraries the way the build was configured, not the way this
 # host would: the configure-time CMAKE_PREFIX_PATH lib dirs take
