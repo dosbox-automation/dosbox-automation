@@ -244,6 +244,12 @@ if(PANGOCAIRO_FOUND AND CAIRO_FOUND)
     PkgConfig::PANGOCAIRO
     PkgConfig::WAYLAND_CURSOR
   )
+
+  install(TARGETS decor-0
+          LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/libdecor"
+          NAMELINK_SKIP)
+  install(TARGETS decor-augra
+          LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/libdecor/plugins-1")
 else()
   message(STATUS "wayland-decor: pangocairo/cairo not found, decoration plugins skipped")
 endif()

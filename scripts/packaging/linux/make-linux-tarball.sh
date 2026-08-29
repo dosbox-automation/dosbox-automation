@@ -126,6 +126,34 @@ if [ "$bundled" -eq 0 ]; then
     echo "no non-system libraries to bundle"
 fi
 
+# Bundle libdecor + decoration plugin for Wayland CSD.
+# SDL3 dlopens libdecor (not in ldd output), and libdecor dlopens the
+# plugin. Without these the tarball has no window decoration on GNOME
+# Wayland, and the system GTK3 plugin clashes with our static libpng.
+decor_build="$build_dir/src/wayland-decor"
+if [ -f "$decor_build/decor-augra.so" ]; then
+    mkdir -p "$libdir"
+    decor_dir="$stage/$name/bin/lib/libdecor/plugins-1"
+    mkdir -p "$decor_dir"
+
+    cp -L --preserve=timestamps "$decor_build/libdecor-0.so.0.2.2" "$libdir/"
+    ln -sf libdecor-0.so.0.2.2 "$libdir/libdecor-0.so.0"
+    cp --preserve=timestamps "$decor_build/decor-augra.so" "$decor_dir/"
+    echo "bundled libdecor-0.so.0 + decor-augra.so"
+fi
+
+# Launch wrapper: sets LIBDECOR_PLUGIN_DIR so the bundled decoration
+# plugin is found instead of the system GTK3 one.
+wrapper="$stage/$name/dosbox-automation"
+cat > "$wrapper" << 'WEOF'
+#!/bin/sh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+export LIBDECOR_PLUGIN_DIR="$SCRIPT_DIR/bin/lib/libdecor/plugins-1"
+export DOSBOX_DECOR_ICON="$SCRIPT_DIR/share/dosbox-automation/icons/png/icon_256.png"
+exec "$SCRIPT_DIR/bin/dosbox" "$@"
+WEOF
+chmod 755 "$wrapper"
+
 tarball="$out_dir/$name.tar.xz"
 tar -C "$stage" -cJf "$tarball" "$name"
 

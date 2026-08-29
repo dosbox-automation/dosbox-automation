@@ -36,6 +36,7 @@ vcpkg_installed
 
 # macOS directory prefs
 .DS_Store
+DS_Store
 
 # Profiling data
 *.prof

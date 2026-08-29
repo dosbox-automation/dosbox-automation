@@ -51,9 +51,31 @@ Applies to 0.85.0 and to builds from the current sources.
 (1) User will be asked for permission to install the application icon for the dock.
 (2) CSD decoration, light/dark aware, with XWayland native decoration without fallback.
 
+The compat AppImage (glibc 2.35, for FUSE-based systems) will not have window decorations on GNOME on newer distributions due to a glibc version mismatch with the system's pangocairo. Use the standard AppImage there.
+
 Running a combination not listed here? Open an issue with a screenshot showing the dock icon and title bar, plus the log lines where dosbox-automation prints the detected session type and display server. We will add verified setups to the table.
 
 Linux ships as a portable tarball and AppImage. Windows ships as a setup installer and a portable zip. macOS is not available.
+
+### Runtime dependencies (Linux tarball)
+
+The AppImage is self-contained. The portable tarball links statically against SDL3 and its dependencies, but the display and audio backends are loaded at runtime from the system. Any desktop installation with a graphical session has these already.
+
+On a minimal or headless system, install the following:
+
+**Debian / Ubuntu:**
+```
+sudo apt install libgl1 libdecor-0-0 libxkbcommon0 libwayland-client0 \
+  libx11-6 libxcursor1 libxrandr2 libxi6 \
+  libasound2t64 libpulse0 libpipewire-0.3-0t64
+```
+
+**Fedora:**
+```
+sudo dnf install mesa-libGL libdecor libxkbcommon libwayland-client \
+  libX11 libXcursor libXrandr libXi \
+  alsa-lib pulseaudio-libs pipewire-libs
+```
 
 ---
 
