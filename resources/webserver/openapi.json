@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "dosbox-automation control API",
-    "version": "0.84-da1",
+    "version": "0.85.0",
     "description": "REST API for programmatic control of dosbox-automation. Automate installations, drive games, capture frames, and record or replay input.\n\nThe API is intended for local automation. By default the server binds to 127.0.0.1 and is not designed to be exposed to untrusted networks. Every endpoint under /api/v1 requires a bearer token; the documentation assets (this page, the landing page, openapi.json) are served without a token so the docs are browsable. Use the Authorize button to paste your token before running a request.\n\nAll endpoints read or write internal state atomically between emulated CPU steps. They never run during native DOS functions or interrupts, so the internal data structures are always consistent.",
     "license": {
       "name": "GPL-2.0-or-later"
@@ -177,7 +177,7 @@
                   }
                 },
                 "example": {
-                  "version": "dosbox-automation 0.84-da1",
+                  "version": "dosbox-automation 0.85.0",
                   "features": {
                     "memory": true,
                     "input": true,

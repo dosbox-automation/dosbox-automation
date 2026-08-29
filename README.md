@@ -20,7 +20,7 @@ dosbox-automation
   Available for <strong>Linux, Windows</strong>&ensp;|&ensp;
   <a href="https://github.com/dosbox-automation/dosbox-automation/releases">Downloads</a>&ensp;|&ensp;
   <a href="https://www.dosbox-automation.org/">Documentation</a>&ensp;|&ensp;
-  <a href="https://www.dosbox-automation.org/0.84-da4/automation/security/">Security</a>
+  <a href="https://www.dosbox-automation.org/0.85.0/automation/security/">Security</a>
 </p>
 
 ---
@@ -35,7 +35,7 @@ The [project manual](https://www.dosbox-automation.org/) has the rest.
 
 ## Platform support
 
-Applies to the next release after 0.84-da4 and to builds from the current sources.
+Applies to 0.85.0 and to builds from the current sources.
 
 | Distribution | Environment | Icon | Decoration |
 |---|---|---|---|
@@ -174,7 +174,7 @@ Recorded and scripted with the included reference harness, driving the emulator 
 
 ## Security
 
-An HTTP server inside an emulator is an attack surface and we treat it as one: bearer-token auth on every endpoint, host header validation, and mount restrictions that limit what the guest can reach on the host. The [security policy](https://www.dosbox-automation.org/0.84-da4/automation/security/) has the details.
+An HTTP server inside an emulator is an attack surface and we treat it as one: bearer-token auth on every endpoint, host header validation, and mount restrictions that limit what the guest can reach on the host. The [security policy](https://www.dosbox-automation.org/0.85.0/automation/security/) has the details.
 
 Security reports go to the contact address in the policy. Everything else goes on the [issue tracker](https://github.com/dosbox-automation/dosbox-automation/issues).
 

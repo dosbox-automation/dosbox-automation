@@ -8,12 +8,12 @@
 ;
 ; Build with:
 ;   iscc dosbox-automation-installer.iss
-;   iscc /DMyAppVersion="0.84.0-da1" /DStagingDir="C:\BUILD\STAGING\dosbox-automation-0.84.0-da1" dosbox-automation-installer.iss
+;   iscc /DMyAppVersion="0.85.0" /DStagingDir="C:\BUILD\STAGING\dosbox-automation-0.85.0" dosbox-automation-installer.iss
 
 #define MyAppName "dosbox-automation"
 ; Version can be overridden via ISCC /DMyAppVersion="x.y.z-daN"
 #ifndef MyAppVersion
-  #define MyAppVersion "0.84.0-da1"
+  #define MyAppVersion "0.85.0"
 #endif
 #define MyAppPublisher "dosbox-automation contributors"
 #define MyAppURL "https://dosbox-automation.org"
