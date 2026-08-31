@@ -218,5 +218,5 @@ dosbox-automation's upstream code, its modifications and contributors is license
 ---
 
 <p align="center">
-  <sub>This project is developed with the help of tooled assistance, but tested, reviewed and signed off by a human developer.</sub>
+  <sub>dosbox-automation has been written with the help of tooled assistance, but has been designed, reviewed and thoroughly tested and signed off by its developer.</sub>
 </p>
