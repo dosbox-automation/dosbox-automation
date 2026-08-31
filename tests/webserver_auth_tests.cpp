@@ -102,7 +102,9 @@ TEST(WebserverDocPath, AllowsDocAssetsForGet)
 	                      "/api.html",
 	                      "/openapi.json",
 	                      "/swagger-ui.css",
-	                      "/swagger-ui-bundle.js"}) {
+	                      "/swagger-ui-bundle.js",
+	                      "/cheat-workbench.html",
+	                      "/favicon.ico"}) {
 		EXPECT_TRUE(IsPublicDocPath("GET", p)) << p;
 		EXPECT_TRUE(IsPublicDocPath("HEAD", p)) << p;
 	}
@@ -133,6 +135,7 @@ TEST(WebserverDocPath, RejectsTraversalAndTrickyVariants)
 	// httplib hands us the already-decoded path; an exact-match allowlist
 	// fails closed on anything that is not byte-for-byte a known asset.
 	EXPECT_FALSE(IsPublicDocPath("GET", "/openapi.json/../api_token"));
+	EXPECT_FALSE(IsPublicDocPath("GET", "/cheat-workbench.html/../api_token"));
 	EXPECT_FALSE(IsPublicDocPath("GET", "/../api_token"));
 	EXPECT_FALSE(IsPublicDocPath("GET", "/./index.html"));
 	EXPECT_FALSE(IsPublicDocPath("GET", "//index.html"));

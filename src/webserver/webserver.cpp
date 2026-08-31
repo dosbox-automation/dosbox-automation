@@ -107,6 +107,8 @@ bool IsPublicDocPath(const std::string& method, const std::string& path)
 	        "/openapi.json",
 	        "/swagger-ui.css",
 	        "/swagger-ui-bundle.js",
+	        "/cheat-workbench.html",
+	        "/favicon.ico",
 	};
 	return public_paths.count(path) > 0;
 }
