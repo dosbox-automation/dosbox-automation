@@ -43,6 +43,19 @@ class DosboxClient:
     def cpu_state(self) -> requests.Response:
         return self._get("/api/v1/cpu/state")
 
+    def cpu_cycles(self) -> requests.Response:
+        return self._get("/api/v1/cpu/cycles")
+
+    def set_cpu_cycles(self, cycles: int) -> requests.Response:
+        return self._put("/api/v1/cpu/cycles", json={"cycles": cycles})
+
+    def set_cpu_cycles_raw(self, body: str) -> requests.Response:
+        return self._put(
+            "/api/v1/cpu/cycles",
+            data=body,
+            headers={"Content-Type": "application/json"},
+        )
+
     # --- DOS ---
 
     def dos_internals(self) -> requests.Response:

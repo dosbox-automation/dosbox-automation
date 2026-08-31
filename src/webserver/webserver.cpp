@@ -116,6 +116,8 @@ static httplib::Server server;
 static void setup_api_handlers()
 {
 	server.Get("/api/v1/cpu/state", CpuStateCommand::Get);
+	server.Get("/api/v1/cpu/cycles", CyclesCommand::Get);
+	server.Put("/api/v1/cpu/cycles", CyclesCommand::Put);
 
 	server.Get("/api/v1/dos/internals", DosInternalsCommand::Get);
 
@@ -448,6 +450,12 @@ static void run(const std::string addr, const int port,
 		                   {"freeze", true},
 		                   {"debugger", false},
 		           };
+		           // For AppImage runs the executable path points into the
+		           // transient squashfs mount; $APPIMAGE is the relaunchable
+		           // file. Launcher generators prefer appimage over binary.
+		           j["binary"] = get_executable_file().string();
+		           const char* appimage = std::getenv("APPIMAGE");
+		           j["appimage"] = appimage ? json(appimage) : json(nullptr);
 		           send_json(res, j);
 	           });
 

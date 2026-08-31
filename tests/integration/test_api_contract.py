@@ -59,6 +59,18 @@ def test_dosbox_info(dosbox):
     assert "configWebserver" not in data
 
 
+def test_dosbox_info_reports_binary_path(dosbox):
+    r = dosbox.dosbox_info()
+    assert r.status_code == 200
+    data = r.json()
+    assert "binary" in data
+    assert data["binary"].startswith("/")
+    assert "dosbox" in data["binary"].rsplit("/", 1)[-1]
+    # Not an AppImage run in the test environment
+    assert "appimage" in data
+    assert data["appimage"] is None
+
+
 def test_dosbox_info_reports_features(dosbox):
     r = dosbox.dosbox_info()
     assert r.status_code == 200
@@ -84,6 +96,68 @@ def test_cpu_state(dosbox):
                  "eip", "flags", "cs", "ds", "es", "ss", "fs", "gs"):
         assert name in regs, f"Missing register: {name}"
         assert isinstance(regs[name], int)
+
+
+def test_cpu_cycles_get_shape(dosbox):
+    r = dosbox.cpu_cycles()
+    assert r.status_code == 200
+    data = r.json()
+    for name in ("mode", "real_mode", "protected_mode", "protected_mode_auto",
+                 "throttle", "current_max", "auto_adjust", "pmode"):
+        assert name in data, f"Missing field: {name}"
+    assert data["mode"] == "modern"
+    assert data["current_max"] > 0
+
+
+def test_cpu_cycles_put_roundtrip(dosbox):
+    before = dosbox.cpu_cycles().json()
+
+    r = dosbox.set_cpu_cycles(12345)
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok", "cycles": 12345}
+
+    after = dosbox.cpu_cycles().json()
+    assert after["real_mode"] == 12345
+    assert after["protected_mode"] == 12345
+    assert after["protected_mode_auto"] is False
+    assert after["current_max"] == 12345
+
+    # Restore so later tests keep the fixture's pinned rate
+    if before["real_mode"] is not None:
+        r = dosbox.set_cpu_cycles(before["real_mode"])
+        assert r.status_code == 200
+
+
+def test_cpu_cycles_put_rejects_bad_values(dosbox):
+    for body in ('{"cycles": "fast"}', '{"cycles": 3.5}', '{}', '{"cycle": 1000}'):
+        r = dosbox.set_cpu_cycles_raw(body)
+        assert r.status_code == 400, body
+
+    for out_of_range in (0, 49, 2_000_001, -3000):
+        r = dosbox.set_cpu_cycles(out_of_range)
+        assert r.status_code == 400, out_of_range
+
+    r = dosbox.set_cpu_cycles_raw("not json at all")
+    assert r.status_code == 400
+
+
+def test_cpu_cycles_put_refused_while_recording(dosbox):
+    before = dosbox.cpu_cycles().json()
+
+    r = dosbox.recording_start()
+    assert r.status_code == 200
+    try:
+        r = dosbox.set_cpu_cycles(20000)
+        assert r.status_code == 409
+        assert "recording" in r.json()["error"].lower()
+    finally:
+        dosbox.recording_stop()
+
+    # Unchanged by the refused write, writable again after stop
+    after = dosbox.cpu_cycles().json()
+    assert after["real_mode"] == before["real_mode"]
+    r = dosbox.set_cpu_cycles(before["real_mode"] or 3000)
+    assert r.status_code == 200
 
 
 def test_dos_internals(dosbox):

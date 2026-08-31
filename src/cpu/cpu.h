@@ -1,12 +1,14 @@
 // SPDX-FileCopyrightText:  2021-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #ifndef DOSBOX_CPU_H
 #define DOSBOX_CPU_H
 
 #include "dosbox.h"
 
+#include <optional>
 #include <string>
 
 #include "config/config.h"
@@ -89,6 +91,23 @@ uint8_t CPU_GetLastInterrupt();
 void CPU_RestoreRealModeCyclesConfig();
 
 std::string CPU_GetCyclesConfigAsString();
+
+// Runtime cycles control for the automation API
+struct CpuCyclesInfo {
+	bool legacy_mode                  = false;
+	std::optional<int> real_mode      = {}; // nullopt = max
+	std::optional<int> protected_mode = {}; // nullopt = max
+	bool protected_mode_auto          = false;
+	bool throttle                     = false;
+	int current_max                   = 0;
+	bool auto_adjust                  = false;
+	bool pmode                        = false;
+};
+
+enum class CpuSetCyclesResult { Ok, LegacyMode, OutOfRange };
+
+CpuCyclesInfo CPU_GetCyclesConfig();
+CpuSetCyclesResult CPU_SetFixedCycles(int cycles);
 
 // A CPU handler
 typedef Bits(CPU_Decoder)();

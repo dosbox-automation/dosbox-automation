@@ -173,6 +173,17 @@
                           "type": "boolean"
                         }
                       }
+                    },
+                    "binary": {
+                      "type": "string",
+                      "description": "Absolute path of the running executable."
+                    },
+                    "appimage": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The .AppImage file the instance was launched from ($APPIMAGE), null when not an AppImage. Launcher generators should prefer this over binary, which points into the transient squashfs mount for AppImage runs."
                     }
                   }
                 },
@@ -256,6 +267,127 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/cpu/cycles": {
+      "get": {
+        "tags": [
+          "CPU"
+        ],
+        "summary": "Read the CPU cycles configuration",
+        "operationId": "getCpuCycles",
+        "responses": {
+          "200": {
+            "description": "Current cycles settings and the rate in force.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "modern",
+                        "legacy"
+                      ]
+                    },
+                    "real_mode": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "description": "Fixed real mode cycles, null = max."
+                    },
+                    "protected_mode": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "description": "Fixed protected mode cycles, null = max."
+                    },
+                    "protected_mode_auto": {
+                      "type": "boolean"
+                    },
+                    "throttle": {
+                      "type": "boolean"
+                    },
+                    "current_max": {
+                      "type": "integer",
+                      "description": "The cycles rate currently in force."
+                    },
+                    "auto_adjust": {
+                      "type": "boolean"
+                    },
+                    "pmode": {
+                      "type": "boolean",
+                      "description": "True while the CPU runs in protected mode."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CPU"
+        ],
+        "summary": "Set fixed CPU cycles at runtime",
+        "description": "Sets both real and protected mode to the same fixed rate. Refused while input recording is active (the rate change would break replay determinism) and in legacy cycles mode.",
+        "operationId": "putCpuCycles",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "cycles"
+                ],
+                "properties": {
+                  "cycles": {
+                    "type": "integer",
+                    "minimum": 50,
+                    "maximum": 2000000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cycles set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "cycles": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing, non-integer, or out-of-range cycles value."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "description": "Input recording active, or legacy cycles mode."
           }
         }
       }

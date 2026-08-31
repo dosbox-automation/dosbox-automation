@@ -253,6 +253,7 @@ int64_t stdio_size_kb(FILE* f);
 int64_t stdio_num_sectors(FILE* f);
 
 const std_fs::path& get_executable_path();
+const std_fs::path& get_executable_file();
 
 // TODO should return optional
 std_fs::path get_resource_path(const std_fs::path& name);

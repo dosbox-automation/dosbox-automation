@@ -7,11 +7,14 @@
 
 #include "webserver/bridge.h"
 
+#include <optional>
 #include <string>
 #include <string_view>
 
 #include "http/http.h"
 #include "json/json.h"
+
+#include "cpu/cpu.h"
 
 namespace Webserver {
 
@@ -61,7 +64,8 @@ private:
 class WriteRegisterCommand : public Command {
 public:
 	WriteRegisterCommand(std::string name, uint32_t value)
-	        : name(std::move(name)), value(value)
+	        : name(std::move(name)),
+	          value(value)
 	{}
 
 	void Execute() override;
@@ -70,6 +74,22 @@ public:
 private:
 	std::string name = {};
 	uint32_t value   = 0;
+};
+
+class CyclesCommand : public Command {
+public:
+	CyclesCommand() = default;
+	explicit CyclesCommand(int new_cycles) : new_cycles(new_cycles) {}
+
+	void Execute() override;
+	static void Get(const httplib::Request&, httplib::Response&);
+	static void Put(const httplib::Request& req, httplib::Response& res);
+
+private:
+	std::optional<int> new_cycles = {};
+	CpuCyclesInfo info            = {};
+	CpuSetCyclesResult set_result = CpuSetCyclesResult::Ok;
+	bool refused_recording        = false;
 };
 
 } // namespace Webserver

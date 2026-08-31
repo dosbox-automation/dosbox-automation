@@ -3100,6 +3100,46 @@ void CPU_ResetAutoAdjust()
 	DOSBOX_SetTicksScheduled(0);
 }
 
+CpuCyclesInfo CPU_GetCyclesConfig()
+{
+	const auto& conf = modern_cycles_config;
+
+	CpuCyclesInfo info      = {};
+	info.legacy_mode        = legacy_cycles_mode;
+	info.real_mode          = conf.real_mode;
+	info.protected_mode     = conf.protected_mode_auto ? conf.real_mode
+	                                                   : conf.protected_mode;
+	info.protected_mode_auto = conf.protected_mode_auto;
+	info.throttle            = conf.throttle;
+	info.current_max         = CPU_CycleMax;
+	info.auto_adjust         = CPU_CycleAutoAdjust;
+	info.pmode               = cpu.pmode;
+	return info;
+}
+
+CpuSetCyclesResult CPU_SetFixedCycles(const int cycles)
+{
+	if (legacy_cycles_mode) {
+		return CpuSetCyclesResult::LegacyMode;
+	}
+	if (cycles < CpuCyclesMin || cycles > CpuCyclesMax) {
+		return CpuSetCyclesResult::OutOfRange;
+	}
+
+	// One rate for both modes; an unpinned second rate takes over
+	// silently once a DOS extender switches to protected mode.
+	auto& conf               = modern_cycles_config;
+	conf.real_mode           = cycles;
+	conf.protected_mode      = cycles;
+	conf.protected_mode_auto = false;
+
+	sync_modern_cycles_settings();
+	set_modern_cycles_config(cpu.pmode ? CpuMode::Protected : CpuMode::Real);
+	TITLEBAR_NotifyCyclesChanged();
+
+	return CpuSetCyclesResult::Ok;
+}
+
 std::string CPU_GetCyclesConfigAsString()
 {
 	if (legacy_cycles_mode) {

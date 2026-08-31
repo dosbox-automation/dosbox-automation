@@ -256,18 +256,29 @@ int64_t stdio_num_sectors(FILE* f)
 	return stdio_size_with_divisor(f, 512L);
 }
 
-const std_fs::path& get_executable_path()
+const std_fs::path& get_executable_file()
 {
-	static std_fs::path exe_path;
+	static std_fs::path exe_file;
 
-	if (exe_path.empty()) {
+	if (exe_file.empty()) {
 		int length = wai_getExecutablePath(nullptr, 0, nullptr);
 
 		std::string s;
 		s.resize(check_cast<uint16_t>(length));
 
 		wai_getExecutablePath(&s[0], length, nullptr);
-		exe_path = std_fs::path(s).parent_path();
+		exe_file = std_fs::path(s);
+		assert(!exe_file.empty());
+	}
+	return exe_file;
+}
+
+const std_fs::path& get_executable_path()
+{
+	static std_fs::path exe_path;
+
+	if (exe_path.empty()) {
+		exe_path = get_executable_file().parent_path();
 		assert(!exe_path.empty());
 	}
 	return exe_path;
