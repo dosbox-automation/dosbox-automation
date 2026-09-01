@@ -141,20 +141,21 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
 }
 .hd-set-btn:hover { background: var(--color-neutral-200); }
 .hd-conn { display: flex; align-items: stretch; border-left: 1px solid var(--color-divider); }
-#hd-host { width: 148px; padding: 0 8px; border: none; border-right: 1px solid var(--color-divider); background: transparent; font-size: 11px; color: var(--color-text); }
-#hd-token { width: 76px; padding: 0 8px; border: none; border-right: 1px solid var(--color-divider); background: transparent; font-size: 11px; color: var(--color-text); }
+#hd-host { width: 230px; padding: 0 8px; border: none; border-right: 1px solid var(--color-divider); background: transparent; font-size: 11px; color: var(--color-text); }
+#hd-token { width: 170px; padding: 0 8px; border: none; border-right: 1px solid var(--color-divider); background: transparent; font-size: 11px; color: var(--color-text); }
 .hd-connect-btn {
   display: flex; align-items: center; padding: 0 12px; background: var(--color-accent);
   color: var(--color-bg); font-weight: 600; font-size: 13px; text-transform: uppercase;
   letter-spacing: .06em; cursor: pointer; white-space: nowrap;
 }
+.hd-connect-btn.is-off { background: oklch(.55 .16 25); }
+.hd-connect-btn.is-on { background: oklch(.55 .1 160); }
 .hd-status {
   display: flex; align-items: center; gap: 6px; padding: 0 10px;
   font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .06em;
   border-left: 1px solid var(--color-divider); white-space: nowrap;
   min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
-#hd-dot { width: 6px; height: 6px; flex: none; }
 .dot-demo { background: var(--color-accent); }
 .dot-live { background: var(--color-accent-700); }
 .dot-off { background: var(--color-neutral-400); }
@@ -269,6 +270,11 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
 .hx-editpop { position: fixed; z-index: 40; display: flex; align-items: center; gap: 5px; padding: 3px 4px 3px 8px; background: var(--color-accent-900); border: 1px solid var(--color-accent-400); box-shadow: var(--shadow-lg); font-size: 10.5px; color: var(--color-accent-100); }
 #hx-editpop-val { width: 34px; height: 20px; padding: 0 4px; border: 1px solid var(--color-accent-700); background: var(--color-accent-800); font-size: 12px; color: var(--color-bg); text-align: center; }
 .hx-bmlabel { font-weight: 600; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-accent-400); }
+#hx-bmset-name { width: 90px; height: 22px; padding: 0 6px; border: 1px solid var(--color-accent-700); background: transparent; font-size: 9.5px; color: var(--color-accent-200); }
+.hx-bm.sel { border-color: var(--color-accent-300); background: var(--color-accent-800); }
+#hx-bmpop-val { width: 120px; height: 20px; padding: 0 6px; border: 1px solid var(--color-accent-700); background: var(--color-accent-800); font-size: 11px; color: var(--color-bg); }
+.hx-findbox.miss { border-color: var(--c-invalid); }
+#hx-count.miss { color: var(--c-rec); }
 .hx-bms { display: flex; gap: 6px; }
 .hx-bm { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border: 1px solid var(--color-accent-700); font-family: var(--font-mono); font-size: 9.5px; color: var(--color-accent-200); }
 .hx-bm span { cursor: pointer; }
@@ -291,8 +297,11 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
 .hx-ascii { white-space: pre; color: var(--color-accent-200); font-weight: 500; letter-spacing: .04em; border-left: 1px solid var(--color-accent-700); padding-left: 14px; }
 .hx-ach { cursor: pointer; }
 .hx-popmode { padding: 1px 7px; border: 1px solid var(--color-accent-600); color: var(--color-accent-300); cursor: pointer; font-size: 10px; text-transform: uppercase; }
-.hx-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 8px 14px 0; font-size: 9.5px; color: var(--color-accent-500); }
+.hx-legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; padding: 8px 14px 0; font-size: 9.5px; color: var(--color-accent-500); }
 .hx-legend span { white-space: nowrap; }
+.hx-map { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+#hx-rammap { border: 1px solid var(--color-accent-700); cursor: pointer; }
+#hx-ramkb { font-size: 9.5px; color: var(--color-accent-400); }
 .lg { display: inline-block; width: 8px; height: 8px; margin-right: 4px; }
 .lg-flash { background: var(--c-flash); }
 .lg-frozen { background: var(--c-frozen); box-shadow: inset 0 0 0 1.5px var(--color-bg); }
@@ -507,7 +516,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
     <div class="hd-spring"></div>
     <span id="hd-setup" class="hd-setup-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>Setup</span>
     <span class="hd-vrule"></span>
-    <div class="hd-cycles" id="hd-cycles-box" title="CPU cycles (50&#8211;2,000,000) &#8212; Enter applies to the running instance">
+    <div class="hd-cycles" id="hd-cycles-box" title="CPU cycles (50&#8211;2,000,000) - Enter applies to the running instance">
       <span class="hd-cycles-label">Cycles</span>
       <input id="hd-cycles" spellcheck="false" class="mono">
       <span id="hd-cycles-set" class="hd-set-btn">Set</span>
@@ -515,14 +524,14 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
     <div class="hd-conn">
       <input id="hd-host" spellcheck="false" class="mono">
       <input id="hd-token" type="password" placeholder="token" spellcheck="false" class="mono">
+      <span class="hd-status"><span id="hd-status-text"></span></span>
       <span id="hd-connect" class="hd-connect-btn"></span>
-      <span class="hd-status"><i id="hd-dot"></i><span id="hd-status-text"></span></span>
     </div>
   </header>
   <div class="main">
     <section id="cheat-left" class="mode-cheat panel-372">
       <div class="p-head" style="padding-bottom:0">
-        <h6>01 &#8212; Scanner</h6><span id="sc-meta" class="p-hint mono"></span>
+        <h6>01 - Scanner</h6><span id="sc-meta" class="p-hint mono"></span>
       </div>
       <div class="sc-scanrow">
         <input id="sc-value" spellcheck="false" class="mono">
@@ -548,13 +557,13 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
         <span id="sc-addsel">Add to table &#8594;</span>
       </div>
       <div class="p-head bt">
-        <h6>02 &#8212; Cheat table</h6><span id="ct-meta" class="p-hint mono"></span>
+        <h6>02 - Cheat table</h6><span id="ct-meta" class="p-hint mono"></span>
       </div>
       <div class="ct-cols">
         <span title="Ctrl+1..9 toggles freeze">Frz</span><span>Description</span><span>Address</span><span class="right">Value</span><span class="right">&#916;</span><span></span>
       </div>
       <div id="ct-list"></div>
-      <div id="ct-empty" class="sc-empty">Double-click a result to watch it. Frozen entries are rewritten every poll &#8212; health stays put.</div>
+      <div id="ct-empty" class="sc-empty">Double-click a result to watch it. Frozen entries are rewritten every poll - health stays put.</div>
       <div class="ct-actions">
         <span id="ct-add">+ Address</span>
         <span id="ct-freezeall"></span>
@@ -564,11 +573,11 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
     </section>
     <section id="insp-left" class="mode-inspect panel-372">
       <div class="p-head">
-        <h6>01 &#8212; Program</h6><span id="in-source" class="p-hint mono"></span>
+        <h6>01 - Program</h6><span id="in-source" class="p-hint mono"></span>
       </div>
       <div id="in-status" class="in-kv"></div>
       <div class="p-head bt">
-        <h6>02 &#8212; CPU registers</h6><span id="in-reghint" class="p-hint mono"></span>
+        <h6>02 - CPU registers</h6><span id="in-reghint" class="p-hint mono"></span>
       </div>
       <div id="in-regs" class="in-regs"></div>
       <div class="p-head bt" id="in-ports-head" style="cursor:pointer">
@@ -591,12 +600,12 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
     </section>
     <section id="insp-mid" class="mode-inspect panel-300">
       <div class="p-head">
-        <h6>04 &#8212; Memory map (MCB)</h6><span id="in-mcbmeta" class="p-hint mono"></span>
+        <h6>04 - Memory map (MCB)</h6><span id="in-mcbmeta" class="p-hint mono"></span>
       </div>
       <div id="in-mcb" class="in-mcb"></div>
       <div class="in-mcbnote">Click a block to jump the hex stage to its segment.</div>
       <div class="p-head bt">
-        <h6>05 &#8212; Write &amp; watch log</h6>
+        <h6>05 - Write &amp; watch log</h6>
       </div>
       <div id="in-watch-chips" class="in-chips"></div>
       <div class="in-watchadd">
@@ -611,13 +620,13 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
         <div id="in-writelog-empty" class="in-wlempty">byte writes and watch hits land here &#183; add a watch above or via a hex byte</div>
       </div>
       <div class="p-head bt">
-        <h6>06 &#8212; DOS / PSP</h6><span id="in-psphint" class="p-hint mono"></span>
+        <h6>06 - DOS / PSP</h6><span id="in-psphint" class="p-hint mono"></span>
       </div>
       <div id="in-psp" class="in-kv"></div>
     </section>
     <section id="auto-left" class="mode-automate panel-308">
       <div class="p-head">
-        <h6>01 &#8212; Project</h6><span id="au-projtag" class="p-hint mono"></span>
+        <h6>01 - Project</h6><span id="au-projtag" class="p-hint mono"></span>
       </div>
       <div class="au-projbox">
         <div id="au-proj-name" class="mono au-projname"></div>
@@ -642,7 +651,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
         <a id="au-proj-new" style="margin-left:auto">New project</a>
       </div>
       <div class="p-head bt">
-        <h6>02 &#8212; Capture video</h6><span id="au-vidstatus" class="p-hint mono"></span>
+        <h6>02 - Capture video</h6><span id="au-vidstatus" class="p-hint mono"></span>
       </div>
       <div class="au-capbox">
         <div class="au-modes" id="au-vid-modes"></div>
@@ -654,7 +663,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
         </div>
       </div>
       <div class="p-head bt">
-        <h6>03 &#8212; Capture screenshots</h6>
+        <h6>03 - Capture screenshots</h6>
       </div>
       <div class="au-capbox">
         <div class="au-modes" id="au-shot-modes"></div>
@@ -669,7 +678,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
         </div>
       </div>
       <div class="p-head bt">
-        <h6>04 &#8212; Capture audio</h6>
+        <h6>04 - Capture audio</h6>
       </div>
       <div class="au-caprow au-capbox">
         <button id="au-aud-btn" class="btn btn-secondary au-capbtn"></button>
@@ -678,13 +687,13 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
         <span id="au-aud-timer" class="mono au-timer"></span>
       </div>
       <div class="p-head bt">
-        <h6>05 &#8212; Mixer</h6><span id="au-mixerhint" class="p-hint mono"></span>
+        <h6>05 - Mixer</h6><span id="au-mixerhint" class="p-hint mono"></span>
       </div>
       <div id="au-mixer" class="au-mixer"></div>
     </section>
     <section id="auto-mid" class="mode-automate panel-472">
       <div class="p-head">
-        <h6>06 &#8212; Input automation</h6><span id="au-recmeta" class="p-hint mono"></span>
+        <h6>06 - Input automation</h6><span id="au-recmeta" class="p-hint mono"></span>
       </div>
       <div class="au-caprow au-recrow">
         <button id="au-rec-btn" class="btn btn-secondary au-capbtn"></button>
@@ -704,7 +713,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
       </div>
       <div id="au-tl-block">
         <div class="p-head bt">
-          <h6>07 &#8212; Input timeline</h6><span id="au-tl-status" class="p-hint mono"></span>
+          <h6>07 - Input timeline</h6><span id="au-tl-status" class="p-hint mono"></span>
         </div>
         <div class="au-tlwrap">
           <div id="au-tl" class="au-tl"></div>
@@ -721,7 +730,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
     </section>
     <section id="auto-stage" class="mode-automate stage">
       <div class="hx-bar">
-        <h6 class="hx-title">08 &#8212; Screen</h6>
+        <h6 class="hx-title">08 - Screen</h6>
         <span id="au-tab-text" class="au-tab">Text</span>
         <span id="au-tab-frame" class="au-tab">Frame</span>
         <div class="hd-spring"></div>
@@ -749,7 +758,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
     </section>
     <section id="hex-stage" class="mode-cheat mode-inspect stage">
       <div class="hx-bar">
-        <h6 class="hx-title"><span id="hx-panelno"></span> &#8212; Hex stage</h6>
+        <h6 class="hx-title"><span id="hx-panelno"></span> - Hex stage</h6>
         <input id="hx-base" spellcheck="false" class="mono">
         <span id="hx-prev" class="hx-btn mono">&#8593;</span>
         <span id="hx-next" class="hx-btn mono">&#8595;</span>
@@ -774,9 +783,20 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
         </span>
         <span class="hd-spring"></span>
         <span class="hx-bmlabel">Bookmarks</span>
+        <input id="hx-bmset-name" list="hx-bmset-list" placeholder="set name" spellcheck="false" class="mono">
+        <datalist id="hx-bmset-list"></datalist>
+        <span id="hx-mark" class="hx-markbtn mono" title="Bookmark the current address">+</span>
+        <span id="hx-bmunmark" class="hx-markbtn mono" title="Remove the selected bookmark">-</span>
+        <span id="hx-bmset-load" class="hx-markbtn mono" title="Load the named bookmark set">load</span>
+        <span id="hx-bmset-save" class="hx-markbtn mono" title="Save the bookmarks under this name; saving with no bookmarks deletes the set">save</span>
         <span id="hx-bookmarks" class="hx-bms"></span>
-        <span id="hx-mark" class="hx-markbtn mono" title="Bookmark the current address">+ mark</span>
       </div>
+      <span id="hx-bmpop" class="hx-editpop hidden">
+        <span id="hx-bmpop-label" class="mono"></span>
+        <input id="hx-bmpop-val" spellcheck="false" placeholder="bookmark name" class="mono">
+        <span id="hx-bmpop-save" class="hx-editbtn">Save</span>
+        <span id="hx-bmpop-close" class="hx-editclose">&#215;</span>
+      </span>
       <span id="hx-editpop" class="hx-editpop hidden">
         <span id="hx-editpop-label" class="mono"></span>
         <input id="hx-editpop-val" spellcheck="false" class="mono">
@@ -792,6 +812,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
           <span><i class="lg lg-watch"></i>watched</span>
           <span><i class="lg lg-found"></i>scan match</span>
           <span>&#183; click a byte to edit it</span>
+          <span class="hx-map"><span id="hx-ramkb" class="mono"></span><canvas id="hx-rammap"></canvas></span>
         </div>
       </div>
     </section>
@@ -892,7 +913,7 @@ class Workbench {
   static FPS = 70;
 
   state = {
-    host: '', token: '', connected: false, mode: 'demo', statusText: 'DEMO MACHINE', uiMode: 'cheat',
+    host: '', token: '', connected: false, mode: 'demo', statusText: 'DEMO', uiMode: 'cheat',
     mcb: null, regsData: null, statusData: null, ports: null, psp: null, portsOpen: true, portAdd: '', customPorts: [],
     portSets: {}, portSetName: '', portSetSel: '',
     findStr: '', findLen: 0, findMatches: [], findIdx: -1, writeLog: [], dumpOpen: false,
@@ -910,7 +931,8 @@ class Workbench {
     rangeStart: '0x00000', rangeEnd: '0x100000',
     passes: [], results: [], selected: [], anchor: -1, scanning: false,
     entries: [], hexBase: '0x1A4C0', hexBytes: null, prevHex: null, followSel: true,
-    bookmarks: [], editAddr: null, editVal: '',
+    bookmarks: [], bmSets: {}, bmSel: -1, bmSetName: '', editAddr: null, editVal: '',
+    findMiss: false,
     setupOpen: false, gameDir: '$HOME/Games/keen4', gameExe: 'KEEN4E.EXE', autostart: true, cycles: '3000', cyclesProt: '60000', osKind: 'bash',
     exes: [], folderPicked: false, binPath: 'dosbox-automation', binNote: '',
     log: 'demo machine running - scan for a value you can see, e.g. health 100',
@@ -954,8 +976,11 @@ class Workbench {
     this.tick = setInterval(() => this.onTick(), 250);
     window.addEventListener('keydown', (e) => this.onKey(e));
     try { this.setState({ portSets: JSON.parse(localStorage.getItem('cw-port-sets') || '{}') }); } catch (e) {}
+    try { const t = localStorage.getItem('cw-token'); if (t) this.setState({ token: t }); } catch (e) {}
+    try { this.setState({ bmSets: JSON.parse(localStorage.getItem('cw-bm-sets') || '{}') }); } catch (e) {}
     this.hexRowCount = 16;
     this.hexPaneEl = $('hx-pane');
+    this.ramTop = 0x100000; this.ramMcbs = null; this.ramConvKB = 640;
     new ResizeObserver(() => this.measureHexRows()).observe(this.hexPaneEl);
     this.buildStaticRegions();
     setTimeout(() => this.refreshHex(), 60);
@@ -982,6 +1007,7 @@ class Workbench {
       this.hexT = 0;
       this.refreshHex();
       if (this.state.uiMode === 'inspect') this.refreshInspect();
+      if (this.state.uiMode !== 'automate') this.refreshRamMap();
     }
     if (this.state.uiMode === 'automate' &&
         (this.state.capVideo || this.state.capAudio || this.state.recording || this.state.playing)) {
@@ -1062,7 +1088,7 @@ class Workbench {
       typed ? '   > ' + typed : '',
       '',
       ' ' + '─'.repeat(56),
-      '   [ demo machine — injected input echoes here ]'
+      '   [ demo machine - injected input echoes here ]'
     ].join('\n');
   }
   writeStr(addr, s) { for (let i = 0; i < s.length; i++) this.demo.mem[addr + i] = s.charCodeAt(i); }
@@ -1103,7 +1129,11 @@ class Workbench {
     else await this.api('/api/v1/memory/freeze', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: addr }) });
   }
   onConnect = async () => {
-    if (this.state.connected) { this.setState({ connected: false, mode: 'demo', statusText: 'DEMO MACHINE' }); return; }
+    if (this.state.connected) {
+      this.ramTop = 0x100000; this.ramMcbs = null; this.ramConvKB = 640;
+      this.setState({ connected: false, mode: 'demo', statusText: 'DEMO' });
+      return;
+    }
     this.setState({ mode: 'live', statusText: 'CONNECTING…' });
     try {
       const info = await (await this.api('/api/v1/dosbox/info')).json();
@@ -1112,13 +1142,15 @@ class Workbench {
       // mount and dies with the process - only the AppImage is relaunchable).
       const bin = info.appimage || info.binary;
       this.setState(Object.assign(
-        { connected: true, statusText: 'LIVE · ' + info.version },
+        { connected: true, statusText: 'DA ' + info.version },
         bin && !this.binOverridden ? { binPath: bin, binNote: info.appimage ? 'from the running instance ($APPIMAGE)' : 'from the running instance' } : {}
       ));
+      try { localStorage.setItem('cw-token', this.state.token); } catch (e) {}
       this.refreshHex();
       this.refreshMixer();
+      this.probeRamTop().then(() => this.refreshRamMap()).catch(() => {});
     } catch (e) {
-      this.setState({ connected: false, mode: 'demo', statusText: 'UNREACHABLE — DEMO', log: String(e.message || e) });
+      this.setState({ connected: false, mode: 'demo', statusText: 'UNREACHABLE - DEMO', log: String(e.message || e) });
     }
   };
   async refreshMixer() {
@@ -1150,7 +1182,7 @@ class Workbench {
   applyCycles() {
     const n = this.parse(this.state.cycles);
     if (!this.cyclesOk(n)) { this.setState({ log: 'cycles must be 50–2,000,000' }); return; }
-    if (!this.live) { this.setState({ log: 'cycles = ' + n + ' stored — applies via the Setup conf at next launch' }); return; }
+    if (!this.live) { this.setState({ log: 'cycles = ' + n + ' stored - applies via the Setup conf at next launch' }); return; }
     this.api('/api/v1/cpu/cycles', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cycles: n }) })
       .then(() => this.setState({ log: 'cycles → ' + n }))
       .catch(e => this.setState({ log: 'set cycles failed: ' + e.message }));
@@ -1246,8 +1278,8 @@ class Workbench {
   // ---------- static regions and chrome ----------
   buildStaticRegions() {
     const MODES = [['cheat', 'Cheat', 'scanner · cheat table · hex'],
-                   ['inspect', 'Inspect', 'MCB map · CPU registers'],
-                   ['automate', 'Automate', 'screen · input · Lua']];
+                   ['inspect', 'Inspect', 'inspect dosbox internals and debug'],
+                   ['automate', 'Automate', 'automate, record videos, audio and images']];
     $('hd-modes').replaceChildren(...MODES.map(([id, label, title]) =>
       el('span', { class: 'hd-mode', 'data-id': id, title, text: label,
         onclick: () => {
@@ -1284,8 +1316,9 @@ class Workbench {
     $('hd-cycles').classList.toggle('invalid',
       s.cycles.trim() !== '' && !this.cyclesOk(this.parse(s.cycles)));
     $('hd-connect').textContent = s.connected ? 'Disconnect' : 'Connect';
+    $('hd-connect').classList.toggle('is-on', s.connected);
+    $('hd-connect').classList.toggle('is-off', !s.connected);
     $('hd-status-text').textContent = s.statusText;
-    $('hd-dot').className = s.mode === 'demo' ? 'dot-demo' : s.connected ? 'dot-live' : 'dot-off';
   }
 
   renderFooter() {
@@ -1315,7 +1348,7 @@ class Workbench {
         // and materializes the survivors (a 1 MB byte scan is 1M rows).
         this.unknownSnap = { start, buf, width: s.width };
         const count = Math.floor(buf.length / s.width);
-        this.setState({ results: [], passes: [{ label: 'pass 1 · ' + count.toLocaleString() }], selected: [], anchor: -1, scanning: false, log: 'snapshot of ' + count.toLocaleString() + ' values — change the value in-game, then Next scan' });
+        this.setState({ results: [], passes: [{ label: 'pass 1 · ' + count.toLocaleString() }], selected: [], anchor: -1, scanning: false, log: 'snapshot of ' + count.toLocaleString() + ' values - change the value in-game, then Next scan' });
         return;
       }
       this.unknownSnap = null;
@@ -1351,7 +1384,7 @@ class Workbench {
           results: keep,
           passes: s.passes.concat([{ label: 'pass ' + (s.passes.length + 1) + ' · ' + keep.length.toLocaleString() + (keep.length === 60000 ? '+' : '') }]),
           selected: [], anchor: -1, scanning: false,
-          log: 'next scan: ' + keep.length.toLocaleString() + (keep.length === 60000 ? '+ (capped — narrow further)' : '') + ' remain'
+          log: 'next scan: ' + keep.length.toLocaleString() + (keep.length === 60000 ? '+ (capped - narrow further)' : '') + ' remain'
         });
       } catch (e) { this.setState({ scanning: false, log: 'scan failed: ' + e.message }); }
       return;
@@ -1483,8 +1516,8 @@ class Workbench {
     const empty = $('sc-results-empty');
     empty.classList.toggle('hidden', !!s.results.length);
     empty.textContent = this.unknownSnap
-      ? 'snapshot taken over the whole range — change the value in-game, pick a compare mode, then Next scan (F5)'
-      : s.passes.length ? 'no matches left — reset (↻) and rescan'
+      ? 'snapshot taken over the whole range - change the value in-game, pick a compare mode, then Next scan (F5)'
+      : s.passes.length ? 'no matches left - reset (↻) and rescan'
       : 'Scan for a value you can see in the game, change it in-game, then Next scan (F5) to narrow.';
     $('sc-selall').textContent = s.results.length
       ? s.selected.length + ' of ' + s.results.length.toLocaleString() + ' selected'
@@ -1669,7 +1702,7 @@ class Workbench {
         descInput,
         el('span', { class: 'ct-addr mono', title: 'Show in hex stage', text: this.hx(e.addr), onclick: () => this.gotoHex(e.addr) }),
         valInput,
-        el('span', { class: 'ct-delta' + (e.frozen ? ' frozen' : changed ? ' changed' : ''), text: e.frozen ? 'held' : changed ? 'Δ' : '—' }),
+        el('span', { class: 'ct-delta' + (e.frozen ? ' frozen' : changed ? ' changed' : ''), text: e.frozen ? 'held' : changed ? 'Δ' : '-' }),
         el('span', { class: 'ct-rm', title: 'Remove', text: '×',
           onclick: () => { if (e.kind === 'num') this.serverFreeze(e.addr, 0, e.width, false).catch(() => {}); this.setState({ entries: this.state.entries.filter((_, k) => k !== i) }); } }));
     }));
@@ -1709,8 +1742,8 @@ class Workbench {
           if (this.matchAt(buf, i, nd)) matches.push(start + i);
         }
       }
-      if (!matches.length) { this.setState({ findMatches: [], findIdx: -1, log: 'not found in the first 1 MB' }); return; }
-      this.setState({ findMatches: matches, findIdx: 0, findLen: nd.length, log: matches.length + (matches.length === 500 ? '+' : '') + ' match(es) — F3 / Shift+F3 to step' });
+      if (!matches.length) { this.setState({ findMatches: [], findIdx: -1, findMiss: true, log: 'not found in the first 1 MB' }); return; }
+      this.setState({ findMatches: matches, findIdx: 0, findLen: nd.length, findMiss: false, log: matches.length + (matches.length === 500 ? '+' : '') + ' match(es) - F3 / Shift+F3 to step' });
       this.gotoHex(matches[0]);
     } catch (e) { this.setState({ log: 'find failed: ' + e.message }); }
   };
@@ -1733,7 +1766,8 @@ class Workbench {
       { label: 'Copy byte ' + hexVal, act: () => this.copyTxt(hexVal) },
       { label: 'Find all ' + hexVal, act: () => this.setState({ findStr: hexVal }, () => this.onFindNext()) },
       null,
-      { label: 'Bookmark this row', act: () => this.setState({ bookmarks: this.state.bookmarks.concat([{ addr: addr & ~15, label: '' }]) }) },
+      { label: 'Bookmark this row', act: () => this.openBmPop('bookmark ' + this.hx(addr & ~15), '', null,
+          (label) => this.setState({ bookmarks: this.state.bookmarks.concat([{ addr: addr & ~15, label }]) })) },
       { label: 'Dump 64 K from here', act: () => this.dumpRange('from ' + this.hx(addr), addr, Math.min(0x10000, 0x110000 - addr)) }
     ]);
     this.setState({ ctxAddr: addr });
@@ -1780,7 +1814,7 @@ class Workbench {
       let bytes;
       if (this.popMode === 'text') {
         if (s.editVal.length !== len) {
-          this.setState({ log: 'selection is ' + len + ' characters — you entered ' + s.editVal.length + ', refused (length must match exactly)' });
+          this.setState({ log: 'selection is ' + len + ' characters - you entered ' + s.editVal.length + ', refused (length must match exactly)' });
           return false;
         }
         bytes = new Uint8Array(len);
@@ -1797,7 +1831,7 @@ class Workbench {
         }
         const n = pairs.length / 2;
         if (n !== len) {
-          this.setState({ log: 'selection is ' + len + ' bytes — you entered ' + n + ', refused (length must match exactly)' });
+          this.setState({ log: 'selection is ' + len + ' bytes - you entered ' + n + ', refused (length must match exactly)' });
           return false;
         }
         bytes = new Uint8Array(len);
@@ -1881,6 +1915,129 @@ class Workbench {
     $('hx-editpop').classList.add('hidden');
     window.getSelection().removeAllRanges();
   }
+  persistBmSets(sets) {
+    this.setState({ bmSets: sets });
+    try { localStorage.setItem('cw-bm-sets', JSON.stringify(sets)); } catch (e) {}
+  }
+  openBmPop(label, prefill, rect, onSave) {
+    this.bmSave = onSave;
+    const pop = $('hx-bmpop');
+    $('hx-bmpop-label').textContent = label;
+    const r = rect || $('hx-mark').getBoundingClientRect();
+    pop.style.left = Math.min(r.left, (window.innerWidth || 1280) - 300) + 'px';
+    pop.style.top = (r.bottom + 4) + 'px';
+    pop.classList.remove('hidden');
+    const inp = $('hx-bmpop-val');
+    inp.value = prefill;
+    inp.focus();
+    inp.select();
+  }
+  closeBmPop() {
+    this.bmSave = null;
+    $('hx-bmpop').classList.add('hidden');
+  }
+  // ---------- RAM map ----------
+  // The API exposes no memsize; the memory route 400s past the end, so the
+  // smallest unreadable address IS the RAM size. ~12 one-byte reads, once
+  // per connect, 64 K resolution (below one map pixel).
+  async probeRamTop() {
+    if (!this.live) { this.ramTop = this.demo.mem.length; return; }
+    const readable = async (a) => { try { return (await this.readMem(a, 1)).length === 1; } catch (e) { return false; } };
+    let lo = 0x100000, hi = 0x100000;
+    while (hi < 0x20000000 && await readable(hi)) { lo = hi; hi *= 2; }
+    while (hi - lo > 0x10000) {
+      const mid = (lo + hi) >>> 1;
+      if (await readable(mid)) lo = mid; else hi = mid;
+    }
+    this.ramTop = hi;
+  }
+  async refreshRamMap() {
+    if (this.live) {
+      try {
+        const dos = await (await this.api('/api/v1/dos/internals')).json();
+        this.ramMcbs = dos.memoryMap || [];
+        const bda = await this.readMem(0x413, 2);
+        this.ramConvKB = bda[0] | (bda[1] << 8);
+      } catch (e) {}
+    } else { this.ramMcbs = null; this.ramConvKB = 640; }
+    this.drawRamMap();
+  }
+  ramX(a, W) {
+    const top = this.ramTop || 0x100000, SPLIT = 0x110000;
+    if (top <= SPLIT) return a / top * W;
+    return a < SPLIT ? a / SPLIT * W / 2 : W / 2 + (a - SPLIT) / (top - SPLIT) * W / 2;
+  }
+  ramAddr(x, W) {
+    const top = this.ramTop || 0x100000, SPLIT = 0x110000;
+    if (top <= SPLIT) return x / W * top;
+    return x < W / 2 ? x / (W / 2) * SPLIT : SPLIT + (x - W / 2) / (W / 2) * (top - SPLIT);
+  }
+  ramRegions() {
+    const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+    const top = this.ramTop || 0x100000;
+    const rg = [
+      [0x00000, 0x00500, css('--color-accent-700'), 'IVT + BDA'],
+      [0xa0000, 0xb0000, css('--c-watch-dim'), 'A000 VGA graphics'],
+      [0xb0000, 0xb8000, css('--c-watch'), 'B000 mono text'],
+      [0xb8000, 0xc0000, css('--c-pause'), 'B800 color text'],
+      [0xc0000, 0xd0000, css('--color-neutral-600'), 'C000 video BIOS'],
+      [0xf0000, 0x100000, css('--color-neutral-500'), 'F000 system ROM']
+    ];
+    if (top > 0x100000) rg.push([0x100000, Math.min(top, 0x110000), css('--color-accent-500'), 'HMA']);
+    for (const m of this.ramMcbs || []) {
+      const a = m.segment * 16, name = (m.filename || '').trim();
+      if (m.pspSegment === 0) { rg.push([a, a + m.sizeBytes, null, 'free']); continue; }
+      rg.push([a, a + m.sizeBytes, name ? css('--c-frozen') : css('--color-accent-600'), name || 'allocated']);
+    }
+    return rg;
+  }
+  drawRamMap() {
+    const cv = $('hx-rammap');
+    if (!cv) return;
+    const dpr = window.devicePixelRatio || 1, W = 400, H = 22;
+    if (cv.width !== W * dpr) {
+      cv.width = W * dpr; cv.height = H * dpr;
+      cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    }
+    const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+    const g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.fillStyle = css('--color-accent-900');
+    g.fillRect(0, 0, W, H);
+    const named = [];
+    for (const [a0, a1, color, name] of this.ramRegions()) {
+      const x0 = this.ramX(a0, W), x1 = this.ramX(a1, W);
+      named.push([a0, a1, name, x1 - x0]);
+      if (!color) continue;
+      g.fillStyle = color;
+      g.fillRect(x0, 0, Math.max(x1 - x0, 1), H);
+      if (name !== 'allocated' && x1 - x0 >= 16) {
+        g.fillStyle = css('--color-bg');
+        g.font = '7px ' + css('--font-mono');
+        g.fillText(name.slice(0, 4), x0 + 2, H / 2 + 3);
+      }
+    }
+    const top = this.ramTop || 0x100000;
+    if (top > 0x110000) {
+      g.fillStyle = css('--color-accent-400');
+      g.fillRect(W / 2 - .5, 0, 1, H);
+    }
+    const base = this.parse(this.state.hexBase) || 0;
+    const len = (this.hexRowCount || 16) * 16;
+    const vx0 = this.ramX(base, W), vx1 = this.ramX(base + len, W);
+    g.strokeStyle = css('--color-bg');
+    g.lineWidth = 1.5;
+    g.strokeRect(vx0, .75, Math.max(vx1 - vx0, 2), H - 1.5);
+    this.ramNamed = named;
+    const mb = top / 1048576;
+    $('hx-ramkb').textContent = (this.ramConvKB || 640) + ' KB · ' +
+      (mb === Math.round(mb) ? mb : mb.toFixed(1)) + ' MB RAM';
+    const free = (this.ramMcbs || []).filter(m => m.pspSegment === 0).map(m => m.sizeBytes);
+    const kb = (b) => b >= 10240 ? Math.round(b / 1024) + ' KB' : (b / 1024).toFixed(1) + ' KB';
+    $('hx-ramkb').title = free.length
+      ? kb(free.reduce((a, b) => a + b, 0)) + ' conventional free, largest block ' + kb(Math.max(...free))
+      : '';
+  }
   hexWheel(e) {
     e.preventDefault();
     // Wheel means navigating away: drop any held selection so the
@@ -1937,7 +2094,7 @@ class Workbench {
     $('hx-prev').addEventListener('click', () => this.gotoHex(Math.max(0, (this.parse(this.state.hexBase) || 0) - (this.hexRowCount || 16) * 16)));
     $('hx-next').addEventListener('click', () => this.gotoHex((this.parse(this.state.hexBase) || 0) + (this.hexRowCount || 16) * 16));
     $('hx-follow').addEventListener('click', () => this.setState({ followSel: !this.state.followSel }));
-    $('hx-find').addEventListener('input', (e) => this.setState({ findStr: e.target.value }));
+    $('hx-find').addEventListener('input', (e) => this.setState({ findStr: e.target.value, findMiss: false }));
     $('hx-find').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.onFindNext(); });
     $('hx-findall').addEventListener('click', () => this.onFindNext());
     $('hx-prevm').addEventListener('click', () => this.onFindStep(-1));
@@ -1951,10 +2108,58 @@ class Workbench {
     $('hx-edit-write').addEventListener('click', () => this.commitEdit());
     $('hx-edit-watch').addEventListener('click', () => { if (this.state.editAddr != null) this.addWatch(this.state.editAddr, 1, ''); });
     $('hx-edit-close').addEventListener('click', () => this.setState({ editAddr: null }));
-    $('hx-mark').addEventListener('click', () => {
+    $('hx-mark').addEventListener('click', (ev) => {
       const base = this.parse(this.state.hexBase) || 0;
       const e = this.state.entries.find(x => x.addr >= base && x.addr < base + 256);
-      this.setState({ bookmarks: this.state.bookmarks.concat([{ addr: base, label: e ? e.desc : '' }]) });
+      this.openBmPop('bookmark ' + this.hx(base), e ? e.desc : '', ev.target.getBoundingClientRect(),
+        (label) => this.setState({ bookmarks: this.state.bookmarks.concat([{ addr: base, label }]) }));
+    });
+    const commitBmPop = () => {
+      if (this.bmSave) this.bmSave($('hx-bmpop-val').value.trim());
+      this.closeBmPop();
+    };
+    $('hx-bmpop-val').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') commitBmPop();
+      if (e.key === 'Escape') this.closeBmPop();
+    });
+    $('hx-bmpop-save').addEventListener('click', commitBmPop);
+    $('hx-bmpop-close').addEventListener('click', () => this.closeBmPop());
+    $('hx-bmunmark').addEventListener('click', () => {
+      const s = this.state;
+      if (s.bmSel < 0 || s.bmSel >= s.bookmarks.length) { this.setState({ log: 'click a bookmark first, then - removes it' }); return; }
+      this.setState({ bookmarks: s.bookmarks.filter((_, k) => k !== s.bmSel), bmSel: -1 });
+    });
+    $('hx-bmset-name').addEventListener('input', (e) => this.setState({ bmSetName: e.target.value }));
+    // offsetX excludes the border; -3 biases toward the fingertip of the hand cursor
+    const ramMapX = (e) => Math.max(0, Math.min(e.offsetX - 3, e.target.clientWidth));
+    $('hx-rammap').addEventListener('click', (e) => {
+      this.gotoHex(Math.floor(this.ramAddr(ramMapX(e), e.target.clientWidth)) & ~15);
+    });
+    $('hx-rammap').addEventListener('mousemove', (e) => {
+      const a = this.ramAddr(ramMapX(e), e.target.clientWidth);
+      const hit = (this.ramNamed || []).filter(n => a >= n[0] && a < n[1]).pop();
+      e.target.title = (hit ? hit[2] + ' · ' : '') + this.hx(Math.floor(a) & ~15);
+    });
+    $('hx-bmset-load').addEventListener('click', () => {
+      const name = (this.state.bmSetName || '').trim();
+      if (!name || !this.state.bmSets[name]) { this.setState({ log: name ? 'no bookmark set named "' + name + '"' : 'type a set name to load' }); return; }
+      this.setState({ bmSel: -1, bookmarks: this.state.bmSets[name].map(b => ({ addr: b.addr, label: b.label })), log: 'loaded bookmark set "' + name + '"' });
+    });
+    $('hx-bmset-save').addEventListener('click', () => {
+      const s = this.state;
+      const name = (s.bmSetName || '').trim();
+      if (!s.bookmarks.length) {
+        if (name && s.bmSets[name]) {
+          const sets = Object.assign({}, s.bmSets);
+          delete sets[name];
+          this.persistBmSets(sets);
+          this.setState({ log: 'deleted bookmark set "' + name + '"' });
+        } else { this.setState({ log: 'no bookmarks to save' }); }
+        return;
+      }
+      const finalName = name || 'set ' + (Object.keys(s.bmSets).length + 1);
+      this.persistBmSets(Object.assign({}, s.bmSets, { [finalName]: s.bookmarks.map(b => ({ addr: b.addr, label: b.label })) }));
+      this.setState({ bmSetName: finalName, log: 'saved bookmark set "' + finalName + '" (' + s.bookmarks.length + ')' });
     });
     const items = [
       ['Current 64 K', () => { const hb = this.parse(this.state.hexBase) || 0; return ['from ' + this.hx(hb), hb, Math.min(0x10000, 0x110000 - hb)]; }],
@@ -1962,11 +2167,11 @@ class Workbench {
       ['Full address space', () => ['1 MB + HMA', 0, 0x110000]],
       null,
       ['BIOS data / DOS area', () => ['0x00000 · 64 K', 0, 0x10000]],
-      ['A000 — VGA graphics', () => ['64 K', 0xa0000, 0x10000]],
-      ['B000 — mono text', () => ['32 K', 0xb0000, 0x8000]],
-      ['B800 — color text', () => ['32 K', 0xb8000, 0x8000]],
-      ['C000 — video BIOS ROM', () => ['64 K', 0xc0000, 0x10000]],
-      ['F000 — system ROM', () => ['64 K', 0xf0000, 0x10000]],
+      ['A000 - VGA graphics', () => ['64 K', 0xa0000, 0x10000]],
+      ['B000 - mono text', () => ['32 K', 0xb0000, 0x8000]],
+      ['B800 - color text', () => ['32 K', 0xb8000, 0x8000]],
+      ['C000 - video BIOS ROM', () => ['64 K', 0xc0000, 0x10000]],
+      ['F000 - system ROM', () => ['64 K', 0xf0000, 0x10000]],
       ['HMA', () => ['FFFF:0010 · 64 K', 0x100000, 0x10000]]
     ];
     $('hx-dump-menu').replaceChildren(...items.map(it => it === null
@@ -1985,7 +2190,10 @@ class Workbench {
     $('hx-base').classList.toggle('invalid', this.invalid(s.hexBase, 'addr'));
     $('hx-follow').classList.toggle('on', s.followSel);
     $('hx-count').textContent = s.findMatches.length
-      ? (s.findIdx + 1) + '/' + s.findMatches.length + (s.findMatches.length === 500 ? '+' : '') : '';
+      ? (s.findIdx + 1) + '/' + s.findMatches.length + (s.findMatches.length === 500 ? '+' : '')
+      : s.findMiss ? 'not found' : '';
+    $('hx-count').classList.toggle('miss', s.findMiss);
+    $('hx-find').closest('.hx-findbox').classList.toggle('miss', s.findMiss);
     $('hx-dump').textContent = 'Dump ' + (s.dumpOpen ? '▾' : '▸');
     $('hx-dump-menu').classList.toggle('hidden', !s.dumpOpen);
     const editOpen = s.editAddr != null;
@@ -1998,9 +2206,14 @@ class Workbench {
       $('hx-editpop').classList.add('hidden');
     }
     $('hx-bookmarks').replaceChildren(...s.bookmarks.map((b, i) =>
-      el('span', { class: 'hx-bm' },
-        el('span', { text: (b.label ? b.label + ' ' : '') + this.hx(b.addr), onclick: () => this.gotoHex(b.addr) }),
-        el('span', { class: 'rm', text: '×', onclick: () => this.setState({ bookmarks: this.state.bookmarks.filter((_, k) => k !== i) }) }))));
+      el('span', { class: 'hx-bm' + (i === s.bmSel ? ' sel' : '') },
+        el('span', { text: (b.label ? b.label + ' ' : '') + this.hx(b.addr), title: 'click: jump + select · double-click: rename',
+          onclick: () => { this.setState({ bmSel: i }); this.gotoHex(b.addr); },
+          ondblclick: (ev) => this.openBmPop('rename ' + this.hx(b.addr), b.label, ev.target.getBoundingClientRect(),
+            (label) => this.setState({ bookmarks: this.state.bookmarks.map((x, k) => k === i ? { addr: x.addr, label } : x) })) }))));
+    $('hx-bmset-list').replaceChildren(...Object.keys(s.bmSets).map(v => el('option', { value: v })));
+    sync($('hx-bmset-name'), s.bmSetName);
+    this.drawRamMap();
 
     // Hold the row DOM still while a selection is dragged or held in it;
     // the next render after the selection clears repaints from state.
@@ -2149,7 +2362,7 @@ class Workbench {
         pspData = {
           segment: prog ? prog.pspSegment : 0,
           parent: dos.firstShell ? Math.floor(dos.firstShell / 16) : 0,
-          envSeg: 0, handles: '—',
+          envSeg: 0, handles: '-',
           dta: 'LoL ' + this.hx(dos.listOfLists || 0)
         };
       }
@@ -2245,8 +2458,8 @@ class Workbench {
       el('span', { class: 'v' + (tgt != null ? ' jump' : ''), text: v, onclick: tgt != null ? () => this.gotoHex(tgt) : null })
     ]).flat();
     $('in-status').replaceChildren(...kv([
-      ['program', sd.program || '—'], ['canonical', sd.canonical || '—'],
-      ['booted', sd.booted || '—'], ['shell active', sd.shell || '—']]));
+      ['program', sd.program || '-'], ['canonical', sd.canonical || '-'],
+      ['booted', sd.booted || '-'], ['shell active', sd.shell || '-']]));
     $('in-reghint').textContent = s.regsData ? '' : 'waiting for poll…';
     const rd = s.regsData || {};
     const segTarget = (k) => {
@@ -2264,13 +2477,13 @@ class Workbench {
         el('span', { class: 'name', text: k.toUpperCase() }),
         el('span', { class: 'hex', text: this.hx(rd[k], 4) }));
     }));
-    $('in-ports-title').textContent = (s.portsOpen ? '▾' : '▸') + ' 03 — I/O ports';
+    $('in-ports-title').textContent = (s.portsOpen ? '▾' : '▸') + ' 03 - I/O ports';
     $('in-portshint').textContent = s.ports ? '' : (this.live ? 'no port data from API' : '');
     $('in-ports-body').classList.toggle('hidden', !s.portsOpen);
     $('in-ports').replaceChildren(...(s.ports || []).map(p =>
       el('div', { class: 'in-port' },
         el('span', { class: 'p', text: this.hx(p.port, 3) }),
-        el('span', { class: 'v', text: p.val != null ? p.val.toString(16).toUpperCase().padStart(2, '0') : '—' }),
+        el('span', { class: 'v', text: p.val != null ? p.val.toString(16).toUpperCase().padStart(2, '0') : '-' }),
         el('span', { class: 'n', text: p.note || '' }),
         p.custom
           ? el('span', { class: 'rm', text: '×', onclick: () => this.setState({ customPorts: this.state.customPorts.filter(x => x !== p.port) }, () => this.refreshInspect()) })
@@ -2350,7 +2563,7 @@ class Workbench {
         el('span', { class: 'ell', text: w.watch
           ? '● ' + (w.desc || this.hx(w.addr)) + ' ' + w.old + ' → ' + w.val
           : this.hx(w.addr) + ' ' + (w.old != null ? w.old.toString(16).toUpperCase().padStart(2, '0') : '??') + ' → ' + w.val.toString(16).toUpperCase().padStart(2, '0') }),
-        el('span', { class: 'cond', text: w.watch ? (w.cond || 'chg') : '—' }),
+        el('span', { class: 'cond', text: w.watch ? (w.cond || 'chg') : '-' }),
         el('span', { class: 'when' },
           !w.watch && w.old != null ? el('span', { class: 'undo', text: 'undo', onclick: () => this.undoWrite(w) }) : '',
           new Date(w.t).toLocaleTimeString()))));
@@ -2366,7 +2579,7 @@ class Workbench {
 
   // ---------- automate: project, captures, mixer ----------
   onBrowse = async () => {
-    if (!window.showDirectoryPicker) { this.setState({ log: 'folder picker needs Chrome/Edge — type the path instead' }); return; }
+    if (!window.showDirectoryPicker) { this.setState({ log: 'folder picker needs Chrome/Edge - type the path instead' }); return; }
     try {
       const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
       this.dirHandle = dir;
@@ -2378,7 +2591,7 @@ class Workbench {
       this.setState({
         gameDir: '.', folderPicked: true, exes,
         gameExe: exes.includes(this.state.gameExe) ? this.state.gameExe : (exes[0] || this.state.gameExe),
-        log: 'picked folder "' + dir.name + '" — ' + exes.length + ' executable(s) found'
+        log: 'picked folder "' + dir.name + '" - ' + exes.length + ' executable(s) found'
       });
     } catch (e) { if (e.name !== 'AbortError') this.setState({ log: 'folder pick failed: ' + e.message }); }
   };
@@ -2475,15 +2688,15 @@ class Workbench {
       projName: '', recName: 'recording.json', recEvents: [], watches: [], bookmarks: [],
       entries: [], selA: null, selB: null, playPos: 0, recording: false, recPaused: false, playing: false,
       shotCount: 0, shotLast: '', vidRecs: { count: 0, totalMs: 0 }, audRecs: { count: 0, totalMs: 0 },
-      log: 'new project — recording, table, watches and counters cleared'
+      log: 'new project - recording, table, watches and counters cleared'
     });
   };
   onReset = async () => {
     if (!this.live) { this.initDemo(); this.setState({ log: 'demo machine reset' }); this.refreshScreen(); return; }
-    // No reset endpoint in the API — shutdown is the only control verb.
+    // No reset endpoint in the API - shutdown is the only control verb.
     try {
       await this.api('/api/v1/dosbox/shutdown', { method: 'POST' });
-      this.setState({ log: 'shutdown requested — re-run the launch script to restart', connected: false, mode: 'demo', statusText: 'DEMO MACHINE' });
+      this.setState({ log: 'shutdown requested - re-run the launch script to restart', connected: false, mode: 'demo', statusText: 'DEMO' });
     } catch (e) { this.setState({ log: 'shutdown failed: ' + e.message }); }
   };
   onCapVideo = () => {
@@ -2495,7 +2708,7 @@ class Workbench {
         if (on) { this.vidT0 = Date.now(); this.vidAcc = 0; this.setState({ capVideo: true, vidPaused: false, log: 'video capture started (' + s.vidMode + ')' }); }
         else {
           const ms = (this.vidAcc || 0) + (s.vidPaused ? 0 : Date.now() - (this.vidT0 || Date.now()));
-          this.setState({ capVideo: false, vidPaused: false, vidRecs: { count: s.vidRecs.count + 1, totalMs: s.vidRecs.totalMs + ms }, log: 'video capture stopped — file lands in the capture directory' });
+          this.setState({ capVideo: false, vidPaused: false, vidRecs: { count: s.vidRecs.count + 1, totalMs: s.vidRecs.totalMs + ms }, log: 'video capture stopped - file lands in the capture directory' });
         }
       })
       .catch(e => this.setState({ log: 'capture failed: ' + e.message }));
@@ -2504,11 +2717,11 @@ class Workbench {
     const s = this.state;
     if (!s.capVideo) return;
     const on = !s.vidPaused;
-    // No pause verb in the API — pause closes the segment, resume opens a new file.
+    // No pause verb in the API - pause closes the segment, resume opens a new file.
     this.api('/api/v1/capture/video/' + (on ? 'stop' : 'start'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: on ? undefined : JSON.stringify({ mode: s.vidMode }) }).catch(() => {});
     if (on) { this.vidAcc = (this.vidAcc || 0) + (Date.now() - this.vidT0); }
     else { this.vidT0 = Date.now(); }
-    this.setState({ vidPaused: on, log: on ? 'video paused — segment file closed' : 'video resumed — new segment file' });
+    this.setState({ vidPaused: on, log: on ? 'video paused - segment file closed' : 'video resumed - new segment file' });
   };
   onCapAudio = () => {
     const s = this.state;
@@ -2531,13 +2744,13 @@ class Workbench {
     this.api('/api/v1/capture/audio/' + (on ? 'stop' : 'start'), { method: 'POST' }).catch(() => {});
     if (on) { this.audAcc = (this.audAcc || 0) + (Date.now() - this.audT0); }
     else { this.audT0 = Date.now(); }
-    this.setState({ audPaused: on, log: on ? 'audio paused — segment file closed' : 'audio resumed — new segment file' });
+    this.setState({ audPaused: on, log: on ? 'audio paused - segment file closed' : 'audio resumed - new segment file' });
   };
   onCapShot = async () => {
     const s = this.state;
     const n = s.shotCount + 1;
     const name = 'screenshot_' + String(n).padStart(3, '0') + '.' + s.shotFmt;
-    if (!this.live) { this.setState({ shotCount: n, shotLast: name + ' (demo — not written)', log: 'screenshot needs a live emulator to save' }); return; }
+    if (!this.live) { this.setState({ shotCount: n, shotLast: name + ' (demo - not written)', log: 'screenshot needs a live emulator to save' }); return; }
     try {
       const fmt = s.shotFmt === 'jpg' ? 'jpeg' : s.shotFmt;
       const b = await (await this.api('/api/v1/video/frame?format=' + fmt + '&mode=' + (s.shotMode === 'native' ? 'raw' : 'rendered'))).blob();
@@ -2591,7 +2804,7 @@ class Workbench {
   renderAutomate() {
     const s = this.state;
     $('au-projtag').textContent = this.live ? 'live' : 'demo';
-    $('au-proj-name').textContent = s.projName || (s.statusData && s.statusData.program) || (this.live ? '—' : 'KEEN4E (demo)');
+    $('au-proj-name').textContent = s.projName || (s.statusData && s.statusData.program) || (this.live ? '-' : 'KEEN4E (demo)');
     sync($('au-gamedir'), s.gameDir);
     $('au-meta-input').textContent = s.recEvents.length
       ? s.recName + ' (' + s.recEvents.length + ' events, ' + (s.recEvents[s.recEvents.length - 1].t / 1000).toFixed(0) + 's)'
@@ -2617,7 +2830,7 @@ class Workbench {
     $('au-aud-pause').className = 'btn btn-ghost au-capbtn' + (s.capAudio ? (s.audPaused ? ' pause-paused' : '') : ' pause-hidden');
     $('au-aud-dot').className = 'au-dot' + (s.capAudio ? (s.audPaused ? ' paused' : ' rec') : '');
     $('au-aud-timer').textContent = s.capAudio ? this.fmtT((this.audAcc || 0) + (s.audPaused ? 0 : Date.now() - (this.audT0 || Date.now()))) : 'stopped';
-    $('au-mixerhint').textContent = this.live ? '' : 'demo — not applied';
+    $('au-mixerhint').textContent = this.live ? '' : 'demo - not applied';
     for (const inp of document.querySelectorAll('#au-mixer input')) sync(inp, s.mixer[inp.dataset.ch]);
     for (const v of document.querySelectorAll('#au-mixer .val')) v.textContent = s.mixer[v.dataset.ch];
   }
@@ -2738,7 +2951,7 @@ class Workbench {
             kind: 'key', data: ev.key, label: ev.key ? ev.key.replace('KBD_', '') : '', pressed: ev.pressed
           })).filter(ev => ev.pressed !== false);
           if (evs.length && !this.state.recEvents.length) this.setState({ recEvents: evs, log: 'imported ' + evs.length + ' event(s) from the emulator-side recorder' });
-          else if (evs.length) this.setState({ log: 'emulator also recorded ' + evs.length + ' event(s) — timeline kept the workbench-side capture' });
+          else if (evs.length) this.setState({ log: 'emulator also recorded ' + evs.length + ' event(s) - timeline kept the workbench-side capture' });
         } catch (e) {}
       }
     } else {
@@ -2754,7 +2967,7 @@ class Workbench {
     else { this.recPauseT0 = Date.now(); }
     const nowPaused = !s.recPaused;
     this.setState({ recPaused: nowPaused,
-      log: nowPaused ? 'recording paused — input still sends, but is not captured' : 'recording resumed' });
+      log: nowPaused ? 'recording paused - input still sends, but is not captured' : 'recording resumed' });
     if (this.live) {
       // The engine's pause is a toggle; post it on BOTH transitions and
       // reconcile with the state the server reports back.
@@ -2955,11 +3168,11 @@ class Workbench {
     if (showText) $('au-screen-text').textContent = s.autoText;
     if (showFrame) $('au-screen-frame').style.backgroundImage = 'url("' + s.autoFrame + '")';
     $('au-screen-placeholder').textContent = s.autoTab === 'frame'
-      ? (this.live ? 'waiting for frame…' : 'frame grab needs a live emulator — Text shows the demo screen')
-      : 'graphics mode — no text buffer';
+      ? (this.live ? 'waiting for frame…' : 'frame grab needs a live emulator - Text shows the demo screen')
+      : 'graphics mode - no text buffer';
     $('au-lua').classList.toggle('hidden', !s.luaOpen);
     $('au-lua-toggle').textContent = s.luaOpen ? 'Lua ▾' : 'Lua ▸';
-    $('au-lua-hint').textContent = this.live ? 'POST /script/load → /script/start · status polls dosbox.output' : 'demo — scripts are not executed';
+    $('au-lua-hint').textContent = this.live ? 'POST /script/load → /script/start · status polls dosbox.output' : 'demo - scripts are not executed';
     sync($('au-lua-src'), s.luaSrc);
     $('au-lua-out').textContent = s.luaOut;
   }
@@ -3024,14 +3237,14 @@ class Workbench {
         await w.write(text);
         await w.close();
       }
-      this.setState({ log: 'wrote conf + script into "' + this.dirHandle.name + '" — run the script from there' + (this.state.osKind === 'bash' ? ' (chmod +x launch.sh first)' : '') });
+      this.setState({ log: 'wrote conf + script into "' + this.dirHandle.name + '" - run the script from there' + (this.state.osKind === 'bash' ? ' (chmod +x launch.sh first)' : '') });
     } catch (e) { this.setState({ log: 'save failed: ' + e.message }); }
   };
   confText() {
     const s = this.state;
     const inFolder = s.gameDir === '.';
     return [
-      inFolder ? '# dosbox-automation.conf — lives INSIDE the game folder; the mount below' : '# dosbox-automation.conf — save this file NEXT TO the game folder:',
+      inFolder ? '# dosbox-automation.conf - lives INSIDE the game folder; the mount below' : '# dosbox-automation.conf - save this file NEXT TO the game folder:',
       inFolder ? '# stays within this file\'s parent directory, so the mount policy allows it.' : '# directory mounts are only allowed inside this file\'s parent directory.',
       '# If it lives elsewhere, add to your PRIMARY config instead:',
       '#   mount_allowed_bases = ' + (inFolder ? '/path/to/game-folder' : s.gameDir),
@@ -3060,14 +3273,14 @@ class Workbench {
       'hdma = 5',
       '',
       '[midi]',
-      '# General MIDI via FluidSynth — point soundfont at your .sf2',
+      '# General MIDI via FluidSynth - point soundfont at your .sf2',
       'mididevice = fluidsynth',
       'fluid.soundfont = FluidR3_GM.sf2',
       '',
       '[autoexec]',
       'mount c "' + s.gameDir + '"',
       'c:'
-    ].concat(s.autostart && s.gameExe.trim() ? [s.gameExe] : ['# no autostart — boots to the C:\\> prompt']).join('\n');
+    ].concat(s.autostart && s.gameExe.trim() ? [s.gameExe] : ['# no autostart - boots to the C:\\> prompt']).join('\n');
   }
   scriptText() {
     const s = this.state;
@@ -3077,7 +3290,7 @@ class Workbench {
       'cd "$(dirname "$0")"',
       'export DOSBOX_API_TOKEN="$(openssl rand -hex 32)"',
       'echo "API token: $DOSBOX_API_TOKEN"',
-      '# emulator binary — from the running instance when connected, else assumes PATH / probes below',
+      '# emulator binary - from the running instance when connected, else assumes PATH / probes below',
       'DBA="' + s.binPath + '"',
       'if ! command -v "$DBA" >/dev/null 2>&1 && ! [ -x "$DBA" ]; then',
       '  for c in ./dosbox-automation "$HOME"/Applications/dosbox-automation-*.AppImage dosbox-automation dosbox; do',
@@ -3085,7 +3298,9 @@ class Workbench {
       '  done',
       'fi',
       '"$DBA" --conf dosbox-automation.conf',
-      '# stop: Workbench → Setup → Stop instance (or POST /api/v1/dosbox/shutdown)',
+      '# keeps the window readable after a double-click launch; skip with: launch.sh nowait',
+      'if [ "$1" != "nowait" ]; then read -r -n 1 -s -p "press any key to close..."; echo; fi',
+      '# stop: Workbench -> Setup -> Stop instance (or POST /api/v1/dosbox/shutdown)',
       '# restart: just re-run this script'
     ].join('\n');
     return [
@@ -3099,25 +3314,27 @@ class Workbench {
       'if not exist "%DBA%" if exist "dosbox-automation.exe" set DBA=dosbox-automation.exe',
       'if not exist "%DBA%" if exist "dosbox.exe" set DBA=dosbox.exe',
       '"%DBA%" -conf dosbox-automation.conf',
+      'rem keeps the window open after an Explorer double-click; skip with: launch.bat nowait',
+      'if not "%1"=="nowait" pause',
       'rem stop: Workbench Setup / Stop instance. restart: re-run this script'
     ].join('\n');
   }
   copyText(t, what) {
     navigator.clipboard.writeText(t).then(
       () => this.setState({ log: what + ' copied to clipboard' }),
-      () => this.setState({ log: 'copy failed — select the text and copy manually' })
+      () => this.setState({ log: 'copy failed - select the text and copy manually' })
     );
   }
   onShutdown = async () => {
     if (!this.live) return;
     try {
       await this.api('/api/v1/dosbox/shutdown', { method: 'POST' });
-      this.setState({ log: 'instance stopped — re-run the launch script to start it again', connected: false, mode: 'demo', statusText: 'DEMO MACHINE' });
+      this.setState({ log: 'instance stopped - re-run the launch script to start it again', connected: false, mode: 'demo', statusText: 'DEMO' });
     } catch (e) { this.setState({ log: 'shutdown failed: ' + e.message }); }
   };
   onBinDetect = async () => {
     this.binOverridden = true;
-    // Live instance knows its own path — appimage over binary (see onConnect).
+    // Live instance knows its own path - appimage over binary (see onConnect).
     if (this.live) {
       try {
         const info = await (await this.api('/api/v1/dosbox/info')).json();
@@ -3140,22 +3357,22 @@ class Workbench {
         }
       } catch (e) {}
     }
-    if (win) this.setState({ binPath: '%ProgramFiles%\\dosbox-automation\\dosbox-automation.exe', binNote: 'no local binary found — defaulted to the installer location; Browse if it lives elsewhere', log: 'autodetect: defaulted to installed location' });
-    else this.setState({ binPath: '$HOME/Applications/dosbox-automation-*.AppImage', binNote: 'no local binary found — the script globs ~/Applications for a dosbox-automation AppImage, falling back to PATH', log: 'autodetect: defaulted to ~/Applications AppImage glob' });
+    if (win) this.setState({ binPath: '%ProgramFiles%\\dosbox-automation\\dosbox-automation.exe', binNote: 'no local binary found - defaulted to the installer location; Browse if it lives elsewhere', log: 'autodetect: defaulted to installed location' });
+    else this.setState({ binPath: '$HOME/Applications/dosbox-automation-*.AppImage', binNote: 'no local binary found - the script globs ~/Applications for a dosbox-automation AppImage, falling back to PATH', log: 'autodetect: defaulted to ~/Applications AppImage glob' });
   };
   onBinBrowse = async () => {
     try {
       if (window.showOpenFilePicker) {
         const [h] = await window.showOpenFilePicker({ types: [] });
-        // The browser only yields the file name, not its absolute path —
+        // The browser only yields the file name, not its absolute path -
         // keep the name and let the user prepend the directory if needed.
         this.binOverridden = true;
-        this.setState({ binPath: h.name, binNote: 'browsers hide the full path — prepend the directory if the binary is not on PATH' });
+        this.setState({ binPath: h.name, binNote: 'browsers hide the full path - prepend the directory if the binary is not on PATH' });
         return;
       }
       const inp = document.createElement('input');
       inp.type = 'file';
-      inp.onchange = () => { if (inp.files[0]) { this.binOverridden = true; this.setState({ binPath: inp.files[0].name, binNote: 'browsers hide the full path — prepend the directory if the binary is not on PATH' }); } };
+      inp.onchange = () => { if (inp.files[0]) { this.binOverridden = true; this.setState({ binPath: inp.files[0].name, binNote: 'browsers hide the full path - prepend the directory if the binary is not on PATH' }); } };
       inp.click();
     } catch (e) { if (e.name !== 'AbortError') this.setState({ log: 'browse failed: ' + e.message }); }
   };
@@ -3172,8 +3389,8 @@ class Workbench {
     $('su-gamedir').addEventListener('change', (e) => this.setState({ gameDir: e.target.value, folderPicked: false }));
     $('su-browse').addEventListener('click', () => this.onBrowse());
     $('su-exe').addEventListener('change', (e) => this.setState({ gameExe: e.target.value, autostart: e.target.value.trim() !== '' }));
-    $('su-clear-autoexec').addEventListener('click', () => this.setState({ autostart: false, gameExe: '', log: 'autoexec cleared — the conf mounts C: and stops at the DOS prompt' }));
-    $('su-autostart').addEventListener('click', () => this.setState({ autostart: !this.state.autostart, log: this.state.autostart ? 'autostart off — conf boots to the C:\\> prompt' : 'autostart on — conf runs ' + (this.state.gameExe || 'the executable') }));
+    $('su-clear-autoexec').addEventListener('click', () => this.setState({ autostart: false, gameExe: '', log: 'autoexec cleared - the conf mounts C: and stops at the DOS prompt' }));
+    $('su-autostart').addEventListener('click', () => this.setState({ autostart: !this.state.autostart, log: this.state.autostart ? 'autostart off - conf boots to the C:\\> prompt' : 'autostart on - conf runs ' + (this.state.gameExe || 'the executable') }));
     $('su-cycles').addEventListener('change', (e) => this.setState({ cycles: this.sanDigits(e.target.value) }));
     $('su-cycles-prot').addEventListener('change', (e) => this.setState({ cyclesProt: this.sanDigits(e.target.value) }));
     $('su-os').replaceChildren(...[['bash', 'Linux / macOS'], ['bat', 'Windows']].map(([id, l]) =>
@@ -3199,10 +3416,10 @@ class Workbench {
       : 'saves dosbox-automation.conf + the launch script (pick a folder via Browse to write directly into it)';
     $('su-stop').classList.toggle('hidden', !this.live);
     sync($('su-bin'), s.binPath);
-    $('su-bin-note').textContent = s.binNote || (s.osKind === 'bat' ? 'dosbox-automation.exe or dosbox.exe — local folder or installed' : 'dosbox-automation binary, dosbox, or a dosbox-automation-*.AppImage — local, ~/Applications, or PATH');
+    $('su-bin-note').textContent = s.binNote || (s.osKind === 'bat' ? 'dosbox-automation.exe or dosbox.exe - local folder or installed' : 'dosbox-automation binary, dosbox, or a dosbox-automation-*.AppImage - local, ~/Applications, or PATH');
     sync($('su-gamedir'), s.gameDir);
     $('su-folder-note').textContent = s.folderPicked
-      ? 'folder picked — conf + script save into it; mount uses "." (policy-safe)'
+      ? 'folder picked - conf + script save into it; mount uses "." (policy-safe)'
       : 'Browse picks the folder and finds executables (Chrome/Edge), or type a path';
     sync($('su-exe'), s.gameExe);
     $('su-autostart').classList.toggle('on', s.autostart);
