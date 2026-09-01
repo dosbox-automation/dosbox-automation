@@ -142,7 +142,9 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
 .hd-set-btn:hover { background: var(--color-neutral-200); }
 .hd-conn { display: flex; align-items: stretch; border-left: 1px solid var(--color-divider); }
 #hd-host { width: 230px; padding: 0 8px; border: none; border-right: 1px solid var(--color-divider); background: transparent; font-size: 11px; color: var(--color-text); }
-#hd-token { width: 170px; padding: 0 8px; border: none; border-right: 1px solid var(--color-divider); background: transparent; font-size: 11px; color: var(--color-text); }
+/* text + -webkit-text-security instead of type=password: keeps the token
+   masked but invisible to the browser's password manager (no save prompt) */
+#hd-token { width: 170px; padding: 0 8px; border: none; border-right: 1px solid var(--color-divider); background: transparent; font-size: 11px; color: var(--color-text); -webkit-text-security: disc; }
 .hd-connect-btn {
   display: flex; align-items: center; padding: 0 12px; background: var(--color-accent);
   color: var(--color-bg); font-weight: 600; font-size: 13px; text-transform: uppercase;
@@ -523,7 +525,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
     </div>
     <div class="hd-conn">
       <input id="hd-host" spellcheck="false" class="mono">
-      <input id="hd-token" type="password" placeholder="token" spellcheck="false" class="mono">
+      <input id="hd-token" type="text" placeholder="token" spellcheck="false" autocomplete="off" class="mono">
       <span class="hd-status"><span id="hd-status-text"></span></span>
       <span id="hd-connect" class="hd-connect-btn"></span>
     </div>
@@ -3122,8 +3124,16 @@ class Workbench {
     } else {
       try {
         const b = await (await this.api('/api/v1/video/frame?format=png')).blob();
-        if (this.state.autoFrame) URL.revokeObjectURL(this.state.autoFrame);
-        this.setState({ autoFrame: URL.createObjectURL(b) });
+        // Decode before swapping and revoke the old URL only after the
+        // render applied the new one - a background-image swapped to an
+        // undecoded blob paints empty for the decode gap (the flicker).
+        const url = URL.createObjectURL(b);
+        const img = new Image();
+        img.src = url;
+        try { await img.decode(); } catch (e) {}
+        const old = this.state.autoFrame;
+        this.setState({ autoFrame: url });
+        if (old) setTimeout(() => URL.revokeObjectURL(old), 250);
       } catch (e) { this.setState({ reqLog: 'screen: ' + e.message }); }
     }
   }
