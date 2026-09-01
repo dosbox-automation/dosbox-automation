@@ -1,0 +1,3225 @@
+<!DOCTYPE html>
+<!--
+This file is part of the dosbox-automation Project.
+License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cheat Workbench</title>
+<link rel="icon" href="favicon.ico">
+<style>
+:root {
+  --color-bg: #f2f2f3;
+  --color-text: #1d1f20;
+  --color-accent: #5980a6;
+  --color-divider: color-mix(in srgb, #1d1f20 16%, transparent);
+  --color-neutral-100: #f5f5f8; --color-neutral-200: #e7e7ea;
+  --color-neutral-300: #d4d4d7; --color-neutral-400: #b7b7ba;
+  --color-neutral-500: #98989b; --color-neutral-600: #7a7a7d;
+  --color-neutral-700: #5d5d60;
+  --color-accent-100: #eef6ff; --color-accent-200: #d6ebff;
+  --color-accent-300: #b5d9fd; --color-accent-400: #94bce3;
+  --color-accent-500: #749dc4; --color-accent-600: #597ea3;
+  --color-accent-700: #416180; --color-accent-800: #2c455d;
+  --color-accent-900: #1d2d3d;
+  --font-ui: system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'DejaVu Sans Mono', Consolas, monospace;
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
+  /* semantic colors, from the v7 design's oklch literals */
+  --c-rec: oklch(.55 .18 25);
+  --c-invalid: oklch(.48 .18 25);
+  --c-rec-bg: oklch(.95 .05 25);
+  --c-pause: oklch(.65 .13 80); --c-pause-text: oklch(.5 .13 80);
+  --c-pause-bg: oklch(.95 .04 80);
+  --c-flash: oklch(.85 .14 90); --c-flash-text: oklch(.3 .07 90);
+  --c-frozen: oklch(.45 .09 160); --c-frozen-text: oklch(.95 .03 160);
+  --c-play: oklch(.45 .09 160);
+  --c-watch: oklch(.55 .11 300); --c-watch-text: oklch(.96 .02 300);
+  --c-watch-dim: oklch(.45 .11 300); --c-watch-mid: oklch(.5 .11 300);
+  --c-watch-lite: oklch(.75 .09 300);
+  --c-screen-fg: oklch(.85 .06 160); --c-screen-bg: oklch(.2 .02 250);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--color-bg); color: var(--color-text);
+  font-family: var(--font-ui); font-size: 12px; line-height: 1.55;
+}
+@keyframes ce-pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+a { color: var(--color-accent); text-underline-offset: 3px; cursor: pointer; }
+a:hover { color: var(--color-accent-700); }
+input:focus { outline: 2px solid var(--color-accent); outline-offset: -1px; }
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+h6, .h6 {
+  margin: 0; font-family: var(--font-ui); font-weight: 600;
+  font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  line-height: 1.12; white-space: nowrap;
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; cursor: pointer; font-family: var(--font-ui);
+  font-weight: 600; font-size: 14px; line-height: 1.2;
+  color: var(--color-text); background: transparent;
+  border: 1px solid var(--color-divider); border-radius: 0;
+  padding: 7px 12px;
+}
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-primary { background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent); }
+.btn-primary:hover { background: var(--color-accent-600); }
+.btn-secondary:hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
+.btn-ghost { color: var(--color-accent); border-color: transparent; }
+.btn-ghost:hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+.blueprint { position: relative; border: 1px solid var(--color-divider); }
+.blueprint > .corner {
+  position: absolute; width: 11px; height: 11px;
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+.blueprint > .corner::before, .blueprint > .corner::after {
+  content: ""; position: absolute; background: currentColor;
+}
+.blueprint > .corner::before { left: 5px; top: 0; width: 1px; height: 100%; }
+.blueprint > .corner::after { top: 5px; left: 0; width: 100%; height: 1px; }
+.blueprint > .corner.tl { top: -6px; left: -6px; }
+.blueprint > .corner.tr { top: -6px; right: -6px; }
+.blueprint > .corner.bl { bottom: -6px; left: -6px; }
+.blueprint > .corner.br { bottom: -6px; right: -6px; }
+.mono { font-family: var(--font-mono); }
+.dim { color: var(--color-neutral-600); }
+.right { text-align: right; }
+.hidden { display: none !important; }
+.invalid { color: var(--c-invalid) !important; }
+
+/* -- app frame -- */
+.app { display: flex; flex-direction: column; height: 100vh; min-width: 1280px; overflow: hidden; }
+.main { display: flex; flex: 1; min-height: 0; }
+.main > section { display: none; }
+body[data-mode="cheat"]    .main > .mode-cheat,
+body[data-mode="inspect"]  .main > .mode-inspect,
+body[data-mode="automate"] .main > .mode-automate { display: flex; }
+.main > section { flex-direction: column; flex: none; min-height: 0; border-right: 1px solid var(--color-text); }
+.panel-372 { width: 372px; } .panel-300 { width: 300px; }
+.panel-308 { width: 308px; } .panel-472 { width: 472px; }
+.stage { flex: 1 !important; min-width: 0; background: var(--color-accent-900); border-right: none !important; }
+
+/* -- header -- */
+#hd { display: flex; align-items: stretch; height: 46px; border-bottom: 1px solid var(--color-text); flex: none; }
+.hd-brand { display: flex; align-items: center; gap: 9px; padding: 0 16px; border-right: 1px solid var(--color-divider); }
+.hd-title { font-weight: 600; font-size: 18px; letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; }
+.hd-sub { font-size: 9px; color: var(--color-neutral-600); white-space: nowrap; }
+#hd-modes { display: flex; align-items: stretch; }
+.hd-mode {
+  display: flex; align-items: center; padding: 0 15px; font-weight: 600;
+  font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+  cursor: pointer; color: var(--color-neutral-600);
+  border-right: 1px solid var(--color-divider);
+}
+.hd-mode.active { background: var(--color-accent-900); color: var(--color-bg); border-right: none; }
+.hd-spring { flex: 1; }
+.hd-setup-btn {
+  display: flex; align-items: center; gap: 7px; align-self: center;
+  padding: 5px 14px; border: 1px solid var(--color-accent-700);
+  color: var(--color-accent-700); font-weight: 600; font-size: 12px;
+  text-transform: uppercase; letter-spacing: .08em; cursor: pointer; white-space: nowrap;
+}
+.hd-setup-btn:hover { background: var(--color-accent-100); }
+.hd-vrule { align-self: stretch; width: 1px; background: var(--color-divider); margin: 0 8px; }
+.hd-cycles { display: flex; align-items: center; gap: 4px; align-self: center; margin-right: 8px; }
+.hd-cycles-label {
+  font-weight: 600; font-size: 10px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--color-neutral-600); white-space: nowrap;
+}
+#hd-cycles { width: 64px; height: 26px; padding: 0 7px; background: transparent; font-size: 11px; color: var(--color-text); border: 1px solid var(--color-divider); }
+#hd-cycles.invalid { border-color: var(--c-invalid); color: var(--color-text); }
+.hd-set-btn {
+  padding: 4px 8px; border: 1px solid var(--color-divider); cursor: pointer;
+  font-weight: 600; font-size: 9.5px; text-transform: uppercase;
+  color: var(--color-neutral-700); white-space: nowrap;
+}
+.hd-set-btn:hover { background: var(--color-neutral-200); }
+.hd-conn { display: flex; align-items: stretch; border-left: 1px solid var(--color-divider); }
+#hd-host { width: 148px; padding: 0 8px; border: none; border-right: 1px solid var(--color-divider); background: transparent; font-size: 11px; color: var(--color-text); }
+#hd-token { width: 76px; padding: 0 8px; border: none; border-right: 1px solid var(--color-divider); background: transparent; font-size: 11px; color: var(--color-text); }
+.hd-connect-btn {
+  display: flex; align-items: center; padding: 0 12px; background: var(--color-accent);
+  color: var(--color-bg); font-weight: 600; font-size: 13px; text-transform: uppercase;
+  letter-spacing: .06em; cursor: pointer; white-space: nowrap;
+}
+.hd-status {
+  display: flex; align-items: center; gap: 6px; padding: 0 10px;
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .06em;
+  border-left: 1px solid var(--color-divider); white-space: nowrap;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+#hd-dot { width: 6px; height: 6px; flex: none; }
+.dot-demo { background: var(--color-accent); }
+.dot-live { background: var(--color-accent-700); }
+.dot-off { background: var(--color-neutral-400); }
+
+/* -- footer -- */
+#ft {
+  display: flex; align-items: center; gap: 14px; height: 28px; padding: 0 14px;
+  border-top: 1px solid var(--color-text); flex: none;
+  font-family: var(--font-mono); font-size: 9.5px; color: var(--color-neutral-600);
+}
+#ft-mode { padding: 1px 7px; border: 1px solid var(--color-divider); letter-spacing: .08em; color: var(--color-accent-700); }
+#ft-mode.live { background: var(--color-accent-900); color: var(--color-bg); }
+.ft-log { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-neutral-500); }
+.ft-reqlog { max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ft-link { cursor: pointer; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+.ft-pollbox { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+#ft-pollms { width: 70px; accent-color: var(--color-accent); }
+
+/* -- panel headings -- */
+.p-head { display: flex; align-items: baseline; justify-content: space-between; padding: 8px 12px 6px; flex: none; }
+.p-head.bt { border-top: 1px solid var(--color-text); }
+.p-hint { font-size: 9px; color: var(--color-neutral-600); white-space: nowrap; }
+.ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* -- scanner -- */
+.sc-scanrow { display: flex; gap: 0; margin: 8px 12px 0; border: 1px solid var(--color-text); flex: none; }
+#sc-value { flex: 1; min-width: 0; height: 30px; padding: 0 9px; border: none; background: transparent; font-size: 14px; color: var(--color-text); }
+#sc-widths { display: flex; }
+.sc-width { display: flex; align-items: center; padding: 0 9px; border-left: 1px solid var(--color-divider); font-family: var(--font-mono); font-size: 11px; cursor: pointer; color: var(--color-neutral-600); }
+.sc-width.active { background: var(--color-accent-900); color: var(--color-bg); }
+.sc-width.signed-on { background: var(--color-accent-200); color: var(--color-accent-800); }
+.sc-comparerow { display: flex; flex-wrap: wrap; gap: 0; margin: 6px 12px 0; border: 1px solid var(--color-divider); flex: none; }
+.sc-compare { padding: 2px 8px; font-size: 10.5px; cursor: pointer; color: var(--color-neutral-600); }
+.sc-compare + .sc-compare { border-left: 1px solid var(--color-divider); }
+.sc-compare.active { background: var(--color-accent-200); color: var(--color-accent-800); }
+.sc-rangerow { display: flex; align-items: center; gap: 0; margin: 6px 12px 0; border: 1px solid var(--color-divider); flex: none; }
+.sc-rangelabel { padding: 2px 8px; font-weight: 600; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-neutral-600); }
+.sc-range { flex: 1; min-width: 0; height: 22px; padding: 0 8px; border: none; border-left: 1px solid var(--color-divider); background: transparent; font-family: var(--font-mono); font-size: 10.5px; color: var(--color-text); }
+.sc-btnrow { display: flex; gap: 6px; margin: 8px 12px; flex: none; }
+.btn-scan { flex: 1; height: 30px; font-size: 13px; white-space: nowrap; padding: 0; }
+.btn-reset { flex: none; width: 32px; }
+.sc-passrow { display: flex; align-items: center; gap: 0; margin: 0 12px 8px; font-family: var(--font-mono); font-size: 9.5px; color: var(--color-neutral-600); border: 1px solid var(--color-divider); flex: none; overflow-x: auto; min-height: 20px; }
+.sc-pass { padding: 2px 7px; white-space: nowrap; }
+.sc-pass + .sc-pass, .sc-pass + .sc-pass-hint { border-left: 1px solid var(--color-divider); }
+.sc-pass.current { background: var(--color-neutral-200); color: var(--color-text); }
+.sc-pass-hint { padding: 2px 7px; white-space: nowrap; }
+.sc-cols { display: grid; grid-template-columns: 1fr 76px 76px; padding: 3px 12px; border-top: 1px solid var(--color-text); border-bottom: 1px solid var(--color-divider); font-weight: 600; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-neutral-600); flex: none; }
+#sc-results { flex: 1.2; overflow-y: auto; min-height: 24px; font-family: var(--font-mono); font-size: 11px; }
+.sc-row { display: grid; grid-template-columns: 1fr 76px 76px; padding: 2.5px 12px; cursor: default; border-top: 1px solid var(--color-neutral-200); }
+.sc-row.sel { background: var(--color-accent-200); border-top-color: transparent; }
+.sc-row .prev { color: var(--color-neutral-500); }
+.sc-empty { padding: 12px; font-family: var(--font-mono); font-size: 10.5px; line-height: 1.6; color: var(--color-neutral-500); }
+.sc-selrow { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; border-top: 1px solid var(--color-divider); flex: none; }
+#sc-selall { font-size: 10.5px; color: var(--color-neutral-600); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+#sc-addsel { padding: 3px 10px; border: 1px solid var(--color-divider); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; white-space: nowrap; color: var(--color-neutral-500); }
+#sc-addsel.armed { border-color: var(--color-text); color: var(--color-text); }
+
+/* -- cheat table -- */
+.ct-cols { display: grid; grid-template-columns: 38px 1fr 76px 74px 40px 18px; padding: 3px 12px; border-bottom: 1px solid var(--color-divider); font-weight: 600; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-neutral-600); flex: none; }
+#ct-list { flex: 1; overflow-y: auto; min-height: 24px; font-family: var(--font-mono); font-size: 11px; }
+.ct-row { display: grid; grid-template-columns: 38px 1fr 76px 74px 40px 18px; align-items: center; padding: 3px 12px; border-top: 1px solid var(--color-neutral-200); }
+.ct-row.frozen { background: var(--color-accent-100); border-top-color: transparent; }
+.ct-frzcell { display: flex; align-items: center; gap: 4px; }
+.ct-frz { display: inline-flex; width: 11px; height: 11px; cursor: pointer; border: 1px solid var(--color-neutral-400); }
+.ct-frz.on { background: var(--color-accent-700); border-color: var(--color-accent-700); }
+.ct-key { font-size: 8.5px; color: var(--color-neutral-400); }
+.ct-desc { min-width: 0; height: 20px; padding: 0 4px; border: 1px solid transparent; background: transparent; font-family: var(--font-ui); font-size: 12px; color: var(--color-text); }
+.ct-desc:hover { border-color: var(--color-divider); }
+.ct-addr { color: var(--color-accent-700); cursor: pointer; }
+.ct-val { min-width: 0; height: 20px; padding: 0 5px; border: 1px solid var(--color-divider); background: transparent; font-family: var(--font-mono); font-size: 11px; text-align: right; color: var(--color-text); }
+.ct-val.changed { color: var(--color-accent-700); }
+.ct-delta { text-align: right; font-size: 10px; color: var(--color-neutral-400); }
+.ct-delta.frozen { color: var(--color-accent-700); }
+.ct-delta.changed { color: var(--color-accent-600); }
+.ct-rm { text-align: center; color: var(--color-neutral-400); cursor: pointer; }
+.ct-rm:hover { color: var(--color-accent-700); }
+.ct-actions { display: flex; gap: 0; border-top: 1px solid var(--color-divider); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; flex: none; }
+.ct-actions > * { flex: 1; text-align: center; padding: 7px 0; cursor: pointer; border-right: 1px solid var(--color-divider); white-space: nowrap; }
+.ct-actions > *:last-child { border-right: none; }
+.ct-actions > *:hover { background: var(--color-neutral-200); }
+.ct-import, #ct-export { color: var(--color-accent-700); }
+.ct-import input { display: none; }
+
+/* -- hex stage -- */
+.hx-pane { flex: 1; overflow: auto; min-height: 0; padding: 10px 0; font-family: var(--font-mono); font-size: 12px; line-height: 1.7; }
+.hx-bar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--color-accent-800); flex: none; flex-wrap: wrap; }
+.hx-title { color: var(--color-accent-300); }
+#hx-base { width: 88px; height: 24px; padding: 0 8px; background: transparent; font-size: 11px; color: var(--color-accent-100); border: 1px solid var(--color-accent-700); }
+#hx-base.invalid { border-color: var(--c-invalid); color: var(--color-accent-100); }
+.hx-btn { padding: 2px 8px; border: 1px solid var(--color-accent-700); color: var(--color-accent-300); cursor: pointer; font-size: 10px; }
+.hx-toggle { padding: 2px 9px; border: 1px solid var(--color-accent-700); color: var(--color-accent-500); font-size: 10.5px; cursor: pointer; white-space: nowrap; }
+.hx-toggle.on { border-color: var(--color-accent-400); color: var(--color-accent-100); }
+.hx-findbox { display: flex; align-items: stretch; border: 1px solid var(--color-accent-700); }
+#hx-find { width: 140px; height: 22px; padding: 0 8px; border: none; background: transparent; font-size: 10.5px; color: var(--color-accent-100); }
+.hx-findbtn { display: flex; align-items: center; padding: 0 10px; border-left: 1px solid var(--color-accent-700); color: var(--color-accent-200); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.hx-findbtn:hover, .hx-stepbtn:hover { background: var(--color-accent-800); }
+.hx-stepbtn { display: flex; align-items: center; padding: 0 7px; border-left: 1px solid var(--color-accent-700); color: var(--color-accent-300); cursor: pointer; font-size: 10px; }
+.hx-count { font-size: 10px; color: var(--color-accent-400); white-space: nowrap; }
+.hx-dumpwrap { position: relative; }
+#hx-dump { display: flex; align-items: center; gap: 5px; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--color-accent-200); }
+#hx-dump:hover { background: var(--color-accent-800); }
+.hx-dumpmenu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 30; display: flex; flex-direction: column; min-width: 230px; background: var(--color-accent-900); border: 1px solid var(--color-accent-600); box-shadow: var(--shadow-lg); }
+.hx-dumpitem { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 10px; cursor: pointer; font-family: var(--font-mono); font-size: 10.5px; color: var(--color-accent-100); white-space: nowrap; }
+.hx-dumpitem:hover { background: var(--color-accent-800); }
+.hx-dumpitem i { font-style: normal; color: var(--color-accent-500); font-size: 9px; }
+.hx-dumprule { height: 1px; background: var(--color-accent-700); margin: 3px 0; }
+.hx-editbox { display: flex; align-items: center; gap: 5px; padding: 1px 4px 1px 8px; border: 1px solid var(--color-accent-400); font-size: 10.5px; color: var(--color-accent-100); }
+#hx-edit-val { width: 34px; height: 20px; padding: 0 4px; border: 1px solid var(--color-accent-700); background: var(--color-accent-800); font-size: 11px; color: var(--color-bg); text-align: center; }
+.hx-editbtn { padding: 1px 7px; background: var(--color-accent); color: var(--color-bg); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; }
+.hx-watchbtn { padding: 1px 7px; border: 1px solid var(--c-watch); color: var(--c-watch-lite); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; }
+.hx-editclose { padding: 0 4px; color: var(--color-accent-400); cursor: pointer; }
+.hx-editpop { position: fixed; z-index: 40; display: flex; align-items: center; gap: 5px; padding: 3px 4px 3px 8px; background: var(--color-accent-900); border: 1px solid var(--color-accent-400); box-shadow: var(--shadow-lg); font-size: 10.5px; color: var(--color-accent-100); }
+#hx-editpop-val { width: 34px; height: 20px; padding: 0 4px; border: 1px solid var(--color-accent-700); background: var(--color-accent-800); font-size: 12px; color: var(--color-bg); text-align: center; }
+.hx-bmlabel { font-weight: 600; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-accent-400); }
+.hx-bms { display: flex; gap: 6px; }
+.hx-bm { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border: 1px solid var(--color-accent-700); font-family: var(--font-mono); font-size: 9.5px; color: var(--color-accent-200); }
+.hx-bm span { cursor: pointer; }
+.hx-bm .rm { color: var(--color-accent-500); padding: 0 2px; }
+.hx-markbtn { padding: 2px 9px; border: 1px solid var(--color-accent-400); color: var(--color-accent-200); cursor: pointer; font-size: 9.5px; white-space: nowrap; }
+.hx-row { display: grid; grid-template-columns: 88px 1fr 168px; gap: 16px; padding: 0 14px; align-items: center; }
+.hx-row.hot { background: var(--color-accent-800); }
+.hx-addr { color: var(--color-accent-500); }
+.hx-row.hot .hx-addr { color: var(--color-accent-100); }
+.hx-cells { display: flex; }
+.hx-cell { padding: 0 4px; cursor: pointer; color: var(--color-accent-300); }
+.hx-cell.g4 { margin-left: 9px; }
+.hx-cell.g8 { margin-left: 14px; border-left: 1px solid var(--color-accent-700); padding-left: 13px; }
+.hx-cell.found, .hx-ach.found { background: var(--color-accent-600); color: var(--color-bg); }
+.hx-cell.watch, .hx-ach.watch { background: var(--c-watch); color: var(--c-watch-text); }
+.hx-cell.flash, .hx-ach.flash { background: var(--c-flash); color: var(--c-flash-text); }
+.hx-cell.frozen, .hx-ach.frozen { background: var(--c-frozen); color: var(--c-frozen-text); box-shadow: inset 0 0 0 1.5px var(--color-bg); }
+.hx-cell.editing, .hx-ach.editing { background: var(--color-accent); color: var(--color-bg); }
+.hx-cell.ctxmark, .hx-ach.ctxmark { background: var(--color-bg); color: var(--color-accent-900); box-shadow: inset 0 0 0 2px var(--c-rec); }
+.hx-ascii { white-space: pre; color: var(--color-accent-200); font-weight: 500; letter-spacing: .04em; border-left: 1px solid var(--color-accent-700); padding-left: 14px; }
+.hx-ach { cursor: pointer; }
+.hx-popmode { padding: 1px 7px; border: 1px solid var(--color-accent-600); color: var(--color-accent-300); cursor: pointer; font-size: 10px; text-transform: uppercase; }
+.hx-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 8px 14px 0; font-size: 9.5px; color: var(--color-accent-500); }
+.hx-legend span { white-space: nowrap; }
+.lg { display: inline-block; width: 8px; height: 8px; margin-right: 4px; }
+.lg-flash { background: var(--c-flash); }
+.lg-frozen { background: var(--c-frozen); box-shadow: inset 0 0 0 1.5px var(--color-bg); }
+.lg-watch { background: var(--c-watch); }
+.lg-found { background: var(--color-accent-600); }
+
+/* -- inspect mode -- */
+#insp-left, #insp-mid { overflow-y: auto; overflow-x: hidden; }
+.in-kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; padding: 0 12px 10px; flex: none; }
+.in-kv .k { font-size: 11px; color: var(--color-neutral-600); white-space: nowrap; }
+.in-kv .v { font-family: var(--font-mono); font-size: 11px; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.in-kv .v.jump { color: var(--color-accent-700); cursor: pointer; }
+.in-regs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; padding: 0 12px 10px; flex: none; }
+.in-reg { display: flex; align-items: center; gap: 6px; padding: 2px 7px; border: 1px solid var(--color-neutral-200); font-family: var(--font-mono); font-size: 10.5px; }
+.in-reg.jump { border-color: var(--color-accent); cursor: pointer; }
+.in-reg .name { color: var(--color-neutral-600); width: 34px; flex: none; }
+.in-reg .hex { flex: 1; text-align: right; color: var(--color-text); }
+#in-ports-body { display: flex; flex-direction: column; gap: 2px; padding: 0 12px 10px; flex: none; }
+.in-ports { display: flex; flex-direction: column; gap: 2px; }
+.in-port { display: grid; grid-template-columns: 52px 30px 1fr 14px; gap: 8px; align-items: center; padding: 2px 7px; border: 1px solid var(--color-neutral-200); font-family: var(--font-mono); font-size: 10.5px; }
+.in-port .p { color: var(--color-accent-700); }
+.in-port .v { text-align: right; }
+.in-port .n { color: var(--color-neutral-500); font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.in-port .rm { text-align: center; color: var(--color-neutral-400); cursor: pointer; }
+.in-portadd { display: flex; gap: 0; border: 1px solid var(--color-divider); margin-top: 3px; }
+#in-port-add { flex: 1; min-width: 0; height: 24px; padding: 0 8px; border: none; background: transparent; font-size: 10.5px; color: var(--color-text); }
+#in-port-go { display: flex; align-items: center; padding: 0 10px; border-left: 1px solid var(--color-divider); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--color-accent-700); }
+#in-port-go:hover { background: var(--color-neutral-200); }
+.in-suggests { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.in-suggest { padding: 2px 8px; border: 1px solid var(--color-divider); color: var(--color-neutral-600); font-family: var(--font-mono); font-size: 9.5px; cursor: pointer; white-space: nowrap; }
+.in-suggest.grp { border-color: var(--color-accent); color: var(--color-accent-700); }
+.in-setrow { display: flex; gap: 0; border: 1px solid var(--color-divider); margin-top: 5px; }
+#in-set-sel { flex: 1; min-width: 0; height: 24px; padding: 0 4px; border: none; background: transparent; font-size: 10px; color: var(--color-text); }
+#in-set-name { width: 80px; height: 24px; padding: 0 6px; border: none; border-left: 1px solid var(--color-divider); background: transparent; font-size: 10px; color: var(--color-text); }
+#in-set-save { display: flex; align-items: center; padding: 0 8px; border-left: 1px solid var(--color-divider); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; color: var(--color-accent-700); }
+#in-set-save:hover { background: var(--color-neutral-200); }
+#in-set-del { display: flex; align-items: center; padding: 0 8px; border-left: 1px solid var(--color-divider); font-size: 12px; color: var(--color-neutral-300); }
+#in-set-del.armed { cursor: pointer; color: var(--color-neutral-500); }
+.in-mcb { flex: 1; overflow-y: auto; min-height: 0; padding: 0 12px 10px; }
+.in-mcbrow { padding: 6px 8px; margin: 0 0 6px; border: 1px solid var(--color-divider); cursor: pointer; }
+.in-mcbrow .l1, .in-mcbrow .l2 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.in-mcbrow .seg { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-accent-700); }
+.in-mcbrow .size { font-family: var(--font-mono); font-size: 9.5px; color: var(--color-neutral-500); white-space: nowrap; flex: none; }
+.in-mcbrow .owner { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.in-mcbrow .tag { padding: 0 6px; font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .06em; flex: none; white-space: nowrap; border: 1px solid var(--color-accent); color: var(--color-accent-700); }
+.in-mcbrow .tag.last { border-color: var(--color-neutral-400); color: var(--color-neutral-500); }
+.in-mcbrow .barbox { background: var(--color-neutral-200); margin-top: 3px; }
+.in-mcbrow .bar { height: 100%; background: var(--color-accent); }
+.in-mcbrow .bar.last { background: var(--color-neutral-400); }
+.in-mcbnote { padding: 8px 12px; border-top: 1px solid var(--color-divider); font-size: 10px; color: var(--color-neutral-500); flex: none; }
+.in-chips { display: flex; flex-wrap: wrap; gap: 3px; padding: 0 12px 4px; flex: none; }
+.in-chip { display: flex; align-items: center; gap: 4px; padding: 1px 4px 1px 7px; border: 1px solid var(--c-watch); color: var(--c-watch-dim); font-family: var(--font-mono); font-size: 9.5px; white-space: nowrap; }
+.in-chip span { cursor: pointer; }
+.in-watchadd { display: flex; gap: 0; border: 1px solid var(--color-divider); margin: 0 12px 6px; flex: none; }
+#in-watch-addr { flex: 1; min-width: 0; height: 24px; padding: 0 7px; border: none; background: transparent; font-size: 10px; color: var(--color-text); }
+#in-watch-w { display: flex; align-items: center; padding: 0 8px; border-left: 1px solid var(--color-divider); cursor: pointer; font-size: 10px; color: var(--color-neutral-600); }
+#in-watch-cond { width: 74px; height: 24px; padding: 0 7px; border: none; border-left: 1px solid var(--color-divider); background: transparent; font-size: 10px; color: var(--color-text); }
+#in-watch-go { display: flex; align-items: center; padding: 0 9px; border-left: 1px solid var(--color-divider); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; color: var(--color-accent-700); }
+#in-watch-go:hover { background: var(--color-neutral-200); }
+.in-writelogbox { flex: none; max-height: 26%; overflow-y: auto; min-height: 56px; padding: 0 12px 8px; }
+.in-wlcols { display: grid; grid-template-columns: 1fr 52px 76px; gap: 8px; padding: 1px 0; font-weight: 600; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-neutral-500); }
+.in-wl { display: grid; grid-template-columns: 1fr 52px 76px; gap: 8px; padding: 1.5px 0; font-family: var(--font-mono); font-size: 10px; color: var(--color-text); }
+.in-wl.watch { color: var(--c-watch-mid); }
+.in-wl .cond { color: var(--color-neutral-500); white-space: nowrap; }
+.in-wl .when { display: flex; gap: 6px; justify-content: flex-end; flex: none; color: var(--color-neutral-500); }
+.in-wl .undo { cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.in-wlempty { font-family: var(--font-mono); font-size: 10px; color: var(--color-neutral-500); }
+
+/* -- automate mode -- */
+#auto-left, #auto-mid { overflow-y: auto; overflow-x: hidden; }
+.au-projbox { padding: 0 12px 4px; flex: none; }
+.au-projname { font-size: 14px; font-weight: 500; padding-bottom: 5px; }
+.au-dirrow { display: flex; gap: 0; border: 1px solid var(--color-divider); }
+#au-gamedir { flex: 1; min-width: 0; height: 24px; padding: 0 7px; border: none; background: transparent; font-size: 10px; color: var(--color-text); }
+#au-browse, #au-manifest { display: flex; align-items: center; padding: 0 8px; border-left: 1px solid var(--color-divider); cursor: pointer; font-weight: 600; font-size: 9.5px; text-transform: uppercase; white-space: nowrap; color: var(--color-neutral-700); }
+#au-manifest { color: var(--color-neutral-500); }
+#au-browse:hover, #au-manifest:hover { background: var(--color-neutral-200); }
+.au-meta { padding: 4px 12px 8px; }
+.au-btnrow { display: flex; gap: 4px; padding: 0 12px 5px; flex: none; }
+.au-btn { flex: 1; height: 26px; font-size: 10.5px; white-space: nowrap; padding: 0; }
+.au-linkrow { display: flex; gap: 12px; padding: 0 12px 10px; flex: none; font-size: 10.5px; }
+.au-linkrow a, .au-import { cursor: pointer; white-space: nowrap; color: var(--color-accent); }
+.au-import input { display: none; }
+.au-capbox { display: flex; flex-direction: column; gap: 5px; padding: 0 12px 10px; flex: none; }
+.au-modes { display: flex; gap: 0; border: 1px solid var(--color-divider); }
+.au-mode { flex: 1; text-align: center; padding: 3px 4px; font-size: 9.5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--color-neutral-600); }
+.au-mode + .au-mode { border-left: 1px solid var(--color-divider); }
+.au-mode.active { background: var(--color-accent-200); color: var(--color-accent-800); }
+.au-caprow { display: flex; align-items: center; gap: 6px; }
+.au-capbtn { flex: none; height: 26px; font-size: 10.5px; white-space: nowrap; }
+.au-capbtn.cap-on { border-color: var(--c-rec); color: var(--c-invalid); background: var(--c-rec-bg); }
+.au-capbtn.cap-paused { border-color: var(--c-pause); color: var(--c-pause-text); background: var(--c-pause-bg); }
+.au-capbtn.pause-hidden { display: none; }
+.au-capbtn.pause-paused { color: var(--c-pause-text); }
+.au-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--color-neutral-300); }
+.au-dot.rec { background: var(--c-rec); animation: ce-pulse 1.2s ease-in-out infinite; }
+.au-dot.paused { background: var(--c-pause); }
+.au-timer { font-size: 10.5px; color: var(--color-neutral-600); white-space: nowrap; }
+.au-fmtsel { height: 26px; padding: 0 4px; border: 1px solid var(--color-divider); background: transparent; font-size: 10.5px; color: var(--color-text); }
+.au-shotstatus { font-size: 9.5px; color: var(--color-neutral-600); }
+.au-mixer { display: flex; flex-direction: column; gap: 4px; padding: 0 12px 10px; flex: none; }
+.au-mixrow { display: grid; grid-template-columns: 64px 1fr 34px; gap: 8px; align-items: center; }
+.au-mixrow .name { font-family: var(--font-mono); font-size: 10.5px; color: var(--color-neutral-600); }
+.au-mixrow input { accent-color: var(--color-accent); height: 16px; }
+.au-mixrow .val { font-family: var(--font-mono); font-size: 10px; text-align: right; }
+
+/* -- input automation + timeline -- */
+.au-recrow { padding: 0 12px 7px; flex: none; }
+.au-dot.big { width: 9px; height: 9px; }
+.au-dot.play { background: var(--c-play); }
+.au-kb { display: flex; flex-direction: column; gap: 2px; padding: 0 12px 7px; flex: none; }
+.au-kbrow { display: flex; gap: 2px; }
+.au-key {
+  display: flex; align-items: center; justify-content: center; height: 21px;
+  min-width: 0; overflow: hidden; padding: 0 1px; border: 1px solid var(--color-divider);
+  font-family: var(--font-mono); font-size: 8.5px; cursor: pointer; user-select: none;
+  white-space: nowrap; color: var(--color-neutral-700); background: var(--color-neutral-100);
+}
+.au-key.pressed { background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent); }
+.au-kgap { border: none; background: none; cursor: default; }
+.au-typerow { display: flex; gap: 0; margin: 0 12px 5px; border: 1px solid var(--color-text); flex: none; }
+#au-type { flex: 1; min-width: 0; height: 26px; padding: 0 9px; border: none; background: transparent; font-size: 11.5px; color: var(--color-text); }
+#au-send { display: flex; align-items: center; padding: 0 12px; border-left: 1px solid var(--color-divider); background: var(--color-accent); color: var(--color-bg); cursor: pointer; font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; }
+.au-tlwrap { padding: 0 12px 5px; flex: none; }
+.au-tl { position: relative; height: 46px; border: 1px solid var(--color-divider); background: var(--color-neutral-100); cursor: crosshair; user-select: none; }
+.au-tlmark { position: absolute; top: 1px; font-family: var(--font-mono); font-size: 8px; color: var(--color-neutral-400); border-left: 1px solid var(--color-neutral-300); padding-left: 2px; height: 100%; pointer-events: none; }
+.au-tltick { position: absolute; bottom: 4px; width: 2px; pointer-events: none; }
+.au-tltick.key { height: 16px; background: var(--color-accent-600); }
+.au-tltick.other { height: 24px; background: var(--c-watch); }
+.au-tlsel { position: absolute; top: 0; bottom: 0; pointer-events: none; background: rgba(89,128,166,.18); }
+.au-tlhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--c-rec); pointer-events: none; }
+.au-tlbtns { display: flex; gap: 4px; padding: 0 12px 6px; flex: none; }
+.au-tlbtn { height: 22px; font-size: 10px; padding: 0 8px; white-space: nowrap; }
+.au-tllist { flex: 1; overflow-y: auto; min-height: 70px; padding: 0 12px 8px; }
+.au-ev { display: grid; grid-template-columns: 46px 34px 1fr; gap: 8px; padding: 1px 0; font-family: var(--font-mono); font-size: 10px; cursor: pointer; color: var(--color-neutral-700); }
+.au-ev.at { background: var(--color-accent-100); }
+.au-ev .t { color: var(--color-neutral-500); }
+.au-ev .kind.key { color: var(--color-accent-700); }
+.au-ev .kind.other { color: var(--c-watch-mid); }
+
+/* -- screen stage + lua -- */
+.au-tab { padding: 2px 12px; border: 1px solid var(--color-accent-700); color: var(--color-accent-500); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.au-tab.active { border-color: var(--color-accent-400); color: var(--color-accent-100); }
+.au-stagearea { flex: 1; overflow: auto; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 14px; }
+.au-screentext { margin: 0; padding: 16px; font-family: var(--font-mono); font-size: 13px; line-height: 1.45; color: var(--c-screen-fg); background: var(--c-screen-bg); border: 1px solid var(--color-accent-700); overflow: auto; max-width: 100%; max-height: 100%; white-space: pre; }
+.au-screenframe { width: 100%; height: 100%; min-height: 300px; background: #000 center/contain no-repeat; image-rendering: pixelated; border: 1px solid var(--color-accent-700); }
+.au-placeholder { font-size: 11px; color: var(--color-accent-500); }
+.au-luatoggle { padding: 2px 10px; border: 1px solid var(--color-accent-700); color: var(--color-accent-200); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.au-luatoggle:hover { background: var(--color-accent-800); }
+.au-lua { display: flex; flex-direction: column; height: 220px; flex: none; border-top: 1px solid var(--color-accent-700); }
+.au-luabar { display: flex; align-items: center; gap: 8px; padding: 5px 14px; border-bottom: 1px solid var(--color-accent-800); flex: none; }
+.au-lualabel { font-weight: 600; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-accent-400); }
+.au-luarun { padding: 1px 10px; background: var(--color-accent); color: var(--color-bg); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; }
+.au-luabtn { padding: 1px 10px; border: 1px solid var(--color-accent-700); color: var(--color-accent-200); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; }
+.au-luahint { font-size: 9.5px; color: var(--color-accent-500); flex: 1; min-width: 0; }
+.au-luabody { display: flex; flex: 1; min-height: 0; }
+#au-lua-src { flex: 1.4; min-width: 0; resize: none; padding: 8px 10px; border: none; border-right: 1px solid var(--color-accent-800); background: transparent; font-size: 11px; line-height: 1.5; color: var(--color-accent-100); outline: none; }
+#au-lua-out { flex: 1; margin: 0; padding: 8px 10px; overflow: auto; font-size: 10.5px; line-height: 1.5; color: var(--color-accent-300); white-space: pre-wrap; }
+
+/* -- setup dialog -- */
+.su-backdrop { position: fixed; inset: 0; background: rgba(29,31,32,.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.su-box { width: 720px; max-width: 92vw; max-height: 88vh; overflow-y: auto; background: var(--color-bg); padding: 18px 20px; box-shadow: var(--shadow-lg); }
+.su-titlerow { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+.su-title { margin: 0; font-size: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; white-space: nowrap; }
+.su-statuschip { display: flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid var(--color-divider); font-size: 9.5px; letter-spacing: .08em; white-space: nowrap; }
+.su-statuschip i { width: 6px; height: 6px; flex: none; }
+.su-btn { white-space: nowrap; }
+.su-note { font-size: 12px; color: var(--color-neutral-700); margin: 0 0 12px; max-width: 60ch; }
+.su-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-bottom: 12px; }
+.su-field { display: flex; flex-direction: column; gap: 3px; }
+.su-wide { grid-column: 1 / -1; }
+.su-label { font-weight: 600; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--color-neutral-600); }
+.su-inrow { display: flex; gap: 0; border: 1px solid var(--color-divider); }
+.su-inrow input { flex: 1; min-width: 0; height: 28px; padding: 0 8px; border: none; background: var(--color-neutral-100); font-size: 11px; color: var(--color-text); }
+.su-inbtn { display: flex; align-items: center; padding: 0 12px; border-left: 1px solid var(--color-divider); background: var(--color-neutral-200); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; white-space: nowrap; }
+.su-inbtn:hover { background: var(--color-accent-200); }
+.su-fieldnote { font-size: 10px; color: var(--color-neutral-500); }
+.su-exehead { display: flex; align-items: baseline; gap: 8px; }
+.su-clearlink { font-size: 10px; color: var(--color-accent-700); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.su-autostart { padding: 2px 10px; border: 1px solid var(--color-accent); font-weight: 600; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; background: transparent; color: var(--color-accent-700); }
+.su-autostart.on { background: var(--color-accent); color: var(--color-bg); }
+.su-input { height: 28px; padding: 0 8px; border: 1px solid var(--color-divider); background: var(--color-neutral-100); font-size: 11px; color: var(--color-text); }
+.su-exechips { display: flex; flex-wrap: wrap; gap: 4px; min-height: 2px; }
+.su-exechip { padding: 2px 8px; border: 1px solid var(--color-divider); font-family: var(--font-mono); font-size: 10px; cursor: pointer; color: var(--color-neutral-600); }
+.su-exechip.active { border-color: var(--color-accent); background: var(--color-accent-200); color: var(--color-accent-800); }
+.su-osrow { display: flex; align-items: center; gap: 0; border: 1px solid var(--color-divider); width: fit-content; margin-bottom: 12px; }
+.su-os { padding: 4px 12px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; cursor: pointer; white-space: nowrap; color: var(--color-neutral-600); }
+.su-os + .su-os { border-left: 1px solid var(--color-divider); }
+.su-os.active { background: var(--color-accent-900); color: var(--color-bg); }
+.su-docrow { display: flex; align-items: baseline; justify-content: space-between; }
+.su-docrow h6 { margin: 0 0 4px; font-size: 12px; }
+.su-copylink { cursor: pointer; color: var(--color-accent-700); font-size: 11px; text-decoration: underline; text-underline-offset: 2px; }
+.su-doc { width: 100%; resize: vertical; padding: 8px; border: 1px solid var(--color-divider); background: var(--color-neutral-100); font-size: 10.5px; line-height: 1.5; color: var(--color-text); margin-bottom: 12px; }
+.su-policy { margin: 0 0 12px; max-width: 66ch; }
+
+/* -- context menu -- */
+#ctx-root { position: fixed; inset: 0; z-index: 60; }
+.ctx-menu { position: fixed; display: flex; flex-direction: column; min-width: 210px; background: var(--color-bg); border: 1px solid var(--color-text); box-shadow: var(--shadow-lg); padding: 3px 0; }
+.ctx-item { padding: 4px 12px; cursor: pointer; font-size: 12px; color: var(--color-text); white-space: nowrap; }
+.ctx-item:hover { background: var(--color-neutral-200); }
+.ctx-rule { height: 1px; background: var(--color-divider); margin: 3px 8px; }
+</style>
+</head>
+<body data-mode="cheat">
+<div class="app">
+  <header id="hd">
+    <div class="hd-brand">
+      <span class="hd-title">Cheat Workbench</span>
+      <span class="mono hd-sub">dosbox&#8209;automation &#183; api v1 &#183; WIP</span>
+    </div>
+    <nav id="hd-modes"></nav>
+    <div class="hd-spring"></div>
+    <span id="hd-setup" class="hd-setup-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>Setup</span>
+    <span class="hd-vrule"></span>
+    <div class="hd-cycles" id="hd-cycles-box" title="CPU cycles (50&#8211;2,000,000) &#8212; Enter applies to the running instance">
+      <span class="hd-cycles-label">Cycles</span>
+      <input id="hd-cycles" spellcheck="false" class="mono">
+      <span id="hd-cycles-set" class="hd-set-btn">Set</span>
+    </div>
+    <div class="hd-conn">
+      <input id="hd-host" spellcheck="false" class="mono">
+      <input id="hd-token" type="password" placeholder="token" spellcheck="false" class="mono">
+      <span id="hd-connect" class="hd-connect-btn"></span>
+      <span class="hd-status"><i id="hd-dot"></i><span id="hd-status-text"></span></span>
+    </div>
+  </header>
+  <div class="main">
+    <section id="cheat-left" class="mode-cheat panel-372">
+      <div class="p-head" style="padding-bottom:0">
+        <h6>01 &#8212; Scanner</h6><span id="sc-meta" class="p-hint mono"></span>
+      </div>
+      <div class="sc-scanrow">
+        <input id="sc-value" spellcheck="false" class="mono">
+        <span id="sc-widths"></span>
+      </div>
+      <div class="sc-comparerow" id="sc-compares"></div>
+      <div class="sc-rangerow">
+        <span class="sc-rangelabel">Range</span>
+        <input id="sc-range-start" spellcheck="false" class="sc-range">
+        <input id="sc-range-end" spellcheck="false" class="sc-range">
+      </div>
+      <div class="sc-btnrow">
+        <button id="sc-first" class="btn btn-primary btn-scan"></button>
+        <button id="sc-next" class="btn btn-secondary btn-scan">Next scan</button>
+        <button id="sc-reset" title="Reset scan session (F6 starts fresh too)" class="btn btn-secondary btn-scan btn-reset">&#8635;</button>
+      </div>
+      <div class="sc-passrow" id="sc-passes"></div>
+      <div class="sc-cols"><span>Address</span><span class="right">Value</span><span class="right">Prev</span></div>
+      <div id="sc-results"></div>
+      <div id="sc-results-empty" class="sc-empty"></div>
+      <div class="sc-selrow">
+        <span id="sc-selall"></span>
+        <span id="sc-addsel">Add to table &#8594;</span>
+      </div>
+      <div class="p-head bt">
+        <h6>02 &#8212; Cheat table</h6><span id="ct-meta" class="p-hint mono"></span>
+      </div>
+      <div class="ct-cols">
+        <span title="Ctrl+1..9 toggles freeze">Frz</span><span>Description</span><span>Address</span><span class="right">Value</span><span class="right">&#916;</span><span></span>
+      </div>
+      <div id="ct-list"></div>
+      <div id="ct-empty" class="sc-empty">Double-click a result to watch it. Frozen entries are rewritten every poll &#8212; health stays put.</div>
+      <div class="ct-actions">
+        <span id="ct-add">+ Address</span>
+        <span id="ct-freezeall"></span>
+        <label class="ct-import">Import<input id="ct-import-file" type="file" accept=".json"></label>
+        <span id="ct-export">Export</span>
+      </div>
+    </section>
+    <section id="insp-left" class="mode-inspect panel-372">
+      <div class="p-head">
+        <h6>01 &#8212; Program</h6><span id="in-source" class="p-hint mono"></span>
+      </div>
+      <div id="in-status" class="in-kv"></div>
+      <div class="p-head bt">
+        <h6>02 &#8212; CPU registers</h6><span id="in-reghint" class="p-hint mono"></span>
+      </div>
+      <div id="in-regs" class="in-regs"></div>
+      <div class="p-head bt" id="in-ports-head" style="cursor:pointer">
+        <h6 id="in-ports-title"></h6><span id="in-portshint" class="p-hint mono"></span>
+      </div>
+      <div id="in-ports-body">
+        <div id="in-ports" class="in-ports"></div>
+        <div class="in-portadd">
+          <input id="in-port-add" placeholder="port or name &#183; 0x3C9, vga, adlib&#8230;" spellcheck="false" class="mono">
+          <span id="in-port-go">+ Add</span>
+        </div>
+        <div id="in-port-suggests" class="in-suggests"></div>
+        <div class="in-setrow">
+          <select id="in-set-sel" class="mono"></select>
+          <input id="in-set-name" placeholder="set name" spellcheck="false" class="mono">
+          <span id="in-set-save" title="save the current watched ports under this name">Save</span>
+          <span id="in-set-del" title="delete the selected set">&#215;</span>
+        </div>
+      </div>
+    </section>
+    <section id="insp-mid" class="mode-inspect panel-300">
+      <div class="p-head">
+        <h6>04 &#8212; Memory map (MCB)</h6><span id="in-mcbmeta" class="p-hint mono"></span>
+      </div>
+      <div id="in-mcb" class="in-mcb"></div>
+      <div class="in-mcbnote">Click a block to jump the hex stage to its segment.</div>
+      <div class="p-head bt">
+        <h6>05 &#8212; Write &amp; watch log</h6>
+      </div>
+      <div id="in-watch-chips" class="in-chips"></div>
+      <div class="in-watchadd">
+        <input id="in-watch-addr" placeholder="addr &#183; 0x1A4C0" spellcheck="false" class="mono">
+        <span id="in-watch-w" title="width: byte / word / dword" class="mono"></span>
+        <input id="in-watch-cond" placeholder="cond &#183; =0 &gt;100" spellcheck="false" class="mono">
+        <span id="in-watch-go">+ Watch</span>
+      </div>
+      <div class="in-writelogbox">
+        <div class="in-wlcols"><span>Event</span><span>Cond</span><span class="right">When</span></div>
+        <div id="in-writelog"></div>
+        <div id="in-writelog-empty" class="in-wlempty">byte writes and watch hits land here &#183; add a watch above or via a hex byte</div>
+      </div>
+      <div class="p-head bt">
+        <h6>06 &#8212; DOS / PSP</h6><span id="in-psphint" class="p-hint mono"></span>
+      </div>
+      <div id="in-psp" class="in-kv"></div>
+    </section>
+    <section id="auto-left" class="mode-automate panel-308">
+      <div class="p-head">
+        <h6>01 &#8212; Project</h6><span id="au-projtag" class="p-hint mono"></span>
+      </div>
+      <div class="au-projbox">
+        <div id="au-proj-name" class="mono au-projname"></div>
+        <div class="au-dirrow">
+          <input id="au-gamedir" spellcheck="false" class="mono">
+          <span id="au-browse">Browse</span>
+          <span id="au-manifest" title="pre-populate from a manifest.toml / game recipe">Load manifest</span>
+        </div>
+      </div>
+      <div class="au-meta in-kv">
+        <span class="k">input file</span><span id="au-meta-input" class="v"></span>
+        <span class="k">video</span><span id="au-meta-video" class="v"></span>
+        <span class="k">screenshots</span><span id="au-meta-shots" class="v"></span>
+      </div>
+      <div class="au-btnrow">
+        <button id="au-reset" class="btn btn-secondary au-btn">Reset instance</button>
+        <button id="au-play" class="btn btn-primary au-btn"></button>
+      </div>
+      <div class="au-linkrow">
+        <a id="au-proj-export">Export project</a>
+        <label class="au-import">Import<input id="au-proj-import" type="file" accept=".json"></label>
+        <a id="au-proj-new" style="margin-left:auto">New project</a>
+      </div>
+      <div class="p-head bt">
+        <h6>02 &#8212; Capture video</h6><span id="au-vidstatus" class="p-hint mono"></span>
+      </div>
+      <div class="au-capbox">
+        <div class="au-modes" id="au-vid-modes"></div>
+        <div class="au-caprow">
+          <button id="au-vid-btn" class="btn btn-secondary au-capbtn"></button>
+          <button id="au-vid-pause" class="btn btn-ghost au-capbtn"></button>
+          <span id="au-vid-dot" class="au-dot"></span>
+          <span id="au-vid-timer" class="mono au-timer"></span>
+        </div>
+      </div>
+      <div class="p-head bt">
+        <h6>03 &#8212; Capture screenshots</h6>
+      </div>
+      <div class="au-capbox">
+        <div class="au-modes" id="au-shot-modes"></div>
+        <div class="au-caprow">
+          <select id="au-shot-fmt" class="mono au-fmtsel">
+            <option value="png">PNG</option>
+            <option value="jpg">JPG</option>
+            <option value="raw">RAW (palette)</option>
+          </select>
+          <button id="au-shot-btn" class="btn btn-secondary au-capbtn">Take screenshot</button>
+          <span id="au-shot-status" class="mono au-shotstatus ell"></span>
+        </div>
+      </div>
+      <div class="p-head bt">
+        <h6>04 &#8212; Capture audio</h6>
+      </div>
+      <div class="au-caprow au-capbox">
+        <button id="au-aud-btn" class="btn btn-secondary au-capbtn"></button>
+        <button id="au-aud-pause" class="btn btn-ghost au-capbtn"></button>
+        <span id="au-aud-dot" class="au-dot"></span>
+        <span id="au-aud-timer" class="mono au-timer"></span>
+      </div>
+      <div class="p-head bt">
+        <h6>05 &#8212; Mixer</h6><span id="au-mixerhint" class="p-hint mono"></span>
+      </div>
+      <div id="au-mixer" class="au-mixer"></div>
+    </section>
+    <section id="auto-mid" class="mode-automate panel-472">
+      <div class="p-head">
+        <h6>06 &#8212; Input automation</h6><span id="au-recmeta" class="p-hint mono"></span>
+      </div>
+      <div class="au-caprow au-recrow">
+        <button id="au-rec-btn" class="btn btn-secondary au-capbtn"></button>
+        <button id="au-rec-pause" class="btn btn-ghost au-capbtn"></button>
+        <span id="au-rec-dot" class="au-dot big"></span>
+        <span id="au-rec-status" class="mono au-timer"></span>
+      </div>
+      <div id="au-kb" class="au-kb"></div>
+      <div class="au-typerow">
+        <input id="au-type" placeholder="type into the game&#8230;" spellcheck="false" class="mono">
+        <span id="au-send">Send</span>
+      </div>
+      <div class="au-linkrow">
+        <a id="au-rec-export">Export .json</a>
+        <a id="au-rec-export-lua">Export recipe.lua</a>
+        <label class="au-import" style="margin-left:auto">Import<input id="au-rec-import" type="file" accept=".json"></label>
+      </div>
+      <div id="au-tl-block">
+        <div class="p-head bt">
+          <h6>07 &#8212; Input timeline</h6><span id="au-tl-status" class="p-hint mono"></span>
+        </div>
+        <div class="au-tlwrap">
+          <div id="au-tl" class="au-tl"></div>
+        </div>
+        <div class="au-tlbtns">
+          <button id="au-tl-cut" class="btn btn-ghost au-tlbtn">Cut selection</button>
+          <button id="au-tl-del" class="btn btn-ghost au-tlbtn">Delete selection</button>
+          <button id="au-tl-split" class="btn btn-ghost au-tlbtn">Split here</button>
+          <button id="au-tl-undo" class="btn btn-ghost au-tlbtn">Undo</button>
+        </div>
+        <div id="au-tl-list" class="au-tllist"></div>
+      </div>
+      <div id="au-tl-empty" class="in-mcbnote">Record input, and the timeline appears here for trimming, cutting and splitting the run.</div>
+    </section>
+    <section id="auto-stage" class="mode-automate stage">
+      <div class="hx-bar">
+        <h6 class="hx-title">08 &#8212; Screen</h6>
+        <span id="au-tab-text" class="au-tab">Text</span>
+        <span id="au-tab-frame" class="au-tab">Frame</span>
+        <div class="hd-spring"></div>
+        <span id="au-stage-dot" class="au-dot big"></span>
+        <span id="au-lua-toggle" class="au-luatoggle"></span>
+      </div>
+      <div class="au-stagearea">
+        <pre id="au-screen-text" class="au-screentext hidden"></pre>
+        <div id="au-screen-frame" class="au-screenframe hidden"></div>
+        <span id="au-screen-placeholder" class="mono au-placeholder"></span>
+      </div>
+      <div id="au-lua" class="au-lua hidden">
+        <div class="au-luabar">
+          <span class="au-lualabel">Lua console</span>
+          <span id="au-lua-run" class="au-luarun">Run</span>
+          <span id="au-lua-stop" class="au-luabtn">Stop</span>
+          <span id="au-lua-status" class="au-luabtn">Status</span>
+          <span id="au-lua-hint" class="mono au-luahint ell"></span>
+        </div>
+        <div class="au-luabody">
+          <textarea id="au-lua-src" spellcheck="false" class="mono"></textarea>
+          <pre id="au-lua-out" class="mono"></pre>
+        </div>
+      </div>
+    </section>
+    <section id="hex-stage" class="mode-cheat mode-inspect stage">
+      <div class="hx-bar">
+        <h6 class="hx-title"><span id="hx-panelno"></span> &#8212; Hex stage</h6>
+        <input id="hx-base" spellcheck="false" class="mono">
+        <span id="hx-prev" class="hx-btn mono">&#8593;</span>
+        <span id="hx-next" class="hx-btn mono">&#8595;</span>
+        <span id="hx-follow" class="hx-toggle">follow selection</span>
+        <span class="hx-findbox">
+          <input id="hx-find" placeholder="find text or hex bytes" spellcheck="false" class="mono">
+          <span id="hx-findall" class="hx-findbtn">Find all</span>
+          <span id="hx-prevm" class="hx-stepbtn" title="previous match (Shift+F3)">&#8249;</span>
+          <span id="hx-nextm" class="hx-stepbtn" title="next match (F3)">&#8250;</span>
+        </span>
+        <span id="hx-count" class="mono hx-count"></span>
+        <span class="hx-dumpwrap">
+          <span id="hx-dump" class="hx-toggle"></span>
+          <span id="hx-dump-menu" class="hx-dumpmenu hidden"></span>
+        </span>
+        <span id="hx-edit" class="hx-editbox hidden">
+          <span id="hx-edit-label" class="mono"></span>
+          <input id="hx-edit-val" spellcheck="false" class="mono">
+          <span id="hx-edit-write" class="hx-editbtn">Write</span>
+          <span id="hx-edit-watch" class="hx-watchbtn" title="add this byte to the watch log">Watch</span>
+          <span id="hx-edit-close" class="hx-editclose">&#215;</span>
+        </span>
+        <span class="hd-spring"></span>
+        <span class="hx-bmlabel">Bookmarks</span>
+        <span id="hx-bookmarks" class="hx-bms"></span>
+        <span id="hx-mark" class="hx-markbtn mono" title="Bookmark the current address">+ mark</span>
+      </div>
+      <span id="hx-editpop" class="hx-editpop hidden">
+        <span id="hx-editpop-label" class="mono"></span>
+        <input id="hx-editpop-val" spellcheck="false" class="mono">
+        <span id="hx-editpop-mode" class="hx-popmode mono hidden" title="switch between hex pairs and text"></span>
+        <span id="hx-editpop-write" class="hx-editbtn">Write</span>
+        <span id="hx-editpop-close" class="hx-editclose">&#215;</span>
+      </span>
+      <div id="hx-pane" class="hx-pane">
+        <div id="hx-rows"></div>
+        <div class="hx-legend">
+          <span><i class="lg lg-flash"></i>changed last poll</span>
+          <span><i class="lg lg-frozen"></i>frozen</span>
+          <span><i class="lg lg-watch"></i>watched</span>
+          <span><i class="lg lg-found"></i>scan match</span>
+          <span>&#183; click a byte to edit it</span>
+        </div>
+      </div>
+    </section>
+  </div>
+  <footer id="ft">
+    <span id="ft-mode" class="mono"></span>
+    <span class="mono dim">F5 next scan</span><span class="mono dim">F6 new scan</span>
+    <span class="mono dim">Ctrl+1&#8211;9 freeze row</span><span class="mono dim">Esc clear</span>
+    <span id="ft-log" class="mono ft-log"></span>
+    <span id="ft-reqlog" class="mono dim ft-reqlog"></span>
+    <span id="ft-poll-toggle" class="ft-link"></span>
+    <span class="ft-pollbox mono dim">poll
+      <input id="ft-pollms" type="range" min="250" max="2000" step="250">
+      <span id="ft-poll-label"></span></span>
+  </footer>
+</div>
+<div id="ctx-root" class="hidden"></div>
+<div id="setup-root" class="su-backdrop hidden">
+  <div id="su-box" class="blueprint su-box"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+    <div class="su-titlerow">
+      <h4 class="su-title">Instance setup</h4>
+      <span class="su-statuschip mono"><i id="su-dot"></i><span id="su-status"></span></span>
+      <div class="hd-spring"></div>
+      <button id="su-save" class="btn btn-primary su-btn"></button>
+      <button id="su-load" class="btn btn-primary su-btn" title="loads an existing dosbox-automation.conf and launch.sh/.bat">Load</button>
+      <button id="su-stop" class="btn btn-secondary su-btn hidden" title="POST /api/v1/dosbox/shutdown">Stop instance</button>
+      <button id="su-close" class="btn btn-secondary su-btn">Close</button>
+    </div>
+    <p class="su-note">A browser can't launch the emulator itself. This generates a config and a launch script that start dosbox&#8209;automation with a known token, mount your game folder as C: without tripping the mount policy, and pin CPU cycles in both modes. Stop works over the API; restart = re&#8209;run the script.</p>
+    <div class="su-grid">
+      <div class="su-field su-wide">
+        <span class="su-label">dosbox&#8209;automation binary</span>
+        <div class="su-inrow">
+          <input id="su-bin" spellcheck="false" class="mono">
+          <span id="su-bin-browse" class="su-inbtn">Browse&#8230;</span>
+          <span id="su-bin-detect" class="su-inbtn">Autodetect</span>
+        </div>
+        <span id="su-bin-note" class="su-fieldnote"></span>
+      </div>
+      <div class="su-field">
+        <span class="su-label">Game folder (mounted as C:)</span>
+        <div class="su-inrow">
+          <input id="su-gamedir" spellcheck="false" class="mono">
+          <span id="su-browse" class="su-inbtn">Browse&#8230;</span>
+        </div>
+        <span id="su-folder-note" class="su-fieldnote"></span>
+      </div>
+      <div class="su-field">
+        <span class="su-exehead"><span class="su-label">Game executable</span><span id="su-clear-autoexec" class="su-clearlink">clear</span><span class="hd-spring"></span><span id="su-autostart" class="su-autostart">autostart</span></span>
+        <input id="su-exe" spellcheck="false" class="mono su-input">
+        <div id="su-exes" class="su-exechips"></div>
+      </div>
+      <label class="su-field su-label">Cycles &#183; real mode
+        <input id="su-cycles" spellcheck="false" class="mono su-input">
+      </label>
+      <label class="su-field su-label">Cycles &#183; protected mode
+        <input id="su-cycles-prot" spellcheck="false" class="mono su-input">
+      </label>
+    </div>
+    <div class="su-osrow" id="su-os"></div>
+    <div class="su-docrow"><h6>dosbox&#8209;automation.conf</h6><span id="su-copy-conf" class="su-copylink">copy</span></div>
+    <textarea id="su-conf" readonly class="mono su-doc" style="height:172px"></textarea>
+    <div class="su-docrow"><h6 id="su-script-name"></h6><span id="su-copy-script" class="su-copylink">copy</span></div>
+    <textarea id="su-script" readonly class="mono su-doc" style="height:128px"></textarea>
+    <p class="su-fieldnote su-policy">Mount policy: directory mounts are only allowed inside the config file's parent directory or under <span class="mono">mount_allowed_bases</span> (primary config only, max 5 entries). The generated conf assumes it sits next to the game folder; otherwise add the base line shown in the conf comment to your primary config.</p>
+  </div>
+</div>
+<script>
+'use strict';
+
+const $ = (id) => document.getElementById(id);
+
+function el(tag, props, ...children) {
+  const n = document.createElement(tag);
+  for (const k in (props || {})) {
+    const v = props[k];
+    if (v == null) continue;
+    if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'text') n.textContent = v;
+    else n.setAttribute(k, v);
+  }
+  for (const c of children) {
+    if (c != null) n.append(c.nodeType ? c : String(c));
+  }
+  return n;
+}
+
+// Writing a focused input's value would reset the caret mid-typing.
+function sync(input, value) {
+  if (document.activeElement !== input && input.value !== String(value)) {
+    input.value = value;
+  }
+}
+
+class Workbench {
+  static FPS = 70;
+
+  state = {
+    host: '', token: '', connected: false, mode: 'demo', statusText: 'DEMO MACHINE', uiMode: 'cheat',
+    mcb: null, regsData: null, statusData: null, ports: null, psp: null, portsOpen: true, portAdd: '', customPorts: [],
+    portSets: {}, portSetName: '', portSetSel: '',
+    findStr: '', findLen: 0, findMatches: [], findIdx: -1, writeLog: [], dumpOpen: false,
+    watches: [], watchAddr: '', watchCond: '', watchW: 1, ctx: null, ctxAddr: null,
+    autoTab: 'text', autoText: '', autoFrame: '', typeText: '',
+    recording: false, recPaused: false, vidPaused: false, audPaused: false, recEvents: [], playing: false,
+    playPos: 0, selA: null, selB: null, dragSel: false,
+    vidMode: 'rendered', shotFmt: 'png', shotMode: 'rendered', shotCount: 0, shotLast: '', pressedKeys: {},
+    vidRecs: { count: 0, totalMs: 0 }, audRecs: { count: 0, totalMs: 0 },
+    projName: '', recName: 'recording.json',
+    luaOpen: false, luaSrc: '-- runs inside dosbox-automation\nlocal hp = memory.read_u8(0x1A4C0)\nprint("health", hp)', luaOut: '',
+    mixer: { master: 80, sb: 70, fm: 60, speaker: 50 }, capVideo: false, capAudio: false,
+    pollMs: 500, polling: true,
+    scanValue: '100', width: 1, compare: 'exact', signed: false,
+    rangeStart: '0x00000', rangeEnd: '0x100000',
+    passes: [], results: [], selected: [], anchor: -1, scanning: false,
+    entries: [], hexBase: '0x1A4C0', hexBytes: null, prevHex: null, followSel: true,
+    bookmarks: [], editAddr: null, editVal: '',
+    setupOpen: false, gameDir: '$HOME/Games/keen4', gameExe: 'KEEN4E.EXE', autostart: true, cycles: '3000', cyclesProt: '60000', osKind: 'bash',
+    exes: [], folderPicked: false, binPath: 'dosbox-automation', binNote: '',
+    log: 'demo machine running - scan for a value you can see, e.g. health 100',
+    reqLog: '', latency: 0
+  };
+
+  #renderQueued = false;
+  #renderCbs = [];
+
+  setState(update, cb) {
+    const patch = typeof update === 'function' ? update(this.state) : update;
+    Object.assign(this.state, patch);
+    if (cb) this.#renderCbs.push(cb);
+    if (this.#renderQueued) return;
+    this.#renderQueued = true;
+    requestAnimationFrame(() => {
+      this.#renderQueued = false;
+      this.render();
+      const cbs = this.#renderCbs; this.#renderCbs = [];
+      for (const f of cbs) f();
+    });
+  }
+
+  render() {
+    this.renderHeader(); this.renderFooter();
+    const m = this.state.uiMode;
+    document.body.dataset.mode = m;
+    if (m === 'cheat') { this.renderScanner(); this.renderTable(); }
+    if (m === 'inspect') { this.renderInspect(); }
+    if (m === 'automate') { this.renderAutomate(); this.renderTimeline(); this.renderStage(); }
+    if (m !== 'automate') { this.renderHexStage(); }
+    this.renderCtx(); this.renderSetup();
+  }
+
+  init() {
+    const sameOrigin = /^https?:$/.test(location.protocol);
+    this.setState({ host: sameOrigin ? location.origin : 'http://127.0.0.1:8386' });
+    this.initDemo();
+    this.slowT = 0;
+    this.hexT = 0;
+    this.tick = setInterval(() => this.onTick(), 250);
+    window.addEventListener('keydown', (e) => this.onKey(e));
+    try { this.setState({ portSets: JSON.parse(localStorage.getItem('cw-port-sets') || '{}') }); } catch (e) {}
+    this.hexRowCount = 16;
+    this.hexPaneEl = $('hx-pane');
+    new ResizeObserver(() => this.measureHexRows()).observe(this.hexPaneEl);
+    this.buildStaticRegions();
+    setTimeout(() => this.refreshHex(), 60);
+  }
+
+  async onTick() {
+    if (!this.state.polling) return;
+    this.slowT += 250; this.hexT += 250;
+    if (this.state.mode === 'demo' && this.demo) {
+      const d = this.demo;
+      d.slots.forEach(sl => {
+        sl.val = Math.max(sl.min, Math.min(sl.max, sl.val + sl.drift()));
+        this.demoWriteNum(sl.addr, sl.val, sl.w);
+      });
+      if (Math.random() < .4) { d.score += 10; this.writeBcd(0x22f40, d.score % 100000000, 4); }
+    }
+    if (this.slowT % Math.max(250, Math.round(this.state.pollMs / 250) * 250) === 0) {
+      await this.refreshEntries();
+      await this.pollWatches();
+      if (this.state.uiMode === 'automate') this.refreshScreen();
+    }
+    // hex and inspect refresh on their own cadence, decoupled from pollMs
+    if (this.hexT >= 1000) {
+      this.hexT = 0;
+      this.refreshHex();
+      if (this.state.uiMode === 'inspect') this.refreshInspect();
+    }
+    if (this.state.uiMode === 'automate' &&
+        (this.state.capVideo || this.state.capAudio || this.state.recording || this.state.playing)) {
+      this.setState({ _tick: this.slowT });
+    }
+  }
+
+  onKey(e) {
+    const t = e.target;
+    const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
+    if (e.key === 'Escape') {
+      this.setState({ selected: [], anchor: -1, editAddr: null, ctx: null, ctxAddr: null });
+      return;
+    }
+    if (typing) return;
+    if (e.key === 'F5') { e.preventDefault(); this.state.results.length ? this.onNextScan() : this.onFirstScan(); }
+    else if (e.key === 'F6') { e.preventDefault(); this.onResetScan(); this.onFirstScan(); }
+    else if (e.key === 'F3') { e.preventDefault(); this.onFindStep(e.shiftKey ? -1 : 1); }
+    else if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
+      const i = parseInt(e.key, 10) - 1;
+      if (this.state.entries[i]) { e.preventDefault(); this.toggleFreeze(i); }
+    }
+  }
+
+  static PORT_CATALOG = [
+    ['VGA', [[0x3c0, 'attr ctrl'], [0x3c4, 'seq index'], [0x3c5, 'seq data'], [0x3c8, 'DAC write idx'], [0x3c9, 'DAC data'], [0x3d4, 'CRTC index'], [0x3d5, 'CRTC data'], [0x3da, 'status']]],
+    ['AdLib', [[0x388, 'addr / status'], [0x389, 'data']]],
+    ['Sound Blaster', [[0x220, 'DSP'], [0x226, 'reset'], [0x22a, 'read'], [0x22c, 'write'], [0x22e, 'status']]],
+    ['MPU-401 MIDI', [[0x330, 'data'], [0x331, 'status']]],
+    ['PIT timer', [[0x40, 'ch0'], [0x42, 'ch2 / spkr'], [0x43, 'control']]],
+    ['PIC', [[0x20, 'PIC1 cmd'], [0x21, 'PIC1 mask'], [0xa0, 'PIC2 cmd'], [0xa1, 'PIC2 mask']]],
+    ['Keyboard', [[0x60, 'data'], [0x61, 'ctrl / spkr'], [0x64, 'status']]],
+    ['Joystick', [[0x201, 'game port']]],
+    ['COM1', [[0x3f8, 'data'], [0x3fd, 'line status']]],
+    ['LPT1', [[0x378, 'data'], [0x379, 'status']]],
+    ['RTC / CMOS', [[0x70, 'index'], [0x71, 'data']]]
+  ];
+  portNote(p) {
+    for (const [g, list] of Workbench.PORT_CATALOG) for (const [n, note] of list) if (n === p) return g + ' ' + note;
+    return 'watched';
+  }
+
+  // ---------- demo machine ----------
+  initDemo() {
+    const SIZE = 0x100000;
+    const mem = new Uint8Array(SIZE);
+    let s = 0x1a4c07;
+    for (let i = 0; i < SIZE; i++) { s = (s * 1103515245 + 12345) & 0x7fffffff; mem[i] = (s >>> 16) & 255; }
+    this.demo = {
+      mem,
+      slots: [
+        { addr: 0x1a4c0, w: 1, val: 100, drift: () => (Math.random() < .35 ? -1 : 0), min: 0, max: 100 },
+        { addr: 0x1a4c4, w: 2, val: 47, drift: () => (Math.random() < .5 ? -1 : 2), min: 0, max: 999 },
+        { addr: 0x22f10, w: 4, val: 1250, drift: () => (Math.random() < .3 ? 25 : 0), min: 0, max: 999999 }
+      ],
+      score: 13450
+    };
+    this.demo.typed = [];
+    this.demo.slots.forEach(sl => this.demoWriteNum(sl.addr, sl.val, sl.w));
+    this.writeStr(0x1a4d2, 'KEEN4E');
+    this.writeStr(0x30000, 'SOUND BLASTER 16');
+    this.writeBcd(0x22f40, this.demo.score, 4);
+  }
+  demoWriteNum(addr, val, w) { for (let i = 0; i < w; i++) this.demo.mem[addr + i] = (val >> (8 * i)) & 255; }
+  demoScreen() {
+    const sl = this.demo.slots;
+    const pad = (v, n) => String(v).padStart(n, ' ');
+    const typed = this.demo.typed.slice(-1)[0];
+    return [
+      ' KEEN4E.EXE                            Commander Keen 4',
+      ' ' + '═'.repeat(56),
+      '',
+      '   SCORE ' + pad(sl[2].val * 37, 9) + '     LIVES  3     AMMO ' + pad(sl[1].val, 4),
+      '   HEALTH' + pad(sl[0].val, 9) + '     KEYS   ■ □ □ □',
+      '',
+      '   Keen has the pogo stick.',
+      '   Press F1 for help, ESC to quit.',
+      typed ? '   > ' + typed : '',
+      '',
+      ' ' + '─'.repeat(56),
+      '   [ demo machine — injected input echoes here ]'
+    ].join('\n');
+  }
+  writeStr(addr, s) { for (let i = 0; i < s.length; i++) this.demo.mem[addr + i] = s.charCodeAt(i); }
+  writeBcd(addr, num, bytes) {
+    const d = String(num).padStart(bytes * 2, '0');
+    for (let i = 0; i < bytes; i++) this.demo.mem[addr + i] = (parseInt(d[i * 2], 10) << 4) | parseInt(d[i * 2 + 1], 10);
+  }
+
+  // ---------- transport ----------
+  get live() { return this.state.mode === 'live' && this.state.connected; }
+  async api(path, opts = {}) {
+    const t0 = performance.now();
+    const h = Object.assign({ Authorization: 'Bearer ' + this.state.token }, opts.headers || {});
+    const res = await fetch(this.state.host.replace(/\/$/, '') + path, Object.assign({}, opts, { headers: h }));
+    // request lines go to their own footer channel so action feedback survives polling
+    this.setState({ latency: Math.round(performance.now() - t0), reqLog: (opts.method || 'GET') + ' ' + path + ' → ' + res.status });
+    if (!res.ok) throw new Error(path + ' → HTTP ' + res.status);
+    return res;
+  }
+  async readMem(addr, len) {
+    if (!this.live) return this.demo.mem.slice(addr, addr + len);
+    const r = await this.api('/api/v1/memory/' + addr + '/' + len, { headers: { Accept: 'application/json' } });
+    const j = await r.json();
+    const bin = atob((j.memory && j.memory.data) || '');
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  async writeBytes(addr, bytes) {
+    if (!this.live) { for (let i = 0; i < bytes.length; i++) this.demo.mem[addr + i] = bytes[i]; return; }
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    await this.api('/api/v1/memory/' + addr, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: btoa(bin) }) });
+  }
+  async serverFreeze(addr, val, w, on) {
+    if (!this.live) return;
+    if (on) await this.api('/api/v1/memory/freeze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: addr, value: val, width: w }) });
+    else await this.api('/api/v1/memory/freeze', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: addr }) });
+  }
+  onConnect = async () => {
+    if (this.state.connected) { this.setState({ connected: false, mode: 'demo', statusText: 'DEMO MACHINE' }); return; }
+    this.setState({ mode: 'live', statusText: 'CONNECTING…' });
+    try {
+      const info = await (await this.api('/api/v1/dosbox/info')).json();
+      // Prefill the setup's binary path from the running instance: appimage
+      // wins when present ("binary" then points into the transient squashfs
+      // mount and dies with the process - only the AppImage is relaunchable).
+      const bin = info.appimage || info.binary;
+      this.setState(Object.assign(
+        { connected: true, statusText: 'LIVE · ' + info.version },
+        bin && !this.binOverridden ? { binPath: bin, binNote: info.appimage ? 'from the running instance ($APPIMAGE)' : 'from the running instance' } : {}
+      ));
+      this.refreshHex();
+      this.refreshMixer();
+    } catch (e) {
+      this.setState({ connected: false, mode: 'demo', statusText: 'UNREACHABLE — DEMO', log: String(e.message || e) });
+    }
+  };
+  async refreshMixer() {
+    if (!this.live) return;
+    try {
+      const m = await (await this.api('/api/v1/mixer')).json();
+      const pct = (v) => Math.round(((v.left || 0) + (v.right || 0)) / 2 * 100);
+      const byName = {};
+      (m.channels || []).forEach(c => { byName[String(c.name).toUpperCase()] = pct(c.user_volume || {}); });
+      const pick = (names, fallback) => { for (const n of names) if (byName[n] != null) return byName[n]; return fallback; };
+      this.setState({
+        mixer: {
+          master: m.master_volume ? pct(m.master_volume) : this.state.mixer.master,
+          sb: pick(['SB', 'SB16', 'SBLASTER'], this.state.mixer.sb),
+          fm: pick(['OPL', 'FM'], this.state.mixer.fm),
+          speaker: pick(['PCSPEAKER', 'SPEAKER'], this.state.mixer.speaker)
+        }
+      });
+      this.mixerChannelNames = {
+        sb: Object.keys(byName).find(n => ['SB', 'SB16', 'SBLASTER'].includes(n)) || 'SB',
+        fm: Object.keys(byName).find(n => ['OPL', 'FM'].includes(n)) || 'OPL',
+        speaker: Object.keys(byName).find(n => ['PCSPEAKER', 'SPEAKER'].includes(n)) || 'PCSPEAKER'
+      };
+    } catch (e) { this.setState({ log: 'mixer read failed: ' + e.message }); }
+  }
+
+  // ---------- value helpers ----------
+  cyclesOk(n) { return n != null && n >= 50 && n <= 2000000; }
+  applyCycles() {
+    const n = this.parse(this.state.cycles);
+    if (!this.cyclesOk(n)) { this.setState({ log: 'cycles must be 50–2,000,000' }); return; }
+    if (!this.live) { this.setState({ log: 'cycles = ' + n + ' stored — applies via the Setup conf at next launch' }); return; }
+    this.api('/api/v1/cpu/cycles', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cycles: n }) })
+      .then(() => this.setState({ log: 'cycles → ' + n }))
+      .catch(e => this.setState({ log: 'set cycles failed: ' + e.message }));
+  }
+  sanDigits(v) { return v.replace(/[^0-9]/g, ''); }
+  sanAddr(v) { return v.replace(/[^0-9a-fA-FxX:]/g, ''); }
+  sanNum(v) { return v.replace(/[^0-9a-fA-FxX-]/g, ''); }
+  invalid(v, kind) {
+    const s = String(v).trim();
+    if (!s) return false;
+    return kind === 'addr' ? this.parse(s) == null : kind === 'num' ? this.parse(s) == null : !/^\d+$/.test(s);
+  }
+  fmtT(ms) {
+    const m = Math.floor(ms / 60000), sec = (ms % 60000) / 1000;
+    return m + ':' + (sec < 10 ? '0' : '') + sec.toFixed(1);
+  }
+  parse(v) {
+    if (v == null) return null;
+    const s = String(v).trim();
+    if (!s) return null;
+    const m = s.match(/^(?:0x)?([0-9a-f]{1,4}):(?:0x)?([0-9a-f]{1,4})$/i);
+    if (m) return parseInt(m[1], 16) * 16 + parseInt(m[2], 16);
+    const n = /^0x/i.test(s) ? parseInt(s, 16) : parseInt(s, 10);
+    return isNaN(n) ? null : n;
+  }
+  dec(buf, off, w) { let v = 0; for (let i = 0; i < w; i++) v |= (buf[off + i] || 0) << (8 * i); return w === 4 ? v >>> 0 : v; }
+  toSigned(v, w) { const bits = w * 8; const max = Math.pow(2, bits - 1); return v >= max ? v - Math.pow(2, bits) : v; }
+  hx(n, pad) { return '0x' + (n >>> 0).toString(16).toUpperCase().padStart(pad || 5, '0'); }
+  needle() {
+    const s = this.state;
+    if (s.width === 'str') {
+      const t = String(s.scanValue);
+      if (!t) return null;
+      const b = new Uint8Array(t.length);
+      for (let i = 0; i < t.length; i++) b[i] = t.charCodeAt(i);
+      return b;
+    }
+    if (s.width === 'bcd') {
+      let d = String(s.scanValue).replace(/[^0-9]/g, '');
+      if (!d) return null;
+      if (d.length % 2) d = '0' + d;
+      const b = new Uint8Array(d.length / 2);
+      for (let i = 0; i < b.length; i++) b[i] = (parseInt(d[i * 2], 10) << 4) | parseInt(d[i * 2 + 1], 10);
+      return b;
+    }
+    const v = this.parse(s.scanValue);
+    if (v == null) return null;
+    const w = s.width;
+    const b = new Uint8Array(w);
+    for (let i = 0; i < w; i++) b[i] = (v >> (8 * i)) & 255;
+    return b;
+  }
+  matchAt(buf, i, nd) { for (let k = 0; k < nd.length; k++) if (buf[i + k] !== nd[k]) return false; return true; }
+  fmtScan(buf, off, len) {
+    const s = this.state;
+    if (s.width === 'str') { let t = ''; for (let i = 0; i < len; i++) t += String.fromCharCode(buf[off + i]); return t; }
+    let t = '';
+    for (let i = 0; i < len; i++) t += ((buf[off + i] >> 4) & 15) + '' + (buf[off + i] & 15);
+    return String(parseInt(t, 10) || 0);
+  }
+  entryLen(e) { return e.kind === 'num' ? e.width : e.len; }
+  fmtEntry(e, buf) {
+    if (e.kind === 'num') { const v = this.dec(buf, 0, e.width); return String(this.state.signed ? this.toSigned(v, e.width) : v); }
+    if (e.kind === 'str') { let s = ''; for (let i = 0; i < buf.length; i++) s += buf[i] >= 32 && buf[i] < 127 ? String.fromCharCode(buf[i]) : '.'; return s; }
+    let s = '';
+    for (let i = 0; i < buf.length; i++) s += ((buf[i] >> 4) & 15) + '' + (buf[i] & 15);
+    return String(parseInt(s, 10) || 0);
+  }
+  entryBytes(e, valueStr) {
+    if (e.kind === 'num') {
+      const v = this.parse(valueStr); if (v == null) return null;
+      const b = new Uint8Array(e.width);
+      for (let i = 0; i < e.width; i++) b[i] = (v >> (8 * i)) & 255;
+      return b;
+    }
+    if (e.kind === 'str') {
+      const b = new Uint8Array(e.len);
+      for (let i = 0; i < e.len; i++) b[i] = i < valueStr.length ? valueStr.charCodeAt(i) : 32;
+      return b;
+    }
+    let d = String(valueStr).replace(/[^0-9]/g, '').padStart(e.len * 2, '0').slice(-e.len * 2);
+    const b = new Uint8Array(e.len);
+    for (let i = 0; i < e.len; i++) b[i] = (parseInt(d[i * 2], 10) << 4) | parseInt(d[i * 2 + 1], 10);
+    return b;
+  }
+  condMet(cond, v) {
+    const m = cond.match(/^([=<>])\s*(0x[0-9a-f]+|\d+)$/i);
+    if (!m) return null;
+    const n = this.parse(m[2]);
+    return m[1] === '=' ? v === n : m[1] === '>' ? v > n : v < n;
+  }
+
+  // ---------- static regions and chrome ----------
+  buildStaticRegions() {
+    const MODES = [['cheat', 'Cheat', 'scanner · cheat table · hex'],
+                   ['inspect', 'Inspect', 'MCB map · CPU registers'],
+                   ['automate', 'Automate', 'screen · input · Lua']];
+    $('hd-modes').replaceChildren(...MODES.map(([id, label, title]) =>
+      el('span', { class: 'hd-mode', 'data-id': id, title, text: label,
+        onclick: () => {
+          this.setState({ uiMode: id });
+          if (id === 'inspect') setTimeout(() => this.refreshInspect(), 20);
+          if (id === 'automate') setTimeout(() => { this.refreshScreen(); this.refreshMixer(); }, 20);
+        } })));
+    $('hd-setup').addEventListener('click', () => this.setState({ setupOpen: true }));
+    $('hd-connect').addEventListener('click', () => this.onConnect());
+    $('hd-host').addEventListener('change', (e) => this.setState({ host: e.target.value }));
+    $('hd-token').addEventListener('change', (e) => this.setState({ token: e.target.value }));
+    $('hd-cycles').addEventListener('change', (e) => this.setState({ cycles: this.sanDigits(e.target.value) }));
+    $('hd-cycles').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.applyCycles(); });
+    $('hd-cycles-set').addEventListener('click', () => this.applyCycles());
+    $('ft-poll-toggle').addEventListener('click', () => this.setState({ polling: !this.state.polling }));
+    $('ft-pollms').addEventListener('input', (e) => this.setState({ pollMs: parseInt(e.target.value, 10) }));
+    this.buildScannerStatic();
+    this.buildTableStatic();
+    this.buildHexStatic();
+    this.buildInspectStatic();
+    this.buildAutomateStatic();
+    this.buildRecStatic();
+    this.buildStageStatic();
+    this.buildSetupStatic();
+  }
+
+  renderHeader() {
+    const s = this.state;
+    for (const n of $('hd-modes').children) {
+      n.classList.toggle('active', n.dataset.id === s.uiMode);
+    }
+    sync($('hd-host'), s.host); sync($('hd-token'), s.token);
+    sync($('hd-cycles'), s.cycles);
+    $('hd-cycles').classList.toggle('invalid',
+      s.cycles.trim() !== '' && !this.cyclesOk(this.parse(s.cycles)));
+    $('hd-connect').textContent = s.connected ? 'Disconnect' : 'Connect';
+    $('hd-status-text').textContent = s.statusText;
+    $('hd-dot').className = s.mode === 'demo' ? 'dot-demo' : s.connected ? 'dot-live' : 'dot-off';
+  }
+
+  renderFooter() {
+    const s = this.state;
+    $('ft-mode').textContent = s.mode === 'demo' ? 'DEMO' : 'LIVE';
+    $('ft-mode').classList.toggle('live', s.mode !== 'demo');
+    $('ft-log').textContent = s.log;
+    $('ft-reqlog').textContent = s.reqLog;
+    $('ft-poll-toggle').textContent = s.polling ? 'pause polling' : 'resume polling';
+    sync($('ft-pollms'), s.pollMs);
+    $('ft-poll-label').textContent = s.pollMs + ' ms · ' +
+      (s.mode === 'demo' ? 'local' : s.latency + ' ms');
+  }
+
+  // ---------- scanning ----------
+  onFirstScan = async () => {
+    const s = this.state;
+    const start = this.parse(s.rangeStart) || 0, end = this.parse(s.rangeEnd) || 0x100000;
+    const unknown = s.compare === 'unknown' && typeof s.width === 'number';
+    const nd = this.needle();
+    if (!unknown && !nd) { this.setState({ log: 'enter a value to scan for' }); return; }
+    this.setState({ scanning: true });
+    try {
+      const buf = await this.readMem(start, Math.min(end - start, 0x1000000));
+      if (unknown) {
+        // Keep only the snapshot; the first Next scan compares against it
+        // and materializes the survivors (a 1 MB byte scan is 1M rows).
+        this.unknownSnap = { start, buf, width: s.width };
+        const count = Math.floor(buf.length / s.width);
+        this.setState({ results: [], passes: [{ label: 'pass 1 · ' + count.toLocaleString() }], selected: [], anchor: -1, scanning: false, log: 'snapshot of ' + count.toLocaleString() + ' values — change the value in-game, then Next scan' });
+        return;
+      }
+      this.unknownSnap = null;
+      const hits = [];
+      for (let i = 0; i + nd.length <= buf.length && hits.length < 60000; i++) if (this.matchAt(buf, i, nd)) hits.push({ addr: start + i });
+      const results = hits.map(h => {
+        const v = typeof s.width === 'number' ? this.dec(buf, h.addr - start, s.width) : this.fmtScan(buf, h.addr - start, nd.length);
+        return { addr: h.addr, val: v, prev: v };
+      });
+      this.setState({ results, passes: [{ label: 'pass 1 · ' + results.length.toLocaleString() }], selected: [], anchor: -1, scanning: false, log: 'first scan: ' + results.length.toLocaleString() + ' matches' });
+    } catch (e) { this.setState({ scanning: false, log: 'scan failed: ' + e.message }); }
+  };
+  onNextScan = async () => {
+    const s = this.state;
+    if (!s.results.length && this.unknownSnap) {
+      const { start, buf, width: w } = this.unknownSnap;
+      this.setState({ scanning: true });
+      try {
+        const target = this.parse(s.scanValue);
+        const cur = await this.readMem(start, buf.length);
+        const keep = [];
+        for (let i = 0; i + w <= cur.length && keep.length < 60000; i += w) {
+          const oldV = this.dec(buf, i, w), newV = this.dec(cur, i, w);
+          const ok = s.compare === 'exact' ? newV === target :
+                     s.compare === 'changed' ? newV !== oldV :
+                     s.compare === 'unchanged' ? newV === oldV :
+                     s.compare === 'increased' ? newV > oldV :
+                     s.compare === 'decreased' ? newV < oldV : newV !== oldV;
+          if (ok) keep.push({ addr: start + i, val: newV, prev: oldV });
+        }
+        this.unknownSnap = null;
+        this.setState({
+          results: keep,
+          passes: s.passes.concat([{ label: 'pass ' + (s.passes.length + 1) + ' · ' + keep.length.toLocaleString() + (keep.length === 60000 ? '+' : '') }]),
+          selected: [], anchor: -1, scanning: false,
+          log: 'next scan: ' + keep.length.toLocaleString() + (keep.length === 60000 ? '+ (capped — narrow further)' : '') + ' remain'
+        });
+      } catch (e) { this.setState({ scanning: false, log: 'scan failed: ' + e.message }); }
+      return;
+    }
+    if (!s.results.length) { this.onFirstScan(); return; }
+    this.setState({ scanning: true });
+    try {
+      const numeric = typeof s.width === 'number';
+      const target = numeric ? this.parse(s.scanValue) : null;
+      const nd = this.needle();
+      const len = numeric ? s.width : (nd ? nd.length : 1);
+      const addrs = s.results.map(r => r.addr);
+      const lo = Math.min.apply(null, addrs), hi = Math.max.apply(null, addrs) + len;
+      const buf = hi - lo <= 0x1000000 ? await this.readMem(lo, hi - lo) : null;
+      const keep = [];
+      for (const r of s.results) {
+        const chunk = buf ? buf : await this.readMem(r.addr, len);
+        const off = buf ? r.addr - lo : 0;
+        let ok, v;
+        if (numeric) {
+          v = this.dec(chunk, off, s.width);
+          ok = s.compare === 'exact' ? v === target :
+               s.compare === 'changed' ? v !== r.val :
+               s.compare === 'unchanged' ? v === r.val :
+               s.compare === 'increased' ? v > r.val :
+               s.compare === 'decreased' ? v < r.val : true;
+        } else {
+          ok = nd ? this.matchAt(chunk, off, nd) : false;
+          v = ok ? r.val : null;
+        }
+        if (ok) keep.push({ addr: r.addr, val: v, prev: r.val });
+      }
+      this.setState({
+        results: keep,
+        passes: this.state.passes.concat([{ label: 'pass ' + (this.state.passes.length + 1) + ' · ' + keep.length.toLocaleString() }]),
+        selected: [], anchor: -1, scanning: false, log: 'next scan: ' + keep.length.toLocaleString() + ' remain'
+      });
+    } catch (e) { this.setState({ scanning: false, log: 'scan failed: ' + e.message }); }
+  };
+  onResetScan = () => { this.unknownSnap = null; this.setState({ results: [], passes: [], selected: [], anchor: -1 }); };
+
+  // ---------- selection ----------
+  pick(e, i) {
+    const { selected, anchor } = this.state;
+    if (e.shiftKey && anchor >= 0) {
+      const [a, b] = anchor < i ? [anchor, i] : [i, anchor];
+      const r = []; for (let k = a; k <= b; k++) r.push(k);
+      this.setState({ selected: r });
+    } else if (e.metaKey || e.ctrlKey) {
+      this.setState({ selected: selected.includes(i) ? selected.filter(x => x !== i) : selected.concat([i]), anchor: i });
+    } else {
+      this.setState({ selected: [i], anchor: i });
+      if (this.state.followSel) this.gotoHex(this.state.results[i].addr);
+    }
+  }
+  gotoHex(addr) { this.setState({ hexBase: this.hx(addr & ~15) }); setTimeout(() => this.refreshHex(), 20); }
+  onSelectAll = () => {
+    const n = Math.min(this.state.results.length, 400);
+    const all = []; for (let i = 0; i < n; i++) all.push(i);
+    this.setState({ selected: this.state.selected.length === n ? [] : all, anchor: 0 });
+  };
+
+  buildScannerStatic() {
+    const widthOpts = [[1, 'B', 'byte'], [2, 'W', 'word'], [4, 'D', 'dword'], ['str', 'str', 'ASCII string scan'], ['bcd', 'bcd', 'packed-BCD scan (old score counters)']];
+    $('sc-widths').replaceChildren(
+      ...widthOpts.map(([w, l, t]) => el('span', { class: 'sc-width', 'data-w': String(w), title: t, text: l,
+        onclick: () => this.setState({ width: w, results: [], passes: [], selected: [] }) })),
+      el('span', { class: 'sc-width', 'data-w': 'signed', title: 'signed display', text: '±',
+        onclick: () => this.setState({ signed: !this.state.signed }) }));
+    const compareList = [['exact', 'exact'], ['changed', 'changed'], ['increased', 'incr'], ['decreased', 'decr'], ['unchanged', 'same'], ['unknown', 'unknown']];
+    $('sc-compares').replaceChildren(...compareList.map(([id, l]) =>
+      el('span', { class: 'sc-compare', 'data-id': id, text: l,
+        onclick: () => this.setState({ compare: id }) })));
+    $('sc-value').addEventListener('input', (e) => {
+      const v = e.target.value, w = this.state.width;
+      this.setState({ scanValue: w === 'str' ? v : w === 'bcd' ? this.sanDigits(v) : this.sanNum(v) });
+    });
+    $('sc-range-start').addEventListener('change', (e) => this.setState({ rangeStart: this.sanAddr(e.target.value) }));
+    $('sc-range-end').addEventListener('change', (e) => this.setState({ rangeEnd: this.sanAddr(e.target.value) }));
+    $('sc-first').addEventListener('click', () => this.onFirstScan());
+    $('sc-next').addEventListener('click', () => this.onNextScan());
+    $('sc-reset').addEventListener('click', () => this.onResetScan());
+    $('sc-selall').addEventListener('click', () => this.onSelectAll());
+    $('sc-addsel').addEventListener('click', () => this.onAddSelected());
+  }
+
+  renderScanner() {
+    const s = this.state;
+    const numeric = typeof s.width === 'number';
+    sync($('sc-value'), s.scanValue);
+    $('sc-value').placeholder = s.width === 'str' ? 'text to find'
+      : s.width === 'bcd' ? 'decimal digits' : 'value · 0x hex ok';
+    $('sc-value').classList.toggle('invalid', numeric && this.invalid(s.scanValue, 'num'));
+    sync($('sc-range-start'), s.rangeStart); sync($('sc-range-end'), s.rangeEnd);
+    $('sc-range-start').classList.toggle('invalid', this.invalid(s.rangeStart, 'addr'));
+    $('sc-range-end').classList.toggle('invalid', this.invalid(s.rangeEnd, 'addr'));
+    $('sc-meta').textContent = (numeric ? { 1: 'byte', 2: 'word', 4: 'dword' }[s.width] : s.width)
+      + ' · ' + s.rangeStart + '–' + s.rangeEnd;
+    $('sc-first').textContent = s.scanning ? 'scanning…' : 'First scan';
+    for (const n of $('sc-widths').children) {
+      if (n.dataset.w === 'signed') n.classList.toggle('signed-on', s.signed);
+      else n.classList.toggle('active', String(s.width) === n.dataset.w);
+    }
+    for (const n of $('sc-compares').children) {
+      n.classList.toggle('active', s.compare === n.dataset.id);
+      n.classList.toggle('hidden', !numeric && n.dataset.id !== 'exact');
+    }
+    $('sc-passes').replaceChildren(
+      ...s.passes.map((p, i) => el('span', {
+        class: 'sc-pass' + (i === s.passes.length - 1 ? ' current' : ''), text: p.label })),
+      el('span', { class: 'sc-pass-hint', text: s.passes.length ? '' : 'no scan yet' }));
+    const fmt = (v) => numeric && s.signed && typeof v === 'number'
+      ? String(this.toSigned(v, s.width)) : String(v);
+    $('sc-results').replaceChildren(...s.results.slice(0, 400).map((r, i) =>
+      el('div', { class: 'sc-row' + (s.selected.includes(i) ? ' sel' : ''),
+          onclick: (e) => this.pick(e, i),
+          ondblclick: () => this.addEntry(r.addr, r.val),
+          oncontextmenu: (e) => this.openCtx(e, [
+            { label: 'Add to cheat table', act: () => this.addEntry(r.addr, r.val) },
+            { label: 'Freeze here', act: () => this.addEntryAt(r.addr, r.val, numeric ? s.width : 1, true) },
+            { label: 'Watch address', act: () => this.addWatch(r.addr, numeric ? s.width : 1, '') },
+            null,
+            { label: 'Show in hex stage', act: () => this.gotoHex(r.addr) },
+            { label: 'Copy address ' + this.hx(r.addr), act: () => this.copyTxt(this.hx(r.addr)) }
+          ]) },
+        el('span', { text: this.hx(r.addr) }),
+        el('span', { class: 'right ell', text: fmt(r.val) }),
+        el('span', { class: 'right ell prev', text: fmt(r.prev) }))));
+    const empty = $('sc-results-empty');
+    empty.classList.toggle('hidden', !!s.results.length);
+    empty.textContent = this.unknownSnap
+      ? 'snapshot taken over the whole range — change the value in-game, pick a compare mode, then Next scan (F5)'
+      : s.passes.length ? 'no matches left — reset (↻) and rescan'
+      : 'Scan for a value you can see in the game, change it in-game, then Next scan (F5) to narrow.';
+    $('sc-selall').textContent = s.results.length
+      ? s.selected.length + ' of ' + s.results.length.toLocaleString() + ' selected'
+        + (s.results.length > 400 ? ' · first 400 shown' : '')
+      : 'shift / ctrl click selects';
+    $('sc-addsel').classList.toggle('armed', !!s.selected.length);
+  }
+
+  // ---------- cheat table ----------
+  addEntry(addr, val) {
+    const s = this.state;
+    const kind = typeof s.width === 'number' ? 'num' : s.width;
+    const nd = this.needle();
+    if (s.entries.some(e => e.addr === addr)) { this.setState({ log: this.hx(addr) + ' already in table' }); return; }
+    const e = {
+      id: String(Date.now()) + addr, desc: kind === 'num' ? 'value' : kind, addr,
+      kind, width: kind === 'num' ? s.width : 0, len: kind === 'num' ? s.width : (nd ? nd.length : 1),
+      value: String(val), prev: String(val), frozen: false, freezeBytes: null
+    };
+    this.setState({ entries: s.entries.concat([e]), log: 'added ' + this.hx(addr) });
+  }
+  addEntryAt(addr, val, w, frozen) {
+    const s = this.state;
+    if (s.entries.some(e => e.addr === addr)) {
+      if (frozen) { const i = s.entries.findIndex(e => e.addr === addr); if (!s.entries[i].frozen) this.toggleFreeze(i); }
+      return;
+    }
+    const e = { id: String(Date.now()) + addr, desc: 'value ' + this.hx(addr), addr, kind: 'num', width: w, len: w, value: String(val), prev: String(val), frozen: false, freezeBytes: null };
+    this.setState({ entries: s.entries.concat([e]), log: 'added ' + this.hx(addr) }, () => {
+      if (frozen) this.toggleFreeze(this.state.entries.length - 1);
+    });
+  }
+  onAddSelected = () => {
+    const s = this.state;
+    (s.selected.length ? s.selected : s.results.length ? [0] : []).forEach(i => { const r = s.results[i]; if (r) this.addEntry(r.addr, r.val); });
+  };
+  onAddManual = () => {
+    const a = this.parse(this.state.hexBase) || 0;
+    this.addEntry(a, 0);
+    setTimeout(() => this.refreshEntries(), 30);
+  };
+  toggleFreeze(i) {
+    const s = this.state, e = s.entries[i];
+    const on = !e.frozen;
+    const fb = on ? this.entryBytes(e, e.value) : null;
+    const next = s.entries.slice();
+    next[i] = Object.assign({}, e, { frozen: on, freezeBytes: fb });
+    this.setState({ entries: next, log: (on ? 'froze ' : 'released ') + (e.desc || this.hx(e.addr)) });
+    if (e.kind === 'num') this.serverFreeze(e.addr, this.parse(e.value) || 0, e.width, on).catch(() => {});
+  }
+  onFreezeAll = () => {
+    const any = this.state.entries.some(e => !e.frozen);
+    const next = this.state.entries.map(e => Object.assign({}, e, { frozen: any, freezeBytes: any ? this.entryBytes(e, e.value) : null }));
+    next.forEach(e => { if (e.kind === 'num') this.serverFreeze(e.addr, this.parse(e.value) || 0, e.width, any).catch(() => {}); });
+    this.setState({ entries: next, log: any ? 'froze all' : 'released all' });
+  };
+  async refreshEntries() {
+    const es = this.state.entries;
+    if (!es.length) return;
+    try {
+      const next = [];
+      const watchHits = [];
+      for (const e of es) {
+        // live numeric freezes are held by the engine's FreezeRegistry;
+        // the client rewrite covers demo mode and str/bcd kinds
+        if (e.frozen && e.freezeBytes && !(this.live && e.kind === 'num')) {
+          await this.writeBytes(e.addr, e.freezeBytes);
+        }
+        const b = await this.readMem(e.addr, this.entryLen(e));
+        const nv = this.fmtEntry(e, b);
+        if (!e.frozen && nv !== e.value) watchHits.push({ t: Date.now(), watch: true, addr: e.addr, old: e.value, val: nv, desc: e.desc });
+        next.push(Object.assign({}, e, { prev: e.value, value: nv }));
+      }
+      this.setState(st => ({ entries: next, writeLog: watchHits.concat(st.writeLog).slice(0, 24) }));
+    } catch (err) { this.setState({ log: 'poll failed: ' + err.message }); }
+  }
+  validEntry(x, seen) {
+    const addr = x.address, width = x.width || 1, len = x.length || width || 1;
+    const kind = x.kind || 'num';
+    const okAddr = Number.isInteger(addr) && addr >= 0 && addr <= 0xFFFFF;
+    const okWidth = kind !== 'num' || [1, 2, 4].includes(width);
+    const okLen = Number.isInteger(len) && len >= 1 && len <= 256 && addr + len <= 0x100000;
+    const okVal = x.value != null && (kind !== 'num' || this.parse(String(x.value)) != null);
+    if (!okAddr || !okWidth || !okLen || !okVal || seen.has(addr)) return null;
+    seen.add(addr);
+    return { id: String(Date.now()) + addr, desc: x.description || 'imported', addr, kind, width, len, value: String(x.value), prev: String(x.value), frozen: false, freezeBytes: null };
+  }
+  onExport = () => {
+    const doc = {
+      tool: 'dosbox-automation cheat workbench', version: 2, created: new Date().toISOString(),
+      entries: this.state.entries.map(e => ({ description: e.desc, address: e.addr, kind: e.kind, width: e.width, length: e.len, value: e.value, frozen: e.frozen }))
+    };
+    this.saveAs('cheat-table.json', new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }), 'cheat table (' + doc.entries.length + ' entries)');
+  };
+  onImport = (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const j = JSON.parse(rd.result);
+        let dropped = 0;
+        const seen = new Set(this.state.entries.map(e => e.addr));
+        const add = [];
+        for (const x of (j.entries || [])) {
+          const e = this.validEntry(x, seen);
+          if (e) add.push(e); else dropped++;
+        }
+        this.setState({ entries: this.state.entries.concat(add), log: 'imported ' + add.length + (dropped ? ', dropped ' + dropped + ' invalid' : '') });
+        setTimeout(() => this.refreshEntries(), 30);
+      } catch (e) { this.setState({ log: 'import failed: not a cheat table' }); }
+    };
+    rd.readAsText(f);
+    ev.target.value = '';
+  };
+  async saveAs(name, blob, what) {
+    if (window.showSaveFilePicker) {
+      try {
+        const h = await window.showSaveFilePicker({ suggestedName: name });
+        const w = await h.createWritable();
+        await w.write(blob);
+        await w.close();
+        this.setState({ log: (what || name) + ' saved' });
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') { this.setState({ log: 'save cancelled' }); return; }
+      }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    this.setState({ log: (what || name) + ' downloaded' });
+  }
+
+  buildTableStatic() {
+    $('ct-add').addEventListener('click', () => this.onAddManual());
+    $('ct-freezeall').addEventListener('click', () => this.onFreezeAll());
+    $('ct-import-file').addEventListener('change', (e) => this.onImport(e));
+    $('ct-export').addEventListener('click', () => this.onExport());
+  }
+
+  renderTable() {
+    const s = this.state;
+    $('ct-meta').textContent = s.entries.length
+      ? s.entries.length + ' entries · ' + s.entries.filter(e => e.frozen).length + ' frozen' : 'empty';
+    $('ct-freezeall').textContent = s.entries.length && s.entries.every(e => e.frozen) ? 'Release all' : 'Freeze all';
+    $('ct-empty').classList.toggle('hidden', !!s.entries.length);
+    // rebuilding rows would eat the caret while a desc/value input is
+    // being edited; those edits re-render on blur anyway
+    if ($('ct-list').contains(document.activeElement)) return;
+    $('ct-list').replaceChildren(...s.entries.map((e, i) => {
+      const changed = e.value !== e.prev;
+      const valInput = el('input', { class: 'ct-val' + (changed && !e.frozen ? ' changed' : ''), value: e.value, spellcheck: 'false',
+        onchange: (ev) => {
+          const b = this.entryBytes(e, ev.target.value);
+          if (!b) return;
+          const n = this.state.entries.slice();
+          n[i] = Object.assign({}, e, { value: ev.target.value, freezeBytes: e.frozen ? b : null });
+          this.setState({ entries: n, log: 'wrote ' + ev.target.value + ' → ' + this.hx(e.addr) });
+          this.writeBytes(e.addr, b).catch(err => this.setState({ log: 'write failed: ' + err.message }));
+          if (e.frozen && e.kind === 'num') this.serverFreeze(e.addr, this.parse(ev.target.value) || 0, e.width, true).catch(() => {});
+        },
+        onkeydown: (ev) => { if (ev.key === 'Enter') ev.target.blur(); } });
+      const descInput = el('input', { class: 'ct-desc', value: e.desc,
+        onchange: (ev) => { const n = this.state.entries.slice(); n[i] = Object.assign({}, e, { desc: ev.target.value }); this.setState({ entries: n }); } });
+      return el('div', { class: 'ct-row' + (e.frozen ? ' frozen' : ''),
+          oncontextmenu: (ev) => this.openCtx(ev, [
+            { label: e.frozen ? 'Release freeze' : 'Freeze value', act: () => this.toggleFreeze(i) },
+            { label: this.isWatched(e.addr) ? 'Remove watch' : 'Watch for changes', act: () => this.isWatched(e.addr) ? this.setState({ watches: this.state.watches.filter(w => w.addr !== e.addr) }) : this.addWatch(e.addr, e.kind === 'num' ? e.width : 1, '') },
+            null,
+            { label: 'Show in hex stage', act: () => this.gotoHex(e.addr) },
+            { label: 'Copy address ' + this.hx(e.addr), act: () => this.copyTxt(this.hx(e.addr)) },
+            { label: 'Copy value ' + e.value, act: () => this.copyTxt(e.value) },
+            null,
+            { label: 'Remove from table', act: () => { if (e.kind === 'num') this.serverFreeze(e.addr, 0, e.width, false).catch(() => {}); this.setState({ entries: this.state.entries.filter((_, k) => k !== i) }); } }
+          ]) },
+        el('span', { class: 'ct-frzcell' },
+          el('span', { class: 'ct-frz' + (e.frozen ? ' on' : ''), title: 'Freeze (rewrites every poll)', onclick: () => this.toggleFreeze(i) }),
+          el('span', { class: 'ct-key', text: i < 9 ? String(i + 1) : '' })),
+        descInput,
+        el('span', { class: 'ct-addr mono', title: 'Show in hex stage', text: this.hx(e.addr), onclick: () => this.gotoHex(e.addr) }),
+        valInput,
+        el('span', { class: 'ct-delta' + (e.frozen ? ' frozen' : changed ? ' changed' : ''), text: e.frozen ? 'held' : changed ? 'Δ' : '—' }),
+        el('span', { class: 'ct-rm', title: 'Remove', text: '×',
+          onclick: () => { if (e.kind === 'num') this.serverFreeze(e.addr, 0, e.width, false).catch(() => {}); this.setState({ entries: this.state.entries.filter((_, k) => k !== i) }); } }));
+    }));
+  }
+
+  // ---------- watches, context menu, clipboard ----------
+  isWatched(addr) { return this.state.watches.some(w => w.addr === addr); }
+  addWatch(addr, w, cond) {
+    const s = this.state;
+    if (s.watches.some(x => x.addr === addr && x.w === w)) { this.setState({ log: 'already watching ' + this.hx(addr) }); return; }
+    this.setState({ watches: s.watches.concat([{ addr, w, cond: (cond || '').trim() }]), editAddr: null, log: 'watching ' + this.hx(addr) + (cond ? ' when ' + cond : ' for changes') });
+  }
+  openCtx(e, items) {
+    e.preventDefault(); e.stopPropagation();
+    this.setState({ ctxAddr: null, ctx: { x: e.clientX, y: e.clientY, items: items.map(it => it || { label: '', act: null }) } });
+  }
+  copyTxt(t) {
+    navigator.clipboard.writeText(t).then(
+      () => this.setState({ log: 'copied "' + t + '"' }),
+      () => this.setState({ log: 'copy failed' })
+    );
+  }
+
+  // ---------- hex stage ----------
+  onFindNext = async () => {
+    const q = this.state.findStr.trim();
+    if (!q) return;
+    let nd;
+    const hexish = /^[0-9a-f]{2}(\s+[0-9a-f]{2})*$/i.test(q);
+    if (hexish) nd = new Uint8Array(q.split(/\s+/).map(x => parseInt(x, 16)));
+    else { nd = new Uint8Array(q.length); for (let i = 0; i < q.length; i++) nd[i] = q.charCodeAt(i); }
+    try {
+      const CHUNK = 0x10000, matches = [];
+      for (let start = 0; start < 0x100000 && matches.length < 500; start += CHUNK - nd.length) {
+        const buf = await this.readMem(start, Math.min(CHUNK, 0x100000 - start));
+        for (let i = 0; i + nd.length <= buf.length && matches.length < 500; i++) {
+          if (this.matchAt(buf, i, nd)) matches.push(start + i);
+        }
+      }
+      if (!matches.length) { this.setState({ findMatches: [], findIdx: -1, log: 'not found in the first 1 MB' }); return; }
+      this.setState({ findMatches: matches, findIdx: 0, findLen: nd.length, log: matches.length + (matches.length === 500 ? '+' : '') + ' match(es) — F3 / Shift+F3 to step' });
+      this.gotoHex(matches[0]);
+    } catch (e) { this.setState({ log: 'find failed: ' + e.message }); }
+  };
+  onFindStep = (dir) => {
+    const { findMatches: m, findIdx } = this.state;
+    if (!m.length) { this.onFindNext(); return; }
+    const idx = (findIdx + dir + m.length) % m.length;
+    this.setState({ findIdx: idx, log: 'match ' + (idx + 1) + ' of ' + m.length + ' · ' + this.hx(m[idx]) });
+    this.gotoHex(m[idx]);
+  };
+  hexByteCtx(e, addr, b) {
+    const hexVal = b.toString(16).toUpperCase().padStart(2, '0');
+    this.openCtx(e, [
+      { label: 'Edit byte', act: () => this.setState({ editAddr: addr, editVal: hexVal }) },
+      { label: this.isWatched(addr) ? 'Remove watch' : 'Watch byte', act: () => this.isWatched(addr) ? this.setState({ watches: this.state.watches.filter(w => w.addr !== addr) }) : this.addWatch(addr, 1, '') },
+      { label: 'Freeze byte (add to table)', act: () => this.addEntryAt(addr, b, 1, true) },
+      { label: 'Add to cheat table', act: () => this.addEntryAt(addr, b, 1, false) },
+      null,
+      { label: 'Copy address ' + this.hx(addr), act: () => this.copyTxt(this.hx(addr)) },
+      { label: 'Copy byte ' + hexVal, act: () => this.copyTxt(hexVal) },
+      { label: 'Find all ' + hexVal, act: () => this.setState({ findStr: hexVal }, () => this.onFindNext()) },
+      null,
+      { label: 'Bookmark this row', act: () => this.setState({ bookmarks: this.state.bookmarks.concat([{ addr: addr & ~15, label: '' }]) }) },
+      { label: 'Dump 64 K from here', act: () => this.dumpRange('from ' + this.hx(addr), addr, Math.min(0x10000, 0x110000 - addr)) }
+    ]);
+    this.setState({ ctxAddr: addr });
+  }
+  async dumpRange(name, base, len) {
+    this.setState({ dumpOpen: false, log: 'dumping ' + name + '…' });
+    try {
+      const all = new Uint8Array(len);
+      for (let o = 0; o < len; o += 0x4000) {
+        const c = await this.readMem(base + o, Math.min(0x4000, len - o));
+        all.set(c, o);
+      }
+      await this.saveAs('dump-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + this.hx(base).slice(2) + '.bin',
+        new Blob([all], { type: 'application/octet-stream' }),
+        'dump ' + name + ' (' + (len >= 0x100000 ? (len / 0x100000) + ' MB' : (len / 1024) + ' K') + ' from ' + this.hx(base) + ')');
+    } catch (e) { this.setState({ log: 'dump failed: ' + e.message }); }
+  }
+  measureHexRows() {
+    const elp = this.hexPaneEl;
+    if (!elp) return;
+    const row = $('hx-rows').firstElementChild;
+    const legend = elp.lastElementChild;
+    const rowH = row && row.offsetHeight > 4 ? row.offsetHeight : 20.4;
+    const legendH = legend ? legend.offsetHeight + 8 : 30;
+    const n = Math.max(8, Math.floor((elp.clientHeight - 20 - legendH) / rowH));
+    if (n !== this.hexRowCount) { this.hexRowCount = n; this.refreshHex(); }
+  }
+  async refreshHex() {
+    this.measureHexRows();
+    const base = this.parse(this.state.hexBase) || 0;
+    try {
+      const b = await this.readMem(base, (this.hexRowCount || 16) * 16);
+      this.setState(s => ({ prevHex: s.hexBytes && this.hexBaseNum === base ? s.hexBytes : null, hexBytes: b }));
+      this.hexBaseNum = base;
+    } catch (e) { this.setState({ hexBytes: null, prevHex: null }); }
+  }
+  // Returns whether the input was accepted, so the popup can stay open
+  // (input intact) on a refused write.
+  commitEdit() {
+    const s = this.state;
+    if (s.editAddr == null) return false;
+    const len = this.editLen || 1;
+    if (len > 1) {
+      let bytes;
+      if (this.popMode === 'text') {
+        if (s.editVal.length !== len) {
+          this.setState({ log: 'selection is ' + len + ' characters — you entered ' + s.editVal.length + ', refused (length must match exactly)' });
+          return false;
+        }
+        bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          const c = s.editVal.charCodeAt(i);
+          if (c > 255) { this.setState({ log: 'only single-byte characters can be written' }); return false; }
+          bytes[i] = c;
+        }
+      } else {
+        const pairs = s.editVal.replace(/\s+/g, '');
+        if (!/^[0-9a-fA-F]+$/.test(pairs) || pairs.length % 2) {
+          this.setState({ log: 'hex byte pairs only (spaces allowed)' });
+          return false;
+        }
+        const n = pairs.length / 2;
+        if (n !== len) {
+          this.setState({ log: 'selection is ' + len + ' bytes — you entered ' + n + ', refused (length must match exactly)' });
+          return false;
+        }
+        bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) bytes[i] = parseInt(pairs.slice(i * 2, i * 2 + 2), 16);
+      }
+      this.writeBytes(s.editAddr, bytes)
+        .then(() => {
+          this.setState({ editAddr: null, log: 'wrote ' + len + ' bytes → ' + this.hx(s.editAddr) });
+          this.refreshHex(); this.refreshEntries();
+        })
+        .catch(err => this.setState({ log: 'write failed: ' + err.message }));
+      return true;
+    }
+    const b = parseInt(s.editVal, 16);
+    if (isNaN(b) || b < 0 || b > 255) { this.setState({ log: 'byte must be 00–FF' }); return false; }
+    const base = this.parse(s.hexBase) || 0;
+    const old = s.hexBytes && s.editAddr - base >= 0 ? s.hexBytes[s.editAddr - base] : null;
+    this.writeBytes(s.editAddr, new Uint8Array([b]))
+      .then(() => {
+        this.setState(st => ({
+          editAddr: null, log: 'wrote ' + s.editVal.toUpperCase() + ' → ' + this.hx(s.editAddr),
+          writeLog: [{ t: Date.now(), addr: s.editAddr, old, val: b }].concat(st.writeLog).slice(0, 24)
+        }));
+        this.refreshHex(); this.refreshEntries();
+      })
+      .catch(err => this.setState({ log: 'write failed: ' + err.message }));
+    return true;
+  }
+  undoWrite(w) {
+    if (w.old == null || w.watch) return;
+    this.writeBytes(w.addr, new Uint8Array([w.old]))
+      .then(() => { this.setState({ log: 'restored ' + this.hx(w.addr) + ' ← ' + w.old.toString(16).toUpperCase().padStart(2, '0') }); this.refreshHex(); })
+      .catch(err => this.setState({ log: 'undo failed: ' + err.message }));
+  }
+
+  openEditPop(addr, b, cellRect) {
+    this.editLen = 1;
+    this.popMode = 'hex';
+    $('hx-editpop-mode').classList.add('hidden');
+    this.setState({ editAddr: addr, editVal: b.toString(16).toUpperCase().padStart(2, '0') });
+    this.showEditPop('@' + this.hx(addr), this.state.editVal, 44, cellRect);
+  }
+  rangeBytes(lo, len) {
+    const base = this.parse(this.state.hexBase) || 0;
+    const out = [];
+    for (let i = 0; i < len; i++) {
+      const b = this.state.hexBytes ? this.state.hexBytes[lo - base + i] : null;
+      out.push(b != null ? b : 0);
+    }
+    return out;
+  }
+  openEditPopRange(lo, len, cellRect, mode) {
+    this.editLen = len;
+    this.popMode = mode || 'hex';
+    const bytes = this.rangeBytes(lo, len);
+    const prefill = this.popMode === 'text'
+      ? bytes.map(b => b >= 32 && b < 127 ? String.fromCharCode(b) : '.').join('')
+      : bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+    this.setState({ editAddr: lo, editVal: prefill });
+    this.editPopRect = cellRect;
+    this.showEditPop('@' + this.hx(lo) + ' · ' + len + ' bytes', prefill,
+      Math.min(len * (this.popMode === 'text' ? 10 : 24) + 30, 440), cellRect);
+    const modeBtn = $('hx-editpop-mode');
+    modeBtn.classList.remove('hidden');
+    modeBtn.textContent = this.popMode;
+  }
+  showEditPop(label, value, width, cellRect) {
+    const pop = $('hx-editpop');
+    $('hx-editpop-label').textContent = label;
+    pop.style.left = Math.min(cellRect.left, (window.innerWidth || 1280) - width - 160) + 'px';
+    pop.style.top = (cellRect.bottom + 4) + 'px';
+    pop.classList.remove('hidden');
+    const inp = $('hx-editpop-val');
+    inp.style.width = width + 'px';
+    inp.value = value;
+    inp.focus();
+    inp.select();
+  }
+  closeEditPop() {
+    this.editLen = 1;
+    $('hx-editpop').classList.add('hidden');
+    window.getSelection().removeAllRanges();
+  }
+  hexWheel(e) {
+    e.preventDefault();
+    // Wheel means navigating away: drop any held selection so the
+    // repaint guard does not freeze the view at the old address.
+    window.getSelection().removeAllRanges();
+    const rows = this.hexRowCount || 16;
+    const step = (e.deltaY > 0 ? 1 : -1) * 2 * 16;
+    const base = this.parse(this.state.hexBase) || 0;
+    const next = Math.max(0, Math.min(0x110000 - rows * 16, base + step));
+    if (next === base) return;
+    this.setState({ hexBase: this.hx(next & ~15) });
+    clearTimeout(this.hexWheelT);
+    this.hexWheelT = setTimeout(() => this.refreshHex(), 60);
+  }
+
+  buildHexStatic() {
+    // Rebuilding the rows mid-drag would destroy the selection anchor,
+    // re-rooting the selection at the first byte.
+    $('hx-pane').addEventListener('mousedown', () => { this.hexMouseDown = true; });
+    document.addEventListener('mouseup', () => {
+      this.hexMouseDown = false;
+      // Remember the selected byte range now: a later double-click wipes
+      // the visible selection before its own handler can read it.
+      this.hexSelRange = null;
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) {
+        const cellOf = (n) => {
+          const e = n && (n.nodeType === 1 ? n : n.parentElement);
+          return e ? e.closest('#hx-rows [data-addr]') : null;
+        };
+        const a = cellOf(sel.anchorNode), f = cellOf(sel.focusNode);
+        if (a && f) {
+          const a1 = +a.dataset.addr, a2 = +f.dataset.addr;
+          const lo = Math.min(a1, a2), hi = Math.max(a1, a2);
+          if (hi > lo) this.hexSelRange = { lo, hi };
+        }
+      }
+    });
+    $('hx-pane').addEventListener('wheel', (e) => this.hexWheel(e), { passive: false });
+    $('hx-editpop-val').addEventListener('input', (e) => this.setState({ editVal: e.target.value }));
+    $('hx-editpop-val').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { if (this.commitEdit()) this.closeEditPop(); }
+      if (e.key === 'Escape') { this.setState({ editAddr: null }); this.closeEditPop(); }
+    });
+    $('hx-editpop-write').addEventListener('click', () => { if (this.commitEdit()) this.closeEditPop(); });
+    $('hx-editpop-close').addEventListener('click', () => { this.setState({ editAddr: null }); this.closeEditPop(); });
+    $('hx-editpop-mode').addEventListener('click', () => {
+      if ((this.editLen || 1) < 2 || this.state.editAddr == null) return;
+      // Re-prefills from memory; edits made in the other mode are dropped.
+      this.openEditPopRange(this.state.editAddr, this.editLen,
+        this.editPopRect, this.popMode === 'hex' ? 'text' : 'hex');
+    });
+    $('hx-base').addEventListener('change', (e) => { this.setState({ hexBase: this.sanAddr(e.target.value) }); setTimeout(() => this.refreshHex(), 20); });
+    $('hx-prev').addEventListener('click', () => this.gotoHex(Math.max(0, (this.parse(this.state.hexBase) || 0) - (this.hexRowCount || 16) * 16)));
+    $('hx-next').addEventListener('click', () => this.gotoHex((this.parse(this.state.hexBase) || 0) + (this.hexRowCount || 16) * 16));
+    $('hx-follow').addEventListener('click', () => this.setState({ followSel: !this.state.followSel }));
+    $('hx-find').addEventListener('input', (e) => this.setState({ findStr: e.target.value }));
+    $('hx-find').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.onFindNext(); });
+    $('hx-findall').addEventListener('click', () => this.onFindNext());
+    $('hx-prevm').addEventListener('click', () => this.onFindStep(-1));
+    $('hx-nextm').addEventListener('click', () => this.onFindStep(1));
+    $('hx-dump').addEventListener('click', () => this.setState({ dumpOpen: !this.state.dumpOpen }));
+    $('hx-edit-val').addEventListener('input', (e) => this.setState({ editVal: e.target.value }));
+    $('hx-edit-val').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') this.commitEdit();
+      if (e.key === 'Escape') this.setState({ editAddr: null });
+    });
+    $('hx-edit-write').addEventListener('click', () => this.commitEdit());
+    $('hx-edit-watch').addEventListener('click', () => { if (this.state.editAddr != null) this.addWatch(this.state.editAddr, 1, ''); });
+    $('hx-edit-close').addEventListener('click', () => this.setState({ editAddr: null }));
+    $('hx-mark').addEventListener('click', () => {
+      const base = this.parse(this.state.hexBase) || 0;
+      const e = this.state.entries.find(x => x.addr >= base && x.addr < base + 256);
+      this.setState({ bookmarks: this.state.bookmarks.concat([{ addr: base, label: e ? e.desc : '' }]) });
+    });
+    const items = [
+      ['Current 64 K', () => { const hb = this.parse(this.state.hexBase) || 0; return ['from ' + this.hx(hb), hb, Math.min(0x10000, 0x110000 - hb)]; }],
+      ['First 1 MB', () => ['0x00000', 0, 0x100000]],
+      ['Full address space', () => ['1 MB + HMA', 0, 0x110000]],
+      null,
+      ['BIOS data / DOS area', () => ['0x00000 · 64 K', 0, 0x10000]],
+      ['A000 — VGA graphics', () => ['64 K', 0xa0000, 0x10000]],
+      ['B000 — mono text', () => ['32 K', 0xb0000, 0x8000]],
+      ['B800 — color text', () => ['32 K', 0xb8000, 0x8000]],
+      ['C000 — video BIOS ROM', () => ['64 K', 0xc0000, 0x10000]],
+      ['F000 — system ROM', () => ['64 K', 0xf0000, 0x10000]],
+      ['HMA', () => ['FFFF:0010 · 64 K', 0x100000, 0x10000]]
+    ];
+    $('hx-dump-menu').replaceChildren(...items.map(it => it === null
+      ? el('span', { class: 'hx-dumprule' })
+      : el('span', { class: 'hx-dumpitem',
+          onclick: () => { const [, base, len] = it[1](); this.dumpRange(it[0], base, len); } },
+          el('span', { text: it[0] }), el('i', { text: it[1]()[0] }))));
+    $('ctx-root').addEventListener('click', (e) => { e.preventDefault(); this.setState({ ctx: null, ctxAddr: null }); });
+    $('ctx-root').addEventListener('contextmenu', (e) => { e.preventDefault(); this.setState({ ctx: null, ctxAddr: null }); });
+  }
+
+  renderHexStage() {
+    const s = this.state;
+    $('hx-panelno').textContent = s.uiMode === 'inspect' ? '07' : '03';
+    sync($('hx-base'), s.hexBase);
+    $('hx-base').classList.toggle('invalid', this.invalid(s.hexBase, 'addr'));
+    $('hx-follow').classList.toggle('on', s.followSel);
+    $('hx-count').textContent = s.findMatches.length
+      ? (s.findIdx + 1) + '/' + s.findMatches.length + (s.findMatches.length === 500 ? '+' : '') : '';
+    $('hx-dump').textContent = 'Dump ' + (s.dumpOpen ? '▾' : '▸');
+    $('hx-dump-menu').classList.toggle('hidden', !s.dumpOpen);
+    const editOpen = s.editAddr != null;
+    $('hx-edit').classList.toggle('hidden', !editOpen || (this.editLen || 1) > 1);
+    if (editOpen) {
+      $('hx-edit-label').textContent = '@' + this.hx(s.editAddr);
+      sync($('hx-edit-val'), s.editVal);
+      sync($('hx-editpop-val'), s.editVal);
+    } else {
+      $('hx-editpop').classList.add('hidden');
+    }
+    $('hx-bookmarks').replaceChildren(...s.bookmarks.map((b, i) =>
+      el('span', { class: 'hx-bm' },
+        el('span', { text: (b.label ? b.label + ' ' : '') + this.hx(b.addr), onclick: () => this.gotoHex(b.addr) }),
+        el('span', { class: 'rm', text: '×', onclick: () => this.setState({ bookmarks: this.state.bookmarks.filter((_, k) => k !== i) }) }))));
+
+    // Hold the row DOM still while a selection is dragged or held in it;
+    // the next render after the selection clears repaints from state.
+    const sel = window.getSelection();
+    if (this.hexMouseDown ||
+        (sel && !sel.isCollapsed && $('hx-rows').contains(sel.anchorNode))) {
+      return;
+    }
+
+    const base = this.parse(s.hexBase) || 0;
+    const viewEnd = base + (s.hexBytes ? s.hexBytes.length : 0);
+    const watched = new Set(), frozen = new Set(), found = new Set();
+    s.entries.forEach(e => {
+      for (let k = 0; k < this.entryLen(e); k++) (e.frozen ? frozen : watched).add(e.addr + k);
+    });
+    const rl = typeof s.width === 'number' ? s.width : 1;
+    for (const r of s.results) {
+      if (r.addr + rl > base && r.addr < viewEnd) for (let k = 0; k < rl; k++) found.add(r.addr + k);
+    }
+    for (const fm of s.findMatches) {
+      if (fm + s.findLen > base && fm < viewEnd) for (let k = 0; k < s.findLen; k++) found.add(fm + k);
+    }
+    s.watches.forEach(w => { if (w.addr + w.w > base && w.addr < viewEnd) for (let k = 0; k < w.w; k++) watched.add(w.addr + k); });
+    const rows = [];
+    const nRows = Math.floor((s.hexBytes ? s.hexBytes.length : 0) / 16);
+    if (s.hexBytes) {
+      // A marked string is editable as a unit: double-click resolves, in
+      // priority order, the drag-selection, the find match, or the string
+      // scan hit containing the byte, before falling back to the byte.
+      const onDbl = (addr, b) => (ev) => {
+        const rect = ev.currentTarget.getBoundingClientRect();
+        const sr = this.hexSelRange;
+        if (sr && addr >= sr.lo && addr <= sr.hi) {
+          this.openEditPopRange(sr.lo, sr.hi - sr.lo + 1, rect, 'hex');
+          return;
+        }
+        const fm = s.findMatches.find(m => addr >= m && addr < m + s.findLen);
+        if (fm != null && s.findLen > 1) {
+          const hexish = /^[0-9a-f]{2}(\s+[0-9a-f]{2})*$/i.test(s.findStr.trim());
+          this.openEditPopRange(fm, s.findLen, rect, hexish ? 'hex' : 'text');
+          return;
+        }
+        if (s.width === 'str') {
+          const hit = s.results.find(x => addr >= x.addr && addr < x.addr + String(x.val).length);
+          if (hit) { this.openEditPopRange(hit.addr, String(hit.val).length, rect, 'text'); return; }
+        }
+        this.openEditPop(addr, b, rect);
+      };
+      const onByteClick = (addr, b) => () =>
+        this.setState({ editAddr: addr, editVal: b.toString(16).toUpperCase().padStart(2, '0') });
+      for (let r = 0; r < nRows; r++) {
+        const off = base + r * 16;
+        let hot = false;
+        const cells = [];
+        const achs = [];
+        for (let c = 0; c < 16; c++) {
+          const idx = r * 16 + c;
+          const b = s.hexBytes[idx];
+          if (b == null) break;
+          const addr = off + c;
+          if (watched.has(addr) || frozen.has(addr)) hot = true;
+          const flashed = s.prevHex && s.prevHex[idx] != null && s.prevHex[idx] !== b;
+          // paint precedence: ctx marker > editing > frozen > flash > watched > found
+          const paint = s.ctxAddr === addr ? ' ctxmark'
+            : s.editAddr === addr ? ' editing'
+            : frozen.has(addr) ? ' frozen'
+            : flashed ? ' flash'
+            : watched.has(addr) ? ' watch'
+            : found.has(addr) ? ' found'
+            : '';
+          const group = c === 8 ? ' g8' : c > 0 && c % 4 === 0 ? ' g4' : '';
+          cells.push(el('span', { class: 'hx-cell' + group + paint,
+            'data-addr': String(addr),
+            text: b.toString(16).toUpperCase().padStart(2, '0'),
+            onclick: onByteClick(addr, b),
+            ondblclick: onDbl(addr, b),
+            oncontextmenu: (ev) => this.hexByteCtx(ev, addr, b) }));
+          achs.push(el('span', { class: 'hx-ach' + paint,
+            'data-addr': String(addr),
+            text: b >= 32 && b < 127 ? String.fromCharCode(b) : '.',
+            onclick: onByteClick(addr, b),
+            ondblclick: onDbl(addr, b),
+            oncontextmenu: (ev) => this.hexByteCtx(ev, addr, b) }));
+        }
+        rows.push(el('div', { class: 'hx-row' + (hot ? ' hot' : '') },
+          el('span', { class: 'hx-addr', text: this.hx(off) }),
+          el('span', { class: 'hx-cells' }, ...cells),
+          el('span', { class: 'hx-ascii' }, ...achs)));
+      }
+    }
+    $('hx-rows').replaceChildren(...rows);
+  }
+
+  renderCtx() {
+    const s = this.state;
+    const root = $('ctx-root');
+    if (!s.ctx) { root.classList.add('hidden'); root.replaceChildren(); return; }
+    root.classList.remove('hidden');
+    const menu = el('span', { class: 'ctx-menu',
+      style: 'left:' + Math.min(s.ctx.x, (window.innerWidth || 1280) - 240) + 'px;top:' +
+             Math.min(s.ctx.y, (window.innerHeight || 800) - s.ctx.items.length * 26 - 16) + 'px' },
+      ...s.ctx.items.map(it => it.act
+        ? el('span', { class: 'ctx-item', text: it.label,
+            onclick: () => { this.setState({ ctx: null, ctxAddr: null }); it.act(); } })
+        : el('span', { class: 'ctx-rule' })));
+    root.replaceChildren(menu);
+  }
+  // ---------- inspect mode ----------
+  async refreshInspect() {
+    if (!this.live) {
+      const sl = this.demo.slots;
+      this.setState({
+        statusData: { program: 'KEEN4E', canonical: 'C:\\KEEN4\\KEEN4E.EXE', booted: 'yes', shell: 'no' },
+        regsData: { AX: sl[0].val, BX: 0x0a4c, CX: sl[1].val, DX: 0x0100, SI: 0x1a4c, DI: 0x22f1, SP: 0xfffe, BP: 0x0000, IP: 0x0100 + ((this.slowT / 4) % 512 | 0), FL: 0x0246, CS: 0x1a4c, DS: 0x1a4c, ES: 0x1a4c, SS: 0x1a4c },
+        ports: [
+          { port: 0x3d4, val: 0x0e, note: 'CRTC index' },
+          { port: 0x3da, val: 0x09 | ((this.slowT / 250) % 2 ? 8 : 0), note: 'VGA status' },
+          { port: 0x388, val: 0x00, note: 'AdLib status' },
+          { port: 0x220, val: 0xaa, note: 'SB16 DSP' }
+        ].concat(this.state.customPorts.map(p => ({ port: p, val: (p * 37 + ((this.slowT / 1000) | 0) * 11) & 255, note: this.portNote(p), custom: true }))),
+        psp: { segment: 0x099c, parent: 0x0810, envSeg: 0x09f2, handles: 20, dta: '099C:0080' },
+        mcb: [
+          { segment: 0x0810, type: 'M', filename: 'COMMAND', sizeBytes: 6208 },
+          { segment: 0x099c, type: 'M', filename: 'KEEN4E', sizeBytes: 421392 },
+          { segment: 0x6f40, type: 'M', filename: 'SC', sizeBytes: 2048 },
+          { segment: 0x9fff, type: 'Z', filename: '', sizeBytes: 65536 }
+        ]
+      });
+      return;
+    }
+    try {
+      const watchList = [0x3d4, 0x3da, 0x388, 0x220].concat(this.state.customPorts);
+      const [st, cpu, dos, io] = await Promise.all([
+        this.api('/api/v1/status').then(r => r.json()).catch(() => null),
+        this.api('/api/v1/cpu/state').then(r => r.json()).catch(() => null),
+        this.api('/api/v1/dos/internals').then(r => r.json()).catch(() => null),
+        Promise.all(watchList.map(p =>
+          this.api('/api/v1/io/port?port=0x' + p.toString(16)).then(r => r.json())
+            .then(d => ({ port: p, val: d.value, note: this.portNote(p), custom: this.state.customPorts.includes(p) }))
+            .catch(() => ({ port: p, val: null, note: this.portNote(p), custom: this.state.customPorts.includes(p) }))
+        )).catch(() => null)
+      ]);
+      let pspData = null;
+      if (dos) {
+        const prog = (dos.memoryMap || []).filter(m => m.filename).sort((a, b) => b.sizeBytes - a.sizeBytes)[0];
+        pspData = {
+          segment: prog ? prog.pspSegment : 0,
+          parent: dos.firstShell ? Math.floor(dos.firstShell / 16) : 0,
+          envSeg: 0, handles: '—',
+          dta: 'LoL ' + this.hx(dos.listOfLists || 0)
+        };
+      }
+      this.setState({
+        statusData: st ? { program: st.program, canonical: st.canonical_name, booted: st.is_booted ? 'yes' : 'no', shell: st.is_shell ? 'yes' : 'no' } : null,
+        regsData: cpu ? cpu.registers : null,
+        mcb: dos ? dos.memoryMap || [] : null,
+        psp: pspData,
+        ports: io
+      });
+    } catch (e) { this.setState({ log: 'inspect poll failed: ' + e.message }); }
+  }
+  async pollWatches() {
+    if (!this.state.watches.length) return;
+    if (!this.lastWatchVals) this.lastWatchVals = {};
+    const hits = [];
+    for (const w of this.state.watches) {
+      try {
+        const v = this.dec(await this.readMem(w.addr, w.w), 0, w.w);
+        const key = w.addr + ':' + w.w;
+        const last = this.lastWatchVals[key];
+        this.lastWatchVals[key] = v;
+        if (last == null) continue;
+        const fire = w.cond ? (this.condMet(w.cond, v) === true && this.condMet(w.cond, last) !== true) : v !== last;
+        if (fire) hits.push({ t: Date.now(), watch: true, addr: w.addr, old: last, val: v, cond: w.cond || 'chg' });
+      } catch (e) {}
+    }
+    if (hits.length) this.setState(st => ({ writeLog: hits.concat(st.writeLog).slice(0, 24) }));
+  }
+  persistSets(sets) {
+    this.setState({ portSets: sets });
+    try { localStorage.setItem('cw-port-sets', JSON.stringify(sets)); } catch (e) {}
+  }
+  addPorts(list) {
+    const add = list.filter(n => !this.state.customPorts.includes(n));
+    this.setState({ customPorts: this.state.customPorts.concat(add), portAdd: '' }, () => this.refreshInspect());
+  }
+  addPort() {
+    const s = this.state;
+    const n = this.parse(s.portAdd);
+    if (n != null && n >= 0 && n <= 0xffff) { this.addPorts([n]); return; }
+    const q = s.portAdd.trim().toLowerCase();
+    const grp = Workbench.PORT_CATALOG.find(([g]) => g.toLowerCase().includes(q));
+    if (q && grp) { this.addPorts(grp[1].map(x => x[0])); return; }
+    this.setState({ log: 'no port or group matches "' + s.portAdd + '"' });
+  }
+
+  buildInspectStatic() {
+    $('in-ports-head').addEventListener('click', () => this.setState({ portsOpen: !this.state.portsOpen }));
+    $('in-port-add').addEventListener('input', (e) => this.setState({ portAdd: e.target.value }));
+    $('in-port-add').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.addPort(); });
+    $('in-port-go').addEventListener('click', () => this.addPort());
+    $('in-set-sel').addEventListener('change', (e) => {
+      const name = e.target.value;
+      if (!name) { this.setState({ portSetSel: '' }); return; }
+      this.setState({ portSetSel: name, portSetName: name, customPorts: (this.state.portSets[name] || []).slice(), log: 'loaded port set "' + name + '"' }, () => this.refreshInspect());
+    });
+    $('in-set-name').addEventListener('input', (e) => this.setState({ portSetName: e.target.value }));
+    $('in-set-save').addEventListener('click', () => {
+      const s = this.state;
+      const name = (s.portSetName || '').trim() || 'set ' + (Object.keys(s.portSets).length + 1);
+      this.persistSets(Object.assign({}, s.portSets, { [name]: s.customPorts.slice() }));
+      this.setState({ portSetSel: name, portSetName: name, log: 'saved "' + name + '" (' + s.customPorts.length + ' ports)' });
+    });
+    $('in-set-del').addEventListener('click', () => {
+      const s = this.state;
+      if (!s.portSetSel) return;
+      const sets = Object.assign({}, s.portSets);
+      delete sets[s.portSetSel];
+      this.persistSets(sets);
+      this.setState({ portSetSel: '', portSetName: '', log: 'deleted port set' });
+    });
+    $('in-watch-addr').addEventListener('input', (e) => { e.target.value = this.sanAddr(e.target.value); this.setState({ watchAddr: e.target.value }); });
+    $('in-watch-cond').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^=<>0-9a-fA-FxX ]/g, ''); this.setState({ watchCond: e.target.value }); });
+    $('in-watch-w').addEventListener('click', () => this.setState({ watchW: this.state.watchW === 1 ? 2 : this.state.watchW === 2 ? 4 : 1 }));
+    const addWatchFromRow = () => {
+      const a = this.parse(this.state.watchAddr);
+      if (a == null) { this.setState({ log: 'enter an address to watch' }); return; }
+      this.addWatch(a, this.state.watchW, this.state.watchCond);
+      this.setState({ watchAddr: '', watchCond: '' });
+    };
+    $('in-watch-go').addEventListener('click', addWatchFromRow);
+    $('in-watch-addr').addEventListener('keydown', (e) => { if (e.key === 'Enter') addWatchFromRow(); });
+    $('in-watch-cond').addEventListener('keydown', (e) => { if (e.key === 'Enter') addWatchFromRow(); });
+  }
+
+  renderInspect() {
+    const s = this.state;
+    $('in-source').textContent = this.live ? 'live · /status' : 'demo machine';
+    const sd = s.statusData || {};
+    const kv = (rows) => rows.map(([k, v, tgt]) => [
+      el('span', { class: 'k', text: k }),
+      el('span', { class: 'v' + (tgt != null ? ' jump' : ''), text: v, onclick: tgt != null ? () => this.gotoHex(tgt) : null })
+    ]).flat();
+    $('in-status').replaceChildren(...kv([
+      ['program', sd.program || '—'], ['canonical', sd.canonical || '—'],
+      ['booted', sd.booted || '—'], ['shell active', sd.shell || '—']]));
+    $('in-reghint').textContent = s.regsData ? '' : 'waiting for poll…';
+    const rd = s.regsData || {};
+    const segTarget = (k) => {
+      const K = k.toUpperCase();
+      if (K === 'CS') return (rd.CS || rd.cs || 0) * 16 + (rd.IP || rd.ip || 0);
+      if (K === 'SS') return (rd.SS || rd.ss || 0) * 16 + (rd.SP || rd.sp || 0);
+      if (K === 'DS' || K === 'ES') return (rd[K] || rd[k] || 0) * 16;
+      return null;
+    };
+    $('in-regs').replaceChildren(...Object.keys(rd).map(k => {
+      const tgt = segTarget(k);
+      return el('div', { class: 'in-reg' + (tgt != null ? ' jump' : ''),
+          title: tgt != null ? 'jump hex to ' + this.hx(tgt) : null,
+          onclick: tgt != null ? () => this.gotoHex(tgt) : null },
+        el('span', { class: 'name', text: k.toUpperCase() }),
+        el('span', { class: 'hex', text: this.hx(rd[k], 4) }));
+    }));
+    $('in-ports-title').textContent = (s.portsOpen ? '▾' : '▸') + ' 03 — I/O ports';
+    $('in-portshint').textContent = s.ports ? '' : (this.live ? 'no port data from API' : '');
+    $('in-ports-body').classList.toggle('hidden', !s.portsOpen);
+    $('in-ports').replaceChildren(...(s.ports || []).map(p =>
+      el('div', { class: 'in-port' },
+        el('span', { class: 'p', text: this.hx(p.port, 3) }),
+        el('span', { class: 'v', text: p.val != null ? p.val.toString(16).toUpperCase().padStart(2, '0') : '—' }),
+        el('span', { class: 'n', text: p.note || '' }),
+        p.custom
+          ? el('span', { class: 'rm', text: '×', onclick: () => this.setState({ customPorts: this.state.customPorts.filter(x => x !== p.port) }, () => this.refreshInspect()) })
+          : el('span', {}))));
+    const q = s.portAdd.trim().toLowerCase();
+    const suggests = [];
+    if (q) {
+      for (const [g, list] of Workbench.PORT_CATALOG) {
+        if (suggests.length >= 9) break;
+        if (g.toLowerCase().includes(q)) {
+          suggests.push(el('span', { class: 'in-suggest grp',
+            title: 'add all: ' + list.map(x => this.hx(x[0], 3)).join(' '),
+            text: g + ' (' + list.length + ')',
+            onclick: () => this.addPorts(list.map(x => x[0])) }));
+        }
+        for (const [n, note] of list) {
+          if (suggests.length >= 9) break;
+          const hex = n.toString(16);
+          if (note.toLowerCase().includes(q) || hex.includes(q.replace(/^0x/, '')) && q.length > 1) {
+            suggests.push(el('span', { class: 'in-suggest', title: 'add ' + this.hx(n, 3),
+              text: this.hx(n, 3) + ' ' + g + ' ' + note,
+              onclick: () => this.addPorts([n]) }));
+          }
+        }
+      }
+    }
+    $('in-port-suggests').replaceChildren(...suggests);
+    sync($('in-port-add'), s.portAdd);
+    const sel = $('in-set-sel');
+    if (!sel.contains(document.activeElement)) {
+      sel.replaceChildren(
+        el('option', { value: '', text: 'load set…' }),
+        ...Object.keys(s.portSets).map(v => el('option', { value: v, text: v })));
+      sel.value = s.portSetSel;
+    }
+    sync($('in-set-name'), s.portSetName);
+    $('in-set-del').classList.toggle('armed', !!s.portSetSel);
+
+    const mcbList = s.mcb || [];
+    const totalSize = mcbList.reduce((a, m) => a + m.sizeBytes, 0) || 1;
+    $('in-mcbmeta').textContent = mcbList.length ? mcbList.length + ' blocks' : '';
+    $('in-mcb').replaceChildren(...(mcbList.length ? mcbList.map(m => {
+      const isLast = m.isLast || m.type === 'Z' || m.type === 0x5a;
+      const kb = m.sizeBytes >= 1024 ? Math.round(m.sizeBytes / 1024) + ' K' : m.sizeBytes + ' B';
+      return el('div', { class: 'in-mcbrow',
+          title: 'jump hex to ' + this.hx(m.segment * 16) + ' · ' + Math.round(m.sizeBytes / totalSize * 100) + '% of arena',
+          onclick: () => this.gotoHex(m.segment * 16),
+          oncontextmenu: (e) => this.openCtx(e, [
+            { label: 'Show in hex stage', act: () => this.gotoHex(m.segment * 16) },
+            { label: 'Dump block (' + kb + ')', act: () => this.dumpRange((m.filename || 'block') + '-' + this.hx(m.segment, 4).slice(2), m.segment * 16, m.sizeBytes) },
+            null,
+            { label: 'Copy segment ' + this.hx(m.segment, 4), act: () => this.copyTxt(this.hx(m.segment, 4)) },
+            { label: 'Copy linear ' + this.hx(m.segment * 16), act: () => this.copyTxt(this.hx(m.segment * 16)) }
+          ]) },
+        el('div', { class: 'l1' },
+          el('span', { class: 'seg', text: this.hx(m.segment, 4) }),
+          el('span', { class: 'size', text: kb })),
+        el('div', { class: 'l2' },
+          el('span', { class: 'owner', text: m.filename || '(free / system)' }),
+          el('span', { class: 'tag' + (isLast ? ' last' : ''), text: isLast ? 'last' : 'alloc' })),
+        el('div', { class: 'barbox', style: 'height:' + Math.max(4, Math.min(26, Math.round(m.sizeBytes / totalSize * 60))) + 'px' },
+          el('div', { class: 'bar' + (isLast ? ' last' : ''), style: 'width:' + Math.max(2, Math.round(m.sizeBytes / totalSize * 100)) + '%' })));
+    }) : [el('div', { class: 'in-wlempty', text: 'waiting for MCB chain…' })]));
+
+    $('in-watch-chips').replaceChildren(...s.watches.map((w, i) =>
+      el('span', { class: 'in-chip' },
+        el('span', { text: this.hx(w.addr) + ' ' + (w.w === 1 ? 'B' : w.w === 2 ? 'W' : 'D') + (w.cond ? ' ' + w.cond : ''), onclick: () => this.gotoHex(w.addr) }),
+        el('span', { text: '×', style: 'padding:0 2px', onclick: () => this.setState({ watches: this.state.watches.filter((_, k) => k !== i) }) }))));
+    $('in-watch-w').textContent = s.watchW === 1 ? 'B' : s.watchW === 2 ? 'W' : 'D';
+    sync($('in-watch-addr'), s.watchAddr);
+    sync($('in-watch-cond'), s.watchCond);
+    $('in-watch-addr').classList.toggle('invalid', this.invalid(s.watchAddr, 'addr'));
+
+    $('in-writelog-empty').classList.toggle('hidden', !!s.writeLog.length);
+    $('in-writelog').replaceChildren(...s.writeLog.map(w =>
+      el('div', { class: 'in-wl' + (w.watch ? ' watch' : '') },
+        el('span', { class: 'ell', text: w.watch
+          ? '● ' + (w.desc || this.hx(w.addr)) + ' ' + w.old + ' → ' + w.val
+          : this.hx(w.addr) + ' ' + (w.old != null ? w.old.toString(16).toUpperCase().padStart(2, '0') : '??') + ' → ' + w.val.toString(16).toUpperCase().padStart(2, '0') }),
+        el('span', { class: 'cond', text: w.watch ? (w.cond || 'chg') : '—' }),
+        el('span', { class: 'when' },
+          !w.watch && w.old != null ? el('span', { class: 'undo', text: 'undo', onclick: () => this.undoWrite(w) }) : '',
+          new Date(w.t).toLocaleTimeString()))));
+
+    $('in-psphint').textContent = s.psp ? '' : 'waiting for poll…';
+    const pd = s.psp || {};
+    const pspRows = s.psp ? [
+      ['PSP segment', this.hx(pd.segment, 4)], ['parent PSP', this.hx(pd.parent, 4)],
+      ['environment', this.hx(pd.envSeg, 4)], ['file handles', String(pd.handles)], ['DTA', String(pd.dta)]
+    ].map(([k, v]) => [k, v, /^0x/.test(v) ? this.parse(v) * 16 : null]) : [];
+    $('in-psp').replaceChildren(...kv(pspRows));
+  }
+
+  // ---------- automate: project, captures, mixer ----------
+  onBrowse = async () => {
+    if (!window.showDirectoryPicker) { this.setState({ log: 'folder picker needs Chrome/Edge — type the path instead' }); return; }
+    try {
+      const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+      this.dirHandle = dir;
+      const exes = [];
+      for await (const [name, h] of dir.entries()) {
+        if (h.kind === 'file' && /\.(exe|com|bat)$/i.test(name)) exes.push(name.toUpperCase());
+      }
+      exes.sort();
+      this.setState({
+        gameDir: '.', folderPicked: true, exes,
+        gameExe: exes.includes(this.state.gameExe) ? this.state.gameExe : (exes[0] || this.state.gameExe),
+        log: 'picked folder "' + dir.name + '" — ' + exes.length + ' executable(s) found'
+      });
+    } catch (e) { if (e.name !== 'AbortError') this.setState({ log: 'folder pick failed: ' + e.message }); }
+  };
+  onManifest = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.toml,.json';
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        try {
+          const txt = String(rd.result);
+          let title = '', exe = '', dir = '', cyc = '', cycP = '';
+          if (f.name.endsWith('.json')) {
+            const j = JSON.parse(txt);
+            title = j.title || j.slug || '';
+          } else {
+            const g = (re) => { const m = txt.match(re); return m ? m[1] : ''; };
+            title = g(/^title\s*=\s*"([^"]*)"/m) || g(/^slug\s*=\s*"([^"]*)"/m);
+            exe = g(/^executable\s*=\s*"([^"]*)"/m);
+            dir = g(/^working_dir\s*=\s*"([^"]*)"/m);
+            cyc = g(/^cpu_cycles\s*=\s*(\d+)/m);
+            cycP = g(/^cpu_cycles_protected\s*=\s*(\d+)/m);
+          }
+          this.setState({
+            projName: title || this.state.projName,
+            gameExe: exe || this.state.gameExe,
+            gameDir: dir ? (this.state.gameDir === '.' ? '.' : dir) : this.state.gameDir,
+            cycles: cyc || this.state.cycles,
+            cyclesProt: cycP || this.state.cyclesProt,
+            log: 'manifest "' + f.name + '" loaded' + (title ? ': ' + title : '')
+          });
+        } catch (e) { this.setState({ log: 'manifest parse failed: ' + e.message }); }
+      };
+      rd.readAsText(f);
+    };
+    inp.click();
+  };
+  onProjExport = () => {
+    const s = this.state;
+    const doc = {
+      tool: 'cheat workbench project', version: 1, created: new Date().toISOString(),
+      name: s.projName, gameDir: s.gameDir, gameExe: s.gameExe, cycles: s.cycles, cyclesProt: s.cyclesProt,
+      recording: { name: s.recName, events: s.recEvents },
+      cheatTable: s.entries.map(e => ({ description: e.desc, address: e.addr, kind: e.kind, width: e.width, length: e.len, value: e.value, frozen: e.frozen })),
+      watches: s.watches, bookmarks: s.bookmarks, customPorts: s.customPorts,
+      mixer: s.mixer, vidMode: s.vidMode, shotFmt: s.shotFmt, shotMode: s.shotMode
+    };
+    this.saveAs((s.projName || 'project').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.workbench.json',
+      new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }), 'project');
+  };
+  onProjImport = (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const j = JSON.parse(rd.result);
+        if (j.tool !== 'cheat workbench project') throw new Error('not a workbench project');
+        const s = this.state;
+        // project files are as untrusted as table files: same validation
+        let dropped = 0;
+        const seen = new Set();
+        const entries = [];
+        for (const x of (j.cheatTable || [])) {
+          const e = this.validEntry(x, seen);
+          if (e) entries.push(e); else dropped++;
+        }
+        const okAddr = (a) => Number.isInteger(a) && a >= 0 && a <= 0xFFFFF;
+        const watches = (j.watches || []).filter(w => okAddr(w.addr) && [1, 2, 4].includes(w.w));
+        const bookmarks = (j.bookmarks || []).filter(b => okAddr(b.addr));
+        dropped += (j.watches || []).length - watches.length + (j.bookmarks || []).length - bookmarks.length;
+        this.setState({
+          projName: j.name || '', gameDir: j.gameDir || s.gameDir, gameExe: j.gameExe || s.gameExe,
+          cycles: j.cycles || s.cycles, cyclesProt: j.cyclesProt || s.cyclesProt,
+          recName: (j.recording && j.recording.name) || 'recording.json',
+          recEvents: (j.recording && j.recording.events) || [],
+          entries, watches, bookmarks,
+          customPorts: (j.customPorts || []).filter(p => Number.isInteger(p) && p >= 0 && p <= 0xffff),
+          mixer: j.mixer || s.mixer, vidMode: j.vidMode || s.vidMode, shotFmt: j.shotFmt || s.shotFmt, shotMode: j.shotMode || s.shotMode,
+          selA: null, selB: null, playPos: 0,
+          log: 'project "' + (j.name || f.name) + '" imported' + (dropped ? ', dropped ' + dropped + ' invalid' : '')
+        });
+      } catch (e) { this.setState({ log: 'project import failed: ' + e.message }); }
+    };
+    rd.readAsText(f);
+    ev.target.value = '';
+  };
+  onProjNew = () => {
+    this.recUndo = [];
+    this.setState({
+      projName: '', recName: 'recording.json', recEvents: [], watches: [], bookmarks: [],
+      entries: [], selA: null, selB: null, playPos: 0, recording: false, recPaused: false, playing: false,
+      shotCount: 0, shotLast: '', vidRecs: { count: 0, totalMs: 0 }, audRecs: { count: 0, totalMs: 0 },
+      log: 'new project — recording, table, watches and counters cleared'
+    });
+  };
+  onReset = async () => {
+    if (!this.live) { this.initDemo(); this.setState({ log: 'demo machine reset' }); this.refreshScreen(); return; }
+    // No reset endpoint in the API — shutdown is the only control verb.
+    try {
+      await this.api('/api/v1/dosbox/shutdown', { method: 'POST' });
+      this.setState({ log: 'shutdown requested — re-run the launch script to restart', connected: false, mode: 'demo', statusText: 'DEMO MACHINE' });
+    } catch (e) { this.setState({ log: 'shutdown failed: ' + e.message }); }
+  };
+  onCapVideo = () => {
+    const s = this.state;
+    if (!this.live) { this.setState({ log: 'video capture needs a live emulator' }); return; }
+    const on = !s.capVideo;
+    this.api('/api/v1/capture/video/' + (on ? 'start' : 'stop'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: s.vidMode }) })
+      .then(() => {
+        if (on) { this.vidT0 = Date.now(); this.vidAcc = 0; this.setState({ capVideo: true, vidPaused: false, log: 'video capture started (' + s.vidMode + ')' }); }
+        else {
+          const ms = (this.vidAcc || 0) + (s.vidPaused ? 0 : Date.now() - (this.vidT0 || Date.now()));
+          this.setState({ capVideo: false, vidPaused: false, vidRecs: { count: s.vidRecs.count + 1, totalMs: s.vidRecs.totalMs + ms }, log: 'video capture stopped — file lands in the capture directory' });
+        }
+      })
+      .catch(e => this.setState({ log: 'capture failed: ' + e.message }));
+  };
+  onVidPause = () => {
+    const s = this.state;
+    if (!s.capVideo) return;
+    const on = !s.vidPaused;
+    // No pause verb in the API — pause closes the segment, resume opens a new file.
+    this.api('/api/v1/capture/video/' + (on ? 'stop' : 'start'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: on ? undefined : JSON.stringify({ mode: s.vidMode }) }).catch(() => {});
+    if (on) { this.vidAcc = (this.vidAcc || 0) + (Date.now() - this.vidT0); }
+    else { this.vidT0 = Date.now(); }
+    this.setState({ vidPaused: on, log: on ? 'video paused — segment file closed' : 'video resumed — new segment file' });
+  };
+  onCapAudio = () => {
+    const s = this.state;
+    if (!this.live) { this.setState({ log: 'audio capture needs a live emulator' }); return; }
+    const on = !s.capAudio;
+    this.api('/api/v1/capture/audio/' + (on ? 'start' : 'stop'), { method: 'POST' })
+      .then(() => {
+        if (on) { this.audT0 = Date.now(); this.audAcc = 0; this.setState({ capAudio: true, audPaused: false, log: 'audio capture started' }); }
+        else {
+          const ms = (this.audAcc || 0) + (s.audPaused ? 0 : Date.now() - (this.audT0 || Date.now()));
+          this.setState({ capAudio: false, audPaused: false, audRecs: { count: s.audRecs.count + 1, totalMs: s.audRecs.totalMs + ms }, log: 'audio capture stopped' });
+        }
+      })
+      .catch(e => this.setState({ log: 'capture failed: ' + e.message }));
+  };
+  onAudPause = () => {
+    const s = this.state;
+    if (!s.capAudio) return;
+    const on = !s.audPaused;
+    this.api('/api/v1/capture/audio/' + (on ? 'stop' : 'start'), { method: 'POST' }).catch(() => {});
+    if (on) { this.audAcc = (this.audAcc || 0) + (Date.now() - this.audT0); }
+    else { this.audT0 = Date.now(); }
+    this.setState({ audPaused: on, log: on ? 'audio paused — segment file closed' : 'audio resumed — new segment file' });
+  };
+  onCapShot = async () => {
+    const s = this.state;
+    const n = s.shotCount + 1;
+    const name = 'screenshot_' + String(n).padStart(3, '0') + '.' + s.shotFmt;
+    if (!this.live) { this.setState({ shotCount: n, shotLast: name + ' (demo — not written)', log: 'screenshot needs a live emulator to save' }); return; }
+    try {
+      const fmt = s.shotFmt === 'jpg' ? 'jpeg' : s.shotFmt;
+      const b = await (await this.api('/api/v1/video/frame?format=' + fmt + '&mode=' + (s.shotMode === 'native' ? 'raw' : 'rendered'))).blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      this.setState({ shotCount: n, shotLast: name });
+    } catch (e) { this.setState({ log: 'screenshot failed: ' + e.message }); }
+  };
+
+  buildAutomateStatic() {
+    $('au-gamedir').addEventListener('change', (e) => this.setState({ gameDir: e.target.value, folderPicked: false }));
+    $('au-browse').addEventListener('click', () => this.onBrowse());
+    $('au-manifest').addEventListener('click', () => this.onManifest());
+    $('au-reset').addEventListener('click', () => this.onReset());
+    $('au-play').addEventListener('click', () => { if (this.state.playing) this.setState({ playing: false }); else this.playRecording(); });
+    $('au-proj-export').addEventListener('click', () => this.onProjExport());
+    $('au-proj-import').addEventListener('change', (e) => this.onProjImport(e));
+    $('au-proj-new').addEventListener('click', () => this.onProjNew());
+    const modeRow = (elId, key, opts) => {
+      $(elId).replaceChildren(...opts.map(([id, label]) =>
+        el('span', { class: 'au-mode', 'data-id': id, text: label,
+          onclick: () => this.setState({ [key]: id }) })));
+    };
+    modeRow('au-vid-modes', 'vidMode', [['rendered', 'rendered (post-shader)'], ['raw', 'raw (native res)']]);
+    modeRow('au-shot-modes', 'shotMode', [['rendered', 'rendered (post-shader)'], ['native', 'native res']]);
+    $('au-vid-btn').addEventListener('click', () => this.onCapVideo());
+    $('au-vid-pause').addEventListener('click', () => this.onVidPause());
+    $('au-shot-fmt').addEventListener('change', (e) => this.setState({ shotFmt: e.target.value }));
+    $('au-shot-btn').addEventListener('click', () => this.onCapShot());
+    $('au-aud-btn').addEventListener('click', () => this.onCapAudio());
+    $('au-aud-pause').addEventListener('click', () => this.onAudPause());
+    $('au-mixer').replaceChildren(...['master', 'sb', 'fm', 'speaker'].map(ch =>
+      el('div', { class: 'au-mixrow' },
+        el('span', { class: 'name', text: ch }),
+        el('input', { type: 'range', min: '0', max: '100', 'data-ch': ch,
+          oninput: (e) => {
+            const v = parseInt(e.target.value, 10);
+            this.setState({ mixer: Object.assign({}, this.state.mixer, { [ch]: v }) });
+            if (!this.live) return;
+            const body = JSON.stringify({ left: v / 100, right: v / 100 });
+            const chanNames = this.mixerChannelNames || { sb: 'SB', fm: 'OPL', speaker: 'PCSPEAKER' };
+            if (ch === 'master') this.api('/api/v1/mixer/volume', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
+            else this.api('/api/v1/mixer/channel/' + (chanNames[ch] || ch.toUpperCase()), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body }).catch(err => this.setState({ log: 'mixer: ' + err.message }));
+          } }),
+        el('span', { class: 'val', 'data-ch': ch }))));
+  }
+
+  renderAutomate() {
+    const s = this.state;
+    $('au-projtag').textContent = this.live ? 'live' : 'demo';
+    $('au-proj-name').textContent = s.projName || (s.statusData && s.statusData.program) || (this.live ? '—' : 'KEEN4E (demo)');
+    sync($('au-gamedir'), s.gameDir);
+    $('au-meta-input').textContent = s.recEvents.length
+      ? s.recName + ' (' + s.recEvents.length + ' events, ' + (s.recEvents[s.recEvents.length - 1].t / 1000).toFixed(0) + 's)'
+      : 'none recorded';
+    $('au-meta-video').textContent = s.vidRecs.count ? s.vidRecs.count + ' recording(s) · ' + this.fmtT(s.vidRecs.totalMs) : 'none';
+    $('au-meta-shots').textContent = String(s.shotCount);
+    $('au-play').textContent = s.playing ? '■ Stop' : '▶ Replay';
+    for (const row of [['au-vid-modes', s.vidMode], ['au-shot-modes', s.shotMode]]) {
+      for (const n of $(row[0]).children) n.classList.toggle('active', n.dataset.id === row[1]);
+    }
+    $('au-vidstatus').textContent = s.capVideo ? (s.vidPaused ? 'paused' : 'recording') : 'stopped';
+    $('au-vid-btn').textContent = s.capVideo ? '■ Stop video' : '● Record video';
+    $('au-vid-btn').className = 'btn btn-secondary au-capbtn' + (s.capVideo ? (s.vidPaused ? ' cap-paused' : ' cap-on') : '');
+    $('au-vid-pause').textContent = s.vidPaused ? '▶ Resume' : '‖ Pause';
+    $('au-vid-pause').className = 'btn btn-ghost au-capbtn' + (s.capVideo ? (s.vidPaused ? ' pause-paused' : '') : ' pause-hidden');
+    $('au-vid-dot').className = 'au-dot' + (s.capVideo ? (s.vidPaused ? ' paused' : ' rec') : '');
+    $('au-vid-timer').textContent = s.capVideo ? this.fmtT((this.vidAcc || 0) + (s.vidPaused ? 0 : Date.now() - (this.vidT0 || Date.now()))) : '';
+    if (!$('au-shot-fmt').contains(document.activeElement)) $('au-shot-fmt').value = s.shotFmt;
+    $('au-shot-status').textContent = s.shotLast ? 'saved: ' + s.shotLast : '';
+    $('au-aud-btn').textContent = s.capAudio ? '■ Stop audio' : '● Record audio';
+    $('au-aud-btn').className = 'btn btn-secondary au-capbtn' + (s.capAudio ? (s.audPaused ? ' cap-paused' : ' cap-on') : '');
+    $('au-aud-pause').textContent = s.audPaused ? '▶ Resume' : '‖ Pause';
+    $('au-aud-pause').className = 'btn btn-ghost au-capbtn' + (s.capAudio ? (s.audPaused ? ' pause-paused' : '') : ' pause-hidden');
+    $('au-aud-dot').className = 'au-dot' + (s.capAudio ? (s.audPaused ? ' paused' : ' rec') : '');
+    $('au-aud-timer').textContent = s.capAudio ? this.fmtT((this.audAcc || 0) + (s.audPaused ? 0 : Date.now() - (this.audT0 || Date.now()))) : 'stopped';
+    $('au-mixerhint').textContent = this.live ? '' : 'demo — not applied';
+    for (const inp of document.querySelectorAll('#au-mixer input')) sync(inp, s.mixer[inp.dataset.ch]);
+    for (const v of document.querySelectorAll('#au-mixer .val')) v.textContent = s.mixer[v.dataset.ch];
+  }
+
+  // ---------- input send + recording ----------
+  recEvent(kind, data, label) {
+    if (!this.state.recording || this.state.recPaused) return;
+    const t = Date.now() - this.recStart;
+    this.setState(s => ({ recEvents: s.recEvents.concat([{ t, kind, data, label }]) }));
+  }
+  flashKey(code) {
+    this.setState(s => ({ pressedKeys: Object.assign({}, s.pressedKeys, { [code]: true }) }));
+    setTimeout(() => this.setState(s => {
+      const p = Object.assign({}, s.pressedKeys);
+      delete p[code];
+      return { pressedKeys: p };
+    }), 180);
+  }
+  async sendShifted(code, label) {
+    this.recEvent('skey', code, label);
+    this.flashKey('shift+' + code);
+    if (this.live) {
+      try {
+        await this.api('/api/v1/input/sequence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events: [
+          { type: 'key', key: 'KBD_leftshift', pressed: true },
+          { type: 'key', key: code, pressed: true },
+          { type: 'key', key: code, pressed: false },
+          { type: 'key', key: 'KBD_leftshift', pressed: false }
+        ] }) });
+      } catch (e) { this.setState({ log: 'key failed: ' + e.message }); return; }
+    } else { this.demo.typed.push(label); }
+    this.setState({ log: 'sent shift+' + code.replace('KBD_', '') });
+    this.refreshScreen();
+  }
+  async sendText(text) {
+    if (!text) return;
+    this.recEvent('text', text);
+    if (this.live) {
+      try { await this.api('/api/v1/input/type', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) }); } catch (e) { this.setState({ log: 'type failed: ' + e.message }); return; }
+    } else { this.demo.typed.push(text); }
+    this.setState({ log: 'typed "' + text + '"' });
+    this.refreshScreen();
+  }
+  async sendKey(code, label) {
+    this.recEvent('key', code, label);
+    this.flashKey(code);
+    if (this.live) {
+      try {
+        await this.api('/api/v1/input/sequence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events: [{ type: 'key', key: code, pressed: true }, { type: 'key', key: code, pressed: false }] }) });
+      } catch (e) { this.setState({ log: 'key failed: ' + e.message }); return; }
+    } else { this.demo.typed.push('[' + (label || code.replace('KBD_', '')) + ']'); }
+    this.setState({ log: 'sent ' + code });
+    this.refreshScreen();
+  }
+  pushUndo() { this.recUndo = (this.recUndo || []).slice(-15).concat([this.state.recEvents]); }
+  tlMs(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+    return Math.round(frac * this.tlDur);
+  }
+  exportLua() {
+    const evs = this.state.recEvents;
+    if (!evs.length) { this.setState({ log: 'nothing recorded' }); return; }
+    const L = [
+      '-- generated by Cheat Workbench from a recorded input run',
+      '-- timing converted to frames at ' + Workbench.FPS + ' fps',
+      '',
+      'local function press(key)',
+      '    dosbox.key(key, true)',
+      '    dosbox.wait_frames(5)',
+      '    dosbox.key(key, false)',
+      '    dosbox.wait_frames(5)',
+      'end',
+      ''
+    ];
+    let prev = 0;
+    for (const ev of evs) {
+      const frames = Math.round((ev.t - prev) * Workbench.FPS / 1000);
+      if (frames > 0) L.push('dosbox.wait_frames(' + frames + ')');
+      prev = ev.t;
+      if (ev.kind === 'text') L.push('dosbox.type("' + String(ev.data).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n') + '")');
+      else if (ev.kind === 'skey') {
+        L.push('dosbox.key("KBD_leftshift", true)');
+        L.push('press("' + ev.data + '")');
+        L.push('dosbox.key("KBD_leftshift", false)');
+      }
+      else L.push('press("' + ev.data + '")');
+    }
+    this.saveAs('recipe.lua', new Blob([L.join('\n') + '\n'], { type: 'text/plain' }), 'recipe.lua (' + evs.length + ' events)');
+  }
+  playRecording = async () => {
+    const evs = this.state.recEvents;
+    if (!evs.length || this.state.playing) return;
+    this.setState({ playing: true, recording: false, playPos: 0, log: 'replaying ' + evs.length + ' event(s)…' });
+    const t0 = Date.now();
+    for (const ev of evs) {
+      const wait = ev.t - (Date.now() - t0);
+      if (wait > 0) await new Promise(r => setTimeout(r, wait));
+      if (!this.state.playing) break;
+      this.setState({ playPos: ev.t });
+      if (ev.kind === 'text') await this.sendText(ev.data);
+      else if (ev.kind === 'skey') await this.sendShifted(ev.data, ev.label || ev.data);
+      else await this.sendKey(ev.data, ev.label);
+    }
+    this.setState({ playing: false, log: 'replay finished' });
+  };
+  onRecToggle = async () => {
+    const s = this.state;
+    if (s.recording) {
+      this.setState({ recording: false, recPaused: false, log: 'recording stopped · ' + s.recEvents.length + ' event(s)' });
+      if (this.live) {
+        // Server-side recorder captures REAL guest input (keyboard into the
+        // emulator window), which the browser cannot see.
+        try {
+          const j = await (await this.api('/api/v1/input/record/stop', { method: 'POST' })).json();
+          const evs = (j.events || []).map(ev => ({
+            t: ev.frame != null ? Math.round(ev.frame * 1000 / Workbench.FPS) : (ev.t || 0),
+            kind: 'key', data: ev.key, label: ev.key ? ev.key.replace('KBD_', '') : '', pressed: ev.pressed
+          })).filter(ev => ev.pressed !== false);
+          if (evs.length && !this.state.recEvents.length) this.setState({ recEvents: evs, log: 'imported ' + evs.length + ' event(s) from the emulator-side recorder' });
+          else if (evs.length) this.setState({ log: 'emulator also recorded ' + evs.length + ' event(s) — timeline kept the workbench-side capture' });
+        } catch (e) {}
+      }
+    } else {
+      this.recStart = Date.now();
+      this.setState({ recording: true, recPaused: false, recEvents: [], log: 'recording input…' });
+      if (this.live) this.api('/api/v1/input/record/start', { method: 'POST' }).catch(() => {});
+    }
+  };
+  onRecPause = async () => {
+    const s = this.state;
+    if (!s.recording) return;
+    if (s.recPaused) { this.recStart += Date.now() - this.recPauseT0; }
+    else { this.recPauseT0 = Date.now(); }
+    const nowPaused = !s.recPaused;
+    this.setState({ recPaused: nowPaused,
+      log: nowPaused ? 'recording paused — input still sends, but is not captured' : 'recording resumed' });
+    if (this.live) {
+      // The engine's pause is a toggle; post it on BOTH transitions and
+      // reconcile with the state the server reports back.
+      try {
+        const j = await (await this.api('/api/v1/input/record/pause', { method: 'POST' })).json();
+        if ((j.status === 'paused') !== this.state.recPaused) {
+          await this.api('/api/v1/input/record/pause', { method: 'POST' });
+        }
+      } catch (e) {}
+    }
+  };
+
+  buildRecStatic() {
+    $('au-rec-btn').addEventListener('click', () => this.onRecToggle());
+    $('au-rec-pause').addEventListener('click', () => this.onRecPause());
+    $('au-type').addEventListener('input', (e) => this.setState({ typeText: e.target.value }));
+    $('au-type').addEventListener('keydown', (e) => { if (e.key === 'Enter') { this.sendText(this.state.typeText); this.setState({ typeText: '' }); } });
+    $('au-send').addEventListener('click', () => { this.sendText(this.state.typeText); this.setState({ typeText: '' }); });
+    $('au-rec-export').addEventListener('click', () => this.saveAs('input-recording.json', new Blob([JSON.stringify({ tool: 'cheat workbench recording', events: this.state.recEvents }, null, 2)], { type: 'application/json' }), 'recording'));
+    $('au-rec-export-lua').addEventListener('click', () => this.exportLua());
+    $('au-rec-import').addEventListener('change', (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        try { const j = JSON.parse(rd.result); this.setState({ recEvents: j.events || [], log: 'loaded ' + (j.events || []).length + ' event(s)' }); }
+        catch (e) { this.setState({ log: 'import failed: not a recording' }); }
+      };
+      rd.readAsText(f);
+      ev.target.value = '';
+    });
+    const G = (f) => ({ gap: f });
+    const K = (l, c, f) => ({ l, c, f: f || 1 });
+    const S = (l, c) => ({ l, c, f: 1, sh: true });
+    const rows = [
+      [K('Esc', 'KBD_esc', 1.3), G(.5), K('F1', 'KBD_f1'), K('F2', 'KBD_f2'), K('F3', 'KBD_f3'), K('F4', 'KBD_f4'), G(.4), K('F5', 'KBD_f5'), K('F6', 'KBD_f6'), K('F7', 'KBD_f7'), K('F8', 'KBD_f8'), G(.4), K('F9', 'KBD_f9'), K('F10', 'KBD_f10'), K('F11', 'KBD_f11'), K('F12', 'KBD_f12'), G(.5), K('Ins', 'KBD_insert'), K('Hom', 'KBD_home'), K('PgU', 'KBD_pageup')],
+      [S('!', 'KBD_1'), S('@', 'KBD_2'), S('#', 'KBD_3'), S('$', 'KBD_4'), S('%', 'KBD_5'), S('^', 'KBD_6'), S('&', 'KBD_7'), S('*', 'KBD_8'), S('(', 'KBD_9'), S(')', 'KBD_0'), S('_', 'KBD_minus'), S('+', 'KBD_equals'), G(6.2)],
+      [K('`', 'KBD_grave'), K('1', 'KBD_1'), K('2', 'KBD_2'), K('3', 'KBD_3'), K('4', 'KBD_4'), K('5', 'KBD_5'), K('6', 'KBD_6'), K('7', 'KBD_7'), K('8', 'KBD_8'), K('9', 'KBD_9'), K('0', 'KBD_0'), K('-', 'KBD_minus'), K('=', 'KBD_equals'), K('Bksp', 'KBD_backspace', 1.8), G(.5), K('Del', 'KBD_delete'), K('End', 'KBD_end'), K('PgD', 'KBD_pagedown')],
+      [K('Tab', 'KBD_tab', 1.6), K('Q', 'KBD_q'), K('W', 'KBD_w'), K('E', 'KBD_e'), K('R', 'KBD_r'), K('T', 'KBD_t'), K('Y', 'KBD_y'), K('U', 'KBD_u'), K('I', 'KBD_i'), K('O', 'KBD_o'), K('P', 'KBD_p'), K('[', 'KBD_leftbracket'), K(']', 'KBD_rightbracket'), K('\\', 'KBD_backslash', 1.2), G(3.5)],
+      [K('Caps', 'KBD_capslock', 1.9), K('A', 'KBD_a'), K('S', 'KBD_s'), K('D', 'KBD_d'), K('F', 'KBD_f'), K('G', 'KBD_g'), K('H', 'KBD_h'), K('J', 'KBD_j'), K('K', 'KBD_k'), K('L', 'KBD_l'), K(';', 'KBD_semicolon'), K('\'', 'KBD_quote'), K('Enter', 'KBD_enter', 2), G(1.5), K('↑', 'KBD_up'), G(1)],
+      [K('Shift', 'KBD_leftshift', 2.4), K('Z', 'KBD_z'), K('X', 'KBD_x'), K('C', 'KBD_c'), K('V', 'KBD_v'), K('B', 'KBD_b'), K('N', 'KBD_n'), K('M', 'KBD_m'), K(',', 'KBD_comma'), K('.', 'KBD_period'), K('/', 'KBD_slash'), K('Shift', 'KBD_rightshift', 2.1), G(.5), K('←', 'KBD_left'), K('↓', 'KBD_down'), K('→', 'KBD_right')],
+      [K('Ctrl', 'KBD_leftctrl', 1.6), K('Alt', 'KBD_leftalt', 1.6), K('Space', 'KBD_space', 8.3), K('Alt', 'KBD_rightalt', 1.6), K('Ctrl', 'KBD_rightctrl', 1.6), G(3.5)]
+    ];
+    $('au-kb').replaceChildren(...rows.map(r =>
+      el('div', { class: 'au-kbrow' }, ...r.map(k => k.gap
+        ? el('span', { class: 'au-key au-kgap', style: 'flex:' + k.gap + ' 1 0px' })
+        : el('span', { class: 'au-key', style: 'flex:' + k.f + ' 1 0px',
+            'data-key': (k.sh ? 'shift+' : '') + k.c,
+            title: k.sh ? 'shift+' + k.c.replace('KBD_', '') : k.c, text: k.l,
+            onclick: () => k.sh ? this.sendShifted(k.c, k.l) : this.sendKey(k.c, k.l) })))));
+    $('au-tl').addEventListener('mousedown', (e) => { const ms = this.tlMs(e); this.setState({ selA: ms, selB: ms, dragSel: true, playPos: ms }); });
+    $('au-tl').addEventListener('mousemove', (e) => { if (this.state.dragSel) this.setState({ selB: this.tlMs(e) }); });
+    const up = () => { if (this.state.dragSel) this.setState({ dragSel: false }); };
+    $('au-tl').addEventListener('mouseup', up);
+    $('au-tl').addEventListener('mouseleave', up);
+    $('au-tl-cut').addEventListener('click', () => {
+      const s = this.state;
+      if (s.selA == null || s.selA === s.selB) { this.setState({ log: 'drag a range on the timeline first' }); return; }
+      const [a, b] = s.selA < s.selB ? [s.selA, s.selB] : [s.selB, s.selA];
+      this.pushUndo();
+      this.setState({
+        recEvents: s.recEvents.filter(ev => ev.t < a || ev.t > b).map(ev => ev.t > b ? Object.assign({}, ev, { t: ev.t - (b - a) }) : ev),
+        selA: null, selB: null, log: 'cut ' + ((b - a) / 1000).toFixed(1) + 's (later events pulled forward)'
+      });
+    });
+    $('au-tl-del').addEventListener('click', () => {
+      const s = this.state;
+      if (s.selA == null || s.selA === s.selB) { this.setState({ log: 'drag a range on the timeline first' }); return; }
+      const [a, b] = s.selA < s.selB ? [s.selA, s.selB] : [s.selB, s.selA];
+      this.pushUndo();
+      this.setState({ recEvents: s.recEvents.filter(ev => ev.t < a || ev.t > b), selA: null, selB: null, log: 'deleted events in range (timing kept)' });
+    });
+    $('au-tl-split').addEventListener('click', () => {
+      const s = this.state;
+      const p = s.playPos;
+      const partB = s.recEvents.filter(ev => ev.t > p).map(ev => Object.assign({}, ev, { t: ev.t - p }));
+      if (!partB.length) { this.setState({ log: 'nothing after the playhead to split off' }); return; }
+      this.pushUndo();
+      this.saveAs('recording-part2.json', new Blob([JSON.stringify({ tool: 'cheat workbench recording', events: partB }, null, 2)], { type: 'application/json' }), 'part 2 (' + partB.length + ' events)');
+      this.setState({ recEvents: s.recEvents.filter(ev => ev.t <= p), log: 'split at ' + this.fmtT(p) });
+    });
+    $('au-tl-undo').addEventListener('click', () => {
+      const st = (this.recUndo || []).pop();
+      if (!st) { this.setState({ log: 'nothing to undo' }); return; }
+      this.setState({ recEvents: st, selA: null, selB: null, log: 'undone' });
+    });
+  }
+
+  renderTimeline() {
+    const s = this.state;
+    $('au-recmeta').textContent = s.recEvents.length ? s.recEvents.length + ' event(s)' : '';
+    $('au-rec-btn').textContent = s.recording ? '■ Stop rec' : '● Record input';
+    $('au-rec-btn').className = 'btn btn-secondary au-capbtn' + (s.recording ? (s.recPaused ? ' cap-paused' : ' cap-on') : '');
+    $('au-rec-pause').textContent = s.recPaused ? '▶ Resume' : '‖ Pause';
+    $('au-rec-pause').className = 'btn btn-ghost au-capbtn' + (s.recording ? (s.recPaused ? ' pause-paused' : '') : ' pause-hidden');
+    $('au-rec-dot').className = 'au-dot big' + (s.recording ? ' rec' : s.playing ? ' play' : '');
+    $('au-rec-status').textContent = s.recording
+      ? (s.recPaused ? 'paused at ' + this.fmtT(this.recPauseT0 - this.recStart) : 'recording ' + this.fmtT(Date.now() - this.recStart))
+      : (s.playing ? 'replaying ' + this.fmtT(s.playPos) : 'stopped');
+    for (const k of document.querySelectorAll('.au-key[data-key]')) {
+      k.classList.toggle('pressed', !!s.pressedKeys[k.dataset.key]);
+    }
+    sync($('au-type'), s.typeText);
+    const visible = s.recEvents.length > 0 || s.recording;
+    $('au-tl-block').classList.toggle('hidden', !visible);
+    $('au-tl-empty').classList.toggle('hidden', visible);
+    if (!visible) return;
+    const dur = this.tlDur = Math.max(2000, (s.recEvents.length ? s.recEvents[s.recEvents.length - 1].t : 0) + 800, s.playPos + 500);
+    let status = s.recEvents.length + ' events, ' + ((s.recEvents.length ? s.recEvents[s.recEvents.length - 1].t : 0) / 1000).toFixed(1) + 's';
+    if (s.selA != null && s.selB != null && s.selA !== s.selB) {
+      const [a, b] = s.selA < s.selB ? [s.selA, s.selB] : [s.selB, s.selA];
+      const n = s.recEvents.filter(ev => ev.t >= a && ev.t <= b).length;
+      status += ' / selection: ' + n + ' events, ' + ((b - a) / 1000).toFixed(1) + 's';
+    }
+    $('au-tl-status').textContent = status;
+    const kids = [];
+    const step = dur > 60000 ? 15000 : dur > 25000 ? 10000 : 5000;
+    for (let t = 0; t <= dur; t += step) {
+      kids.push(el('span', { class: 'au-tlmark', style: 'left:' + (t / dur * 100) + '%', text: (t / 1000) + 's' }));
+    }
+    for (const ev of s.recEvents) {
+      kids.push(el('span', { class: 'au-tltick ' + (ev.kind === 'key' ? 'key' : 'other'), style: 'left:' + (ev.t / dur * 100) + '%' }));
+    }
+    if (s.selA != null && s.selB != null && s.selA !== s.selB) {
+      kids.push(el('span', { class: 'au-tlsel', style: 'left:' + (Math.min(s.selA, s.selB) / dur * 100) + '%;width:' + (Math.abs(s.selB - s.selA) / dur * 100) + '%' }));
+    }
+    kids.push(el('span', { class: 'au-tlhead', style: 'left:' + (s.playPos / dur * 100) + '%' }));
+    $('au-tl').replaceChildren(...kids);
+    $('au-tl-list').replaceChildren(...s.recEvents.map((ev, i) =>
+      el('div', { class: 'au-ev' + (Math.abs(ev.t - s.playPos) < 1 ? ' at' : ''),
+          onclick: () => this.setState({ playPos: ev.t }),
+          oncontextmenu: (e) => this.openCtx(e, [
+            { label: 'Delete event', act: () => { this.pushUndo(); this.setState({ recEvents: this.state.recEvents.filter((_, k) => k !== i) }); } },
+            { label: 'Insert 0.5s pause before', act: () => { this.pushUndo(); this.setState({ recEvents: this.state.recEvents.map((x, k) => k >= i ? Object.assign({}, x, { t: x.t + 500 }) : x) }); } },
+            null,
+            { label: 'Nudge +0.25s', act: () => { this.pushUndo(); this.setState({ recEvents: this.state.recEvents.map((x, k) => k === i ? Object.assign({}, x, { t: x.t + 250 }) : x).sort((a, b) => a.t - b.t) }); } },
+            { label: 'Nudge −0.25s', act: () => { this.pushUndo(); this.setState({ recEvents: this.state.recEvents.map((x, k) => k === i ? Object.assign({}, x, { t: Math.max(0, x.t - 250) }) : x).sort((a, b) => a.t - b.t) }); } }
+          ]) },
+        el('span', { class: 't', text: this.fmtT(ev.t) }),
+        el('span', { class: 'kind ' + (ev.kind === 'key' ? 'key' : 'other'), text: ev.kind }),
+        el('span', { class: 'ell', text: ev.kind === 'text' ? '"' + ev.data + '"' : ev.kind === 'skey' ? 'shift+' + ev.data.replace('KBD_', '') + (ev.label ? ' (' + ev.label + ')' : '') : ev.data.replace('KBD_', '') }))));
+  }
+
+  // ---------- screen stage + lua ----------
+  async refreshScreen() {
+    if (!this.live) { this.setState({ autoText: this.demoScreen() }); return; }
+    if (this.state.autoTab === 'text') {
+      try {
+        const d = await (await this.api('/api/v1/video/text')).json();
+        this.setState({ autoText: d.is_text_mode ? d.text : '' });
+      } catch (e) { this.setState({ reqLog: 'screen: ' + e.message }); }
+    } else {
+      try {
+        const b = await (await this.api('/api/v1/video/frame?format=png')).blob();
+        if (this.state.autoFrame) URL.revokeObjectURL(this.state.autoFrame);
+        this.setState({ autoFrame: URL.createObjectURL(b) });
+      } catch (e) { this.setState({ reqLog: 'screen: ' + e.message }); }
+    }
+  }
+
+  buildStageStatic() {
+    const tab = (id) => () => { this.setState({ autoTab: id }); setTimeout(() => this.refreshScreen(), 20); };
+    $('au-tab-text').addEventListener('click', tab('text'));
+    $('au-tab-frame').addEventListener('click', tab('frame'));
+    $('au-lua-toggle').addEventListener('click', () => this.setState({ luaOpen: !this.state.luaOpen }));
+    $('au-lua-src').addEventListener('input', (e) => this.setState({ luaSrc: e.target.value }));
+    $('au-lua-run').addEventListener('click', async () => {
+      if (!this.live) { this.setState({ luaOut: '-- demo machine: script accepted but not executed\n-- connect to a live instance to run Lua\nok' }); return; }
+      try {
+        await this.api('/api/v1/script/load?name=workbench', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: this.state.luaSrc });
+        await this.api('/api/v1/script/start', { method: 'POST' });
+        const st = await (await this.api('/api/v1/script/status')).json();
+        this.setState({ luaOut: JSON.stringify(st, null, 2) });
+      } catch (e) { this.setState({ luaOut: 'error: ' + e.message }); }
+    });
+    $('au-lua-status').addEventListener('click', async () => {
+      if (!this.live) { this.setState({ luaOut: '-- demo: no script running' }); return; }
+      try { this.setState({ luaOut: JSON.stringify(await (await this.api('/api/v1/script/status')).json(), null, 2) }); }
+      catch (e) { this.setState({ luaOut: 'error: ' + e.message }); }
+    });
+    $('au-lua-stop').addEventListener('click', async () => {
+      if (!this.live) { this.setState({ luaOut: '-- demo: nothing to stop' }); return; }
+      try { this.setState({ luaOut: JSON.stringify(await (await this.api('/api/v1/script/stop', { method: 'POST' })).json(), null, 2) }); }
+      catch (e) { this.setState({ luaOut: 'error: ' + e.message }); }
+    });
+  }
+
+  renderStage() {
+    const s = this.state;
+    $('au-tab-text').classList.toggle('active', s.autoTab === 'text');
+    $('au-tab-frame').classList.toggle('active', s.autoTab === 'frame');
+    $('au-stage-dot').className = 'au-dot big' + (s.recording ? ' rec' : s.playing ? ' play' : '');
+    const showText = s.autoTab === 'text' && !!s.autoText;
+    const showFrame = s.autoTab === 'frame' && !!s.autoFrame;
+    $('au-screen-text').classList.toggle('hidden', !showText);
+    $('au-screen-frame').classList.toggle('hidden', !showFrame);
+    $('au-screen-placeholder').classList.toggle('hidden', showText || showFrame);
+    if (showText) $('au-screen-text').textContent = s.autoText;
+    if (showFrame) $('au-screen-frame').style.backgroundImage = 'url("' + s.autoFrame + '")';
+    $('au-screen-placeholder').textContent = s.autoTab === 'frame'
+      ? (this.live ? 'waiting for frame…' : 'frame grab needs a live emulator — Text shows the demo screen')
+      : 'graphics mode — no text buffer';
+    $('au-lua').classList.toggle('hidden', !s.luaOpen);
+    $('au-lua-toggle').textContent = s.luaOpen ? 'Lua ▾' : 'Lua ▸';
+    $('au-lua-hint').textContent = this.live ? 'POST /script/load → /script/start · status polls dosbox.output' : 'demo — scripts are not executed';
+    sync($('au-lua-src'), s.luaSrc);
+    $('au-lua-out').textContent = s.luaOut;
+  }
+
+  // ---------- setup dialog ----------
+  applyLoadedConf(text) {
+    const pick = (re) => { const m = text.match(re); return m ? m[1] : null; };
+    const cyc = pick(/^\s*cpu_cycles\s*=\s*(\d+)/mi);
+    const cycP = pick(/^\s*cpu_cycles_protected\s*=\s*(\d+)/mi);
+    const auto = text.split(/^\s*\[autoexec\]\s*$/mi)[1] || '';
+    const exe = (auto.split('\n').map(l => l.trim()).filter(l => l && !/^#/.test(l) && !/^mount\s/i.test(l) && !/^[a-z]:$/i.test(l)).pop()) || null;
+    const st = {};
+    if (cyc) st.cycles = cyc;
+    if (cycP) st.cyclesProt = cycP;
+    if (exe) { st.gameExe = exe; st.autostart = true; } else if (auto.trim()) { st.autostart = false; }
+    this.setState(st);
+    return [cyc && 'cycles', cycP && 'protected cycles', exe && 'executable'].filter(Boolean);
+  }
+  onLoadFiles = async () => {
+    try {
+      let loaded = [];
+      if (this.dirHandle) {
+        for (const name of ['dosbox-automation.conf', 'launch.sh', 'launch.bat']) {
+          try {
+            const f = await (await this.dirHandle.getFileHandle(name)).getFile();
+            const text = await f.text();
+            if (name.endsWith('.conf')) loaded = loaded.concat(this.applyLoadedConf(text));
+            else { this.setState({ osKind: name.endsWith('.sh') ? 'bash' : 'bat' }); loaded.push(name); }
+          } catch (e) {}
+        }
+        this.setState({ log: loaded.length ? 'loaded from folder: ' + loaded.join(', ') : 'no conf or launch script in the picked folder' });
+        return;
+      }
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.multiple = true;
+      inp.accept = '.conf,.sh,.bat';
+      inp.onchange = async () => {
+        let got = [];
+        for (const f of inp.files) {
+          const text = await f.text();
+          if (f.name.endsWith('.conf')) got = got.concat(this.applyLoadedConf(text));
+          else if (/\.(sh|bat)$/.test(f.name)) { this.setState({ osKind: f.name.endsWith('.sh') ? 'bash' : 'bat' }); got.push(f.name); }
+        }
+        this.setState({ log: got.length ? 'loaded: ' + got.join(', ') : 'nothing usable in the picked files' });
+      };
+      inp.click();
+    } catch (e) { this.setState({ log: 'load failed: ' + e.message }); }
+  };
+  onSaveFiles = async () => {
+    if (!this.dirHandle) {
+      await this.saveAs('dosbox-automation.conf', new Blob([this.confText()], { type: 'text/plain' }), 'dosbox-automation.conf');
+      const sname = this.state.osKind === 'bash' ? 'launch.sh' : 'launch.bat';
+      await this.saveAs(sname, new Blob([this.scriptText()], { type: 'text/plain' }), sname);
+      return;
+    }
+    const files = [['dosbox-automation.conf', this.confText()], [this.state.osKind === 'bash' ? 'launch.sh' : 'launch.bat', this.scriptText()]];
+    try {
+      for (const [name, text] of files) {
+        const fh = await this.dirHandle.getFileHandle(name, { create: true });
+        const w = await fh.createWritable();
+        await w.write(text);
+        await w.close();
+      }
+      this.setState({ log: 'wrote conf + script into "' + this.dirHandle.name + '" — run the script from there' + (this.state.osKind === 'bash' ? ' (chmod +x launch.sh first)' : '') });
+    } catch (e) { this.setState({ log: 'save failed: ' + e.message }); }
+  };
+  confText() {
+    const s = this.state;
+    const inFolder = s.gameDir === '.';
+    return [
+      inFolder ? '# dosbox-automation.conf — lives INSIDE the game folder; the mount below' : '# dosbox-automation.conf — save this file NEXT TO the game folder:',
+      inFolder ? '# stays within this file\'s parent directory, so the mount policy allows it.' : '# directory mounts are only allowed inside this file\'s parent directory.',
+      '# If it lives elsewhere, add to your PRIMARY config instead:',
+      '#   mount_allowed_bases = ' + (inFolder ? '/path/to/game-folder' : s.gameDir),
+      '',
+      '[webserver]',
+      'webserver_enabled = on',
+      'webserver_token_file = on',
+      '',
+      '[dosbox]',
+      'machine = svga_s3',
+      '',
+      '[sdl]',
+      'output = opengl',
+      '',
+      '[cpu]',
+      '# pinned in BOTH modes so recordings replay deterministically',
+      'cpu_cycles = ' + s.cycles,
+      'cpu_cycles_protected = ' + s.cyclesProt,
+      '',
+      '[sblaster]',
+      '# Sound Blaster 16 on the classic defaults (A220 I5 D1 H5)',
+      'sbtype = sb16',
+      'sbbase = 220',
+      'irq = 5',
+      'dma = 1',
+      'hdma = 5',
+      '',
+      '[midi]',
+      '# General MIDI via FluidSynth — point soundfont at your .sf2',
+      'mididevice = fluidsynth',
+      'fluid.soundfont = FluidR3_GM.sf2',
+      '',
+      '[autoexec]',
+      'mount c "' + s.gameDir + '"',
+      'c:'
+    ].concat(s.autostart && s.gameExe.trim() ? [s.gameExe] : ['# no autostart — boots to the C:\\> prompt']).join('\n');
+  }
+  scriptText() {
+    const s = this.state;
+    if (s.osKind === 'bash') return [
+      '#!/usr/bin/env bash',
+      '# start dosbox-automation with a known API token',
+      'cd "$(dirname "$0")"',
+      'export DOSBOX_API_TOKEN="$(openssl rand -hex 32)"',
+      'echo "API token: $DOSBOX_API_TOKEN"',
+      '# emulator binary — from the running instance when connected, else assumes PATH / probes below',
+      'DBA="' + s.binPath + '"',
+      'if ! command -v "$DBA" >/dev/null 2>&1 && ! [ -x "$DBA" ]; then',
+      '  for c in ./dosbox-automation "$HOME"/Applications/dosbox-automation-*.AppImage dosbox-automation dosbox; do',
+      '    if command -v "$c" >/dev/null 2>&1 || [ -x "$c" ]; then DBA="$c"; break; fi',
+      '  done',
+      'fi',
+      '"$DBA" --conf dosbox-automation.conf',
+      '# stop: Workbench → Setup → Stop instance (or POST /api/v1/dosbox/shutdown)',
+      '# restart: just re-run this script'
+    ].join('\n');
+    return [
+      '@echo off',
+      'cd /d "%~dp0"',
+      'rem start dosbox-automation with a known API token (set your own 64-hex value)',
+      'set DOSBOX_API_TOKEN=replace-with-64-hex-chars',
+      'echo API token: %DOSBOX_API_TOKEN%',
+      'rem resolve the emulator binary (autodetected in the Workbench setup)',
+      'set DBA=' + s.binPath,
+      'if not exist "%DBA%" if exist "dosbox-automation.exe" set DBA=dosbox-automation.exe',
+      'if not exist "%DBA%" if exist "dosbox.exe" set DBA=dosbox.exe',
+      '"%DBA%" -conf dosbox-automation.conf',
+      'rem stop: Workbench Setup / Stop instance. restart: re-run this script'
+    ].join('\n');
+  }
+  copyText(t, what) {
+    navigator.clipboard.writeText(t).then(
+      () => this.setState({ log: what + ' copied to clipboard' }),
+      () => this.setState({ log: 'copy failed — select the text and copy manually' })
+    );
+  }
+  onShutdown = async () => {
+    if (!this.live) return;
+    try {
+      await this.api('/api/v1/dosbox/shutdown', { method: 'POST' });
+      this.setState({ log: 'instance stopped — re-run the launch script to start it again', connected: false, mode: 'demo', statusText: 'DEMO MACHINE' });
+    } catch (e) { this.setState({ log: 'shutdown failed: ' + e.message }); }
+  };
+  onBinDetect = async () => {
+    this.binOverridden = true;
+    // Live instance knows its own path — appimage over binary (see onConnect).
+    if (this.live) {
+      try {
+        const info = await (await this.api('/api/v1/dosbox/info')).json();
+        const bin = info.appimage || info.binary;
+        if (bin) { this.setState({ binPath: bin, binNote: info.appimage ? 'from the running instance ($APPIMAGE)' : 'from the running instance', log: 'autodetect: running instance' }); return; }
+      } catch (e) {}
+    }
+    const win = this.state.osKind === 'bat';
+    if (this.dirHandle) {
+      try {
+        const found = [];
+        for await (const [name, h] of this.dirHandle.entries()) {
+          if (h.kind !== 'file') continue;
+          if (win ? /^(dosbox-automation|dosbox)\.exe$/i.test(name) : (/^(dosbox-automation|dosbox)$/i.test(name) || /^dosbox-automation-.*\.appimage$/i.test(name))) found.push(name);
+        }
+        if (found.length) {
+          found.sort((a, b) => (a.startsWith('dosbox-automation') ? -1 : 1) - (b.startsWith('dosbox-automation') ? -1 : 1));
+          this.setState({ binPath: (win ? '' : './') + found[0], binNote: 'found in the game folder' + (found.length > 1 ? ' (also: ' + found.slice(1).join(', ') + ')' : ''), log: 'autodetect: ' + found[0] });
+          return;
+        }
+      } catch (e) {}
+    }
+    if (win) this.setState({ binPath: '%ProgramFiles%\\dosbox-automation\\dosbox-automation.exe', binNote: 'no local binary found — defaulted to the installer location; Browse if it lives elsewhere', log: 'autodetect: defaulted to installed location' });
+    else this.setState({ binPath: '$HOME/Applications/dosbox-automation-*.AppImage', binNote: 'no local binary found — the script globs ~/Applications for a dosbox-automation AppImage, falling back to PATH', log: 'autodetect: defaulted to ~/Applications AppImage glob' });
+  };
+  onBinBrowse = async () => {
+    try {
+      if (window.showOpenFilePicker) {
+        const [h] = await window.showOpenFilePicker({ types: [] });
+        // The browser only yields the file name, not its absolute path —
+        // keep the name and let the user prepend the directory if needed.
+        this.binOverridden = true;
+        this.setState({ binPath: h.name, binNote: 'browsers hide the full path — prepend the directory if the binary is not on PATH' });
+        return;
+      }
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.onchange = () => { if (inp.files[0]) { this.binOverridden = true; this.setState({ binPath: inp.files[0].name, binNote: 'browsers hide the full path — prepend the directory if the binary is not on PATH' }); } };
+      inp.click();
+    } catch (e) { if (e.name !== 'AbortError') this.setState({ log: 'browse failed: ' + e.message }); }
+  };
+
+  buildSetupStatic() {
+    $('setup-root').addEventListener('click', (e) => { if (e.target === $('setup-root')) this.setState({ setupOpen: false }); });
+    $('su-close').addEventListener('click', () => this.setState({ setupOpen: false }));
+    $('su-save').addEventListener('click', () => this.onSaveFiles());
+    $('su-load').addEventListener('click', () => this.onLoadFiles());
+    $('su-stop').addEventListener('click', () => this.onShutdown());
+    $('su-bin').addEventListener('change', (e) => { this.binOverridden = true; this.setState({ binPath: e.target.value }); });
+    $('su-bin-browse').addEventListener('click', () => this.onBinBrowse());
+    $('su-bin-detect').addEventListener('click', () => this.onBinDetect());
+    $('su-gamedir').addEventListener('change', (e) => this.setState({ gameDir: e.target.value, folderPicked: false }));
+    $('su-browse').addEventListener('click', () => this.onBrowse());
+    $('su-exe').addEventListener('change', (e) => this.setState({ gameExe: e.target.value, autostart: e.target.value.trim() !== '' }));
+    $('su-clear-autoexec').addEventListener('click', () => this.setState({ autostart: false, gameExe: '', log: 'autoexec cleared — the conf mounts C: and stops at the DOS prompt' }));
+    $('su-autostart').addEventListener('click', () => this.setState({ autostart: !this.state.autostart, log: this.state.autostart ? 'autostart off — conf boots to the C:\\> prompt' : 'autostart on — conf runs ' + (this.state.gameExe || 'the executable') }));
+    $('su-cycles').addEventListener('change', (e) => this.setState({ cycles: this.sanDigits(e.target.value) }));
+    $('su-cycles-prot').addEventListener('change', (e) => this.setState({ cyclesProt: this.sanDigits(e.target.value) }));
+    $('su-os').replaceChildren(...[['bash', 'Linux / macOS'], ['bat', 'Windows']].map(([id, l]) =>
+      el('span', { class: 'su-os', 'data-id': id, text: l,
+        onclick: () => {
+          const s = this.state;
+          const wasDefault = /^(\$HOME\/Games|%USERPROFILE%\\Games)/.test(s.gameDir) || s.gameDir === '.';
+          this.setState({ osKind: id, gameDir: wasDefault && s.gameDir !== '.' ? (id === 'bash' ? '$HOME/Games/keen4' : '%USERPROFILE%\\Games\\keen4') : s.gameDir });
+        } })));
+    $('su-copy-conf').addEventListener('click', () => this.copyText(this.confText(), 'conf'));
+    $('su-copy-script').addEventListener('click', () => this.copyText(this.scriptText(), 'script'));
+  }
+
+  renderSetup() {
+    const s = this.state;
+    $('setup-root').classList.toggle('hidden', !s.setupOpen);
+    if (!s.setupOpen) return;
+    $('su-status').textContent = s.statusText;
+    $('su-dot').className = s.mode === 'demo' ? 'dot-demo' : s.connected ? 'dot-live' : 'dot-off';
+    $('su-save').textContent = 'Save';
+    $('su-save').title = this.dirHandle
+      ? 'writes dosbox-automation.conf + the launch script into the picked game folder'
+      : 'saves dosbox-automation.conf + the launch script (pick a folder via Browse to write directly into it)';
+    $('su-stop').classList.toggle('hidden', !this.live);
+    sync($('su-bin'), s.binPath);
+    $('su-bin-note').textContent = s.binNote || (s.osKind === 'bat' ? 'dosbox-automation.exe or dosbox.exe — local folder or installed' : 'dosbox-automation binary, dosbox, or a dosbox-automation-*.AppImage — local, ~/Applications, or PATH');
+    sync($('su-gamedir'), s.gameDir);
+    $('su-folder-note').textContent = s.folderPicked
+      ? 'folder picked — conf + script save into it; mount uses "." (policy-safe)'
+      : 'Browse picks the folder and finds executables (Chrome/Edge), or type a path';
+    sync($('su-exe'), s.gameExe);
+    $('su-autostart').classList.toggle('on', s.autostart);
+    $('su-exes').replaceChildren(...s.exes.map(x =>
+      el('span', { class: 'su-exechip' + (s.gameExe === x ? ' active' : ''), text: x,
+        onclick: () => this.setState({ gameExe: x }) })));
+    sync($('su-cycles'), s.cycles);
+    sync($('su-cycles-prot'), s.cyclesProt);
+    for (const n of $('su-os').children) n.classList.toggle('active', n.dataset.id === s.osKind);
+    $('su-script-name').textContent = s.osKind === 'bash' ? 'launch.sh' : 'launch.bat';
+    if (document.activeElement !== $('su-conf')) $('su-conf').value = this.confText();
+    if (document.activeElement !== $('su-script')) $('su-script').value = this.scriptText();
+  }
+}
+
+const wb = new Workbench();
+document.addEventListener('DOMContentLoaded', () => wb.init());
+</script>
+</body>
+</html>
