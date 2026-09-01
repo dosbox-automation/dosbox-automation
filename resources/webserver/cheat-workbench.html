@@ -1132,8 +1132,12 @@ class Workbench {
   }
   onConnect = async () => {
     if (this.state.connected) {
+      const autoEnd = '0x' + (this.ramTop || 0).toString(16).toUpperCase();
       this.ramTop = 0x100000; this.ramMcbs = null; this.ramConvKB = 640;
-      this.setState({ connected: false, mode: 'demo', statusText: 'DEMO' });
+      this.setState(Object.assign(
+        { connected: false, mode: 'demo', statusText: 'DEMO' },
+        this.state.rangeEnd === autoEnd ? { rangeEnd: '0x100000' } : {}
+      ));
       return;
     }
     this.setState({ mode: 'live', statusText: 'CONNECTING…' });
@@ -1148,9 +1152,23 @@ class Workbench {
         bin && !this.binOverridden ? { binPath: bin, binNote: info.appimage ? 'from the running instance ($APPIMAGE)' : 'from the running instance' } : {}
       ));
       try { localStorage.setItem('cw-token', this.state.token); } catch (e) {}
+      try {
+        const cy = await (await this.api('/api/v1/cpu/cycles')).json();
+        const upd = {};
+        if (typeof cy.real_mode === 'number') upd.cycles = String(cy.real_mode);
+        if (typeof cy.protected_mode === 'number') upd.cyclesProt = String(cy.protected_mode);
+        this.setState(upd);
+      } catch (e) {}
       this.refreshHex();
       this.refreshMixer();
-      this.probeRamTop().then(() => this.refreshRamMap()).catch(() => {});
+      this.probeRamTop().then(() => {
+        this.refreshRamMap();
+        // scan range follows the machine: widen the untouched default to
+        // the probed RAM top so protected-mode games are searched too
+        if (this.state.rangeEnd === '0x100000' && this.ramTop > 0x100000) {
+          this.setState({ rangeEnd: '0x' + this.ramTop.toString(16).toUpperCase() });
+        }
+      }).catch(() => {});
     } catch (e) {
       this.setState({ connected: false, mode: 'demo', statusText: 'UNREACHABLE - DEMO', log: String(e.message || e) });
     }
@@ -1737,14 +1755,14 @@ class Workbench {
     if (hexish) nd = new Uint8Array(q.split(/\s+/).map(x => parseInt(x, 16)));
     else { nd = new Uint8Array(q.length); for (let i = 0; i < q.length; i++) nd[i] = q.charCodeAt(i); }
     try {
-      const CHUNK = 0x10000, matches = [];
-      for (let start = 0; start < 0x100000 && matches.length < 500; start += CHUNK - nd.length) {
-        const buf = await this.readMem(start, Math.min(CHUNK, 0x100000 - start));
+      const CHUNK = 0x10000, matches = [], top = this.ramTop || 0x100000;
+      for (let start = 0; start < top && matches.length < 500; start += CHUNK - nd.length) {
+        const buf = await this.readMem(start, Math.min(CHUNK, top - start));
         for (let i = 0; i + nd.length <= buf.length && matches.length < 500; i++) {
           if (this.matchAt(buf, i, nd)) matches.push(start + i);
         }
       }
-      if (!matches.length) { this.setState({ findMatches: [], findIdx: -1, findMiss: true, log: 'not found in the first 1 MB' }); return; }
+      if (!matches.length) { this.setState({ findMatches: [], findIdx: -1, findMiss: true, log: 'not found in ' + (top / 1048576) + ' MB' }); return; }
       this.setState({ findMatches: matches, findIdx: 0, findLen: nd.length, findMiss: false, log: matches.length + (matches.length === 500 ? '+' : '') + ' match(es) - F3 / Shift+F3 to step' });
       this.gotoHex(matches[0]);
     } catch (e) { this.setState({ log: 'find failed: ' + e.message }); }
@@ -2856,11 +2874,14 @@ class Workbench {
     this.flashKey('shift+' + code);
     if (this.live) {
       try {
+        // Hold across several 35 Hz game tics: per-tic samplers (movement,
+        // fire, weapon select) never see a zero-width press, only event
+        // responders (menus, cheat typing) do.
         await this.api('/api/v1/input/sequence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events: [
           { type: 'key', key: 'KBD_leftshift', pressed: true },
-          { type: 'key', key: code, pressed: true },
-          { type: 'key', key: code, pressed: false },
-          { type: 'key', key: 'KBD_leftshift', pressed: false }
+          { type: 'key', key: code, pressed: true, delay_ms: 10 },
+          { type: 'key', key: code, pressed: false, delay_ms: 80 },
+          { type: 'key', key: 'KBD_leftshift', pressed: false, delay_ms: 10 }
         ] }) });
       } catch (e) { this.setState({ log: 'key failed: ' + e.message }); return; }
     } else { this.demo.typed.push(label); }
@@ -2881,7 +2902,7 @@ class Workbench {
     this.flashKey(code);
     if (this.live) {
       try {
-        await this.api('/api/v1/input/sequence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events: [{ type: 'key', key: code, pressed: true }, { type: 'key', key: code, pressed: false }] }) });
+        await this.api('/api/v1/input/sequence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events: [{ type: 'key', key: code, pressed: true }, { type: 'key', key: code, pressed: false, delay_ms: 80 }] }) });
       } catch (e) { this.setState({ log: 'key failed: ' + e.message }); return; }
     } else { this.demo.typed.push('[' + (label || code.replace('KBD_', '')) + ']'); }
     this.setState({ log: 'sent ' + code });
@@ -3262,6 +3283,11 @@ class Workbench {
       '[webserver]',
       'webserver_enabled = on',
       'webserver_token_file = on',
+      '',
+      '[capture]',
+      '# a relative capture_dir resolves against THIS conf, so recordings and',
+      '# screenshots land next to the game instead of the global config dir',
+      'capture_dir = capture',
       '',
       '[dosbox]',
       'machine = svga_s3',
