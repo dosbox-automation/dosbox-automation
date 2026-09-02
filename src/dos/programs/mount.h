@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText:  2021-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #ifndef DOSBOX_PROGRAM_MOUNT_H
 #define DOSBOX_PROGRAM_MOUNT_H
@@ -82,6 +83,18 @@ private:
 
 	bool AddWildcardPaths(const std::string& path_arg,
 	                      std::vector<std::string>& paths);
+
+	enum class OptionValue { None, Optional, Required };
+
+	struct MountOption {
+		bool present                     = false;
+		std::optional<std::string> value = {};
+	};
+
+	std::optional<MountOption> TakeOption(const std::string& name,
+	                                      OptionValue value_kind);
+
+	bool HasUnknownOptions();
 
 	bool ParseArguments(MountParameters& params, bool& explicit_fs,
 	                    bool& path_relative_to_last_config);

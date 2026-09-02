@@ -11060,6 +11060,21 @@ msgctxt "PROGRAM_MOUNT_INVALID_CHS"
 msgid "Invalid CHS format. Use -chs cylinders,heads,sectors\n"
 msgstr "Ungültiges CHS-Format. Verwende -chs Zylinder,Köpfe,Sektoren\n"
 
+#, c-format, no-wrap
+msgctxt "PROGRAM_MOUNT_UNKNOWN_OPTION"
+msgid "Unknown option: %s\n"
+msgstr "Unbekannte Option: %s\n"
+
+#, c-format, no-wrap
+msgctxt "PROGRAM_MOUNT_REPEATED_OPTION"
+msgid "Option %s given more than once\n"
+msgstr "Option %s mehrfach angegeben\n"
+
+#, c-format, no-wrap
+msgctxt "PROGRAM_MOUNT_OPTION_NEEDS_VALUE"
+msgid "Option %s needs a value\n"
+msgstr "Option %s braucht einen Wert\n"
+
 #: src/dos/programs/mount.cpp:1337
 #, c-format, no-wrap
 msgctxt "PROGRAM_MOUNT_OVERLAY_REL_ABS"

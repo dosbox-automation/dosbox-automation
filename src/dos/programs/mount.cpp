@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-FileCopyrightText:  2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "mount.h"
 #include "mount_common.h"
@@ -594,6 +595,60 @@ static std::optional<MountFileSystemType> parse_file_system_type(const std::stri
 	}
 }
 
+std::optional<MOUNT::MountOption> MOUNT::TakeOption(const std::string& name,
+                                                    const OptionValue value_kind)
+{
+	MountOption option = {};
+	int occurrences    = 0;
+
+	if (value_kind == OptionValue::None) {
+		while (cmd->FindExist(name, true)) {
+			++occurrences;
+		}
+	} else {
+		occurrences = cmd->FindRemoveOption(name, option.value);
+	}
+	option.present = occurrences > 0;
+
+	if (occurrences > 1) {
+		NOTIFY_DisplayWarning(Notification::Source::Console,
+		                      "MOUNT",
+		                      "PROGRAM_MOUNT_REPEATED_OPTION",
+		                      name.c_str());
+		return {};
+	}
+	if (option.present && value_kind == OptionValue::Required &&
+	    !option.value) {
+		NOTIFY_DisplayWarning(Notification::Source::Console,
+		                      "MOUNT",
+		                      "PROGRAM_MOUNT_OPTION_NEEDS_VALUE",
+		                      name.c_str());
+		return {};
+	}
+	return option;
+}
+
+// Runs after every known option has been consumed, so a dash token left
+// on the line is a typo or an unsupported option. Refusing it here keeps
+// it out of the path list, where it would fail much later as an image
+// that "isn't a directory or valid image file".
+bool MOUNT::HasUnknownOptions()
+{
+	bool found      = false;
+	std::string arg = {};
+
+	for (unsigned int i = 1; cmd->FindCommand(i, arg); ++i) {
+		if (arg.starts_with('-')) {
+			NOTIFY_DisplayWarning(Notification::Source::Console,
+			                      "MOUNT",
+			                      "PROGRAM_MOUNT_UNKNOWN_OPTION",
+			                      arg.c_str());
+			found = true;
+		}
+	}
+	return found;
+}
+
 // Sets:
 //   params.type   (from the -t option)
 //   params.roflag (from the -ro option)
@@ -605,16 +660,23 @@ static std::optional<MountFileSystemType> parse_file_system_type(const std::stri
 //
 //   params.label  (from the -label option)
 //
+//   params.freesize_arg, size_arg, chs_arg (raw strings for ParseGeometry)
+//
 bool MOUNT::ParseArguments(MountParameters& params, bool& explicit_fs,
                            bool& path_relative_to_last_config)
 {
-	if (cmd->FindExist("-pr", true)) {
-		path_relative_to_last_config = true;
+	const auto pr = TakeOption("-pr", OptionValue::None);
+	if (!pr) {
+		return false;
 	}
+	path_relative_to_last_config = pr->present;
 
 	// Default is "dir" if the -t option is not provided
-	std::string type_str = "dir";
-	cmd->FindString("-t", type_str, true);
+	const auto type = TakeOption("-t", OptionValue::Required);
+	if (!type) {
+		return false;
+	}
+	const auto type_str = type->value.value_or("dir");
 
 	const auto maybe_mount_type = parse_mount_type(type_str);
 	if (!maybe_mount_type) {
@@ -626,13 +688,20 @@ bool MOUNT::ParseArguments(MountParameters& params, bool& explicit_fs,
 	}
 	params.type = *maybe_mount_type;
 
-	params.roflag = cmd->FindExist("-ro", true);
+	const auto ro = TakeOption("-ro", OptionValue::None);
+	if (!ro) {
+		return false;
+	}
+	params.roflag = ro->present;
 
 	// Parse -fs (filesystem type)
 	// Default is "fat" if the -fs option is not provided
-	std::string fstype_str = "fat";
-
-	explicit_fs = cmd->FindString("-fs", fstype_str, true);
+	const auto fs = TakeOption("-fs", OptionValue::Required);
+	if (!fs) {
+		return false;
+	}
+	explicit_fs           = fs->present;
+	const auto fstype_str = fs->value.value_or("fat");
 
 	const auto maybe_fs_type = parse_file_system_type(fstype_str);
 	if (!maybe_fs_type) {
@@ -661,18 +730,34 @@ bool MOUNT::ParseArguments(MountParameters& params, bool& explicit_fs,
 		}
 	}
 
-	// Parse -ide
-	std::string ide_value = {};
-
-	params.is_ide = cmd->FindString("-ide", ide_value, true) ||
-	                cmd->FindExist("-ide", true);
+	// -ide may carry a value or stand alone
+	const auto ide = TakeOption("-ide", OptionValue::Optional);
+	if (!ide) {
+		return false;
+	}
+	params.is_ide = ide->present;
 
 	if (params.is_ide && (params.type == MountType::CdRomImage)) {
 		IDE_Get_Next_Cable_Slot(params.ide_index, params.is_second_cable_slot);
 	}
 
-	// Label
-	cmd->FindString("-label", params.label, true);
+	const auto label = TakeOption("-label", OptionValue::Required);
+	if (!label) {
+		return false;
+	}
+	params.label = label->value.value_or("");
+
+	// The geometry strings are interpreted in ParseGeometry once
+	// ProcessPaths has settled the mount type.
+	const auto freesize = TakeOption("-freesize", OptionValue::Required);
+	const auto size     = TakeOption("-size", OptionValue::Required);
+	const auto chs      = TakeOption("-chs", OptionValue::Required);
+	if (!freesize || !size || !chs) {
+		return false;
+	}
+	params.freesize_arg = freesize->value.value_or("");
+	params.size_arg     = size->value.value_or("");
+	params.chs_arg      = chs->value.value_or("");
 
 	return true;
 }
@@ -1481,19 +1566,16 @@ std::optional<MountParameters> MOUNT::ProcessArguments(CommandLine* cmd)
 		return {};
 	}
 
+	if (HasUnknownOptions()) {
+		return {};
+	}
+
 	// Get the first path argument
 	std::string first_path = {};
 	if (!cmd->FindCommand(2, first_path) || first_path.empty()) {
 		ShowUsage();
 		return {};
 	}
-
-	// Consume geometry switches before path collection: since the
-	// detection-before-geometry reorder, leftover switch tokens would
-	// land in params.paths and fail the fork's image path validation.
-	cmd->FindString("-freesize", params.freesize_arg, true);
-	cmd->FindString("-size", params.size_arg, true);
-	cmd->FindString("-chs", params.chs_arg, true);
 
 	// Resolve host paths, wildcard path arguments, auto-detect mount types,
 	// and determine whether we're dealing with image or directory/overlay
@@ -1611,6 +1693,9 @@ void MOUNT::AddMessages()
 	        "%s isn't a directory or valid image file.\n");
 
 	MSG_Add("PROGRAM_MOUNT_ILL_TYPE", "Illegal type %s");
+	MSG_Add("PROGRAM_MOUNT_UNKNOWN_OPTION", "Unknown option: %s\n");
+	MSG_Add("PROGRAM_MOUNT_REPEATED_OPTION", "Option %s given more than once\n");
+	MSG_Add("PROGRAM_MOUNT_OPTION_NEEDS_VALUE", "Option %s needs a value\n");
 	MSG_Add("PROGRAM_MOUNT_ALREADY_MOUNTED", "Drive %c already mounted with %s\n");
 	MSG_Add("PROGRAM_MOUNT_UMOUNT_NOT_MOUNTED", "Drive %c isn't mounted.\n");
 

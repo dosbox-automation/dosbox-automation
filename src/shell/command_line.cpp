@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2023-2026 The DOSBox Staging Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "shell/command_line.h"
 
@@ -479,4 +480,29 @@ std::optional<std::vector<std::string>> CommandLine::FindRemoveOptionalArgument(
 std::optional<int> CommandLine::FindRemoveIntArgument(const std::string& name)
 {
 	return parse_int(FindRemoveStringArgument(name));
+}
+
+int CommandLine::FindRemoveOption(const std::string& name,
+                                  std::optional<std::string>& value)
+{
+	int occurrences = 0;
+	cmd_it it       = {};
+
+	while (FindEntry(name, it)) {
+		++occurrences;
+
+		cmd_it it_end = it;
+		++it_end;
+
+		const bool has_value = (it_end != cmds.end()) &&
+		                       !it_end->empty() && it_end->front() != '-';
+		if (has_value) {
+			if (!value) {
+				value = *it_end;
+			}
+			++it_end;
+		}
+		cmds.erase(it, it_end);
+	}
+	return occurrences;
 }

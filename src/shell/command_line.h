@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #ifndef DOSBOX_COMMAND_LINE_H
 #define DOSBOX_COMMAND_LINE_H
@@ -85,6 +86,12 @@ public:
 	        const std::string& name);
 
 	std::optional<int> FindRemoveIntArgument(const std::string& name);
+
+	// Consumes every occurrence of the option. The token after it is
+	// its value unless that token starts with a dash; the first value
+	// found is returned. Returns the number of occurrences.
+	int FindRemoveOption(const std::string& name,
+	                     std::optional<std::string>& value);
 
 private:
 	using cmd_it = std::list<std::string>::iterator;

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2026-2026 The DOSBox Staging Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "dos/programs/mount.h"
 
@@ -1120,16 +1121,17 @@ TEST_F(MountTest, FirstIsoImageControlsAutoDetection)
 // IDE interactions
 // ---------------------------------------------------------------------
 
-TEST_F(MountTest, IdeFlagFollowedBySwitchIsRejected)
+TEST_F(MountTest, IdeFollowedByAnOptionIsABareIdeFlag)
 {
-	// FindString("-ide", ...) consumes the next token as its value,
-	// so "-ide -size N" orphans the size string into the path list.
-	// Upstream mounts anyway with the -size intent silently lost;
-	// the fork's path validation refuses the leftover (aug-adow).
+	// An option value never starts with a dash, so "-ide -size N" is a
+	// bare -ide and the geometry still applies (ada-adow).
 	const auto result = Mount("D " + P("bootable.img") +
 	                          " -t hdd -fs iso -ide -size 512,63,16,100");
 
-	EXPECT_FALSE(result.has_value());
+	ASSERT_TRUE(result.has_value());
+	ASSERT_EQ(result->paths.size(), 1);
+	EXPECT_TRUE(result->is_ide);
+	EXPECT_EQ(result->sizes[3], 100);
 }
 
 // ---------------------------------------------------------------------
@@ -1194,11 +1196,9 @@ TEST_F(MountTest, ReadOnlyPreservedForDirectoryMount)
 // Duplicate option precedence
 // ---------------------------------------------------------------------
 
-// Upstream asserts first-wins for duplicate switches: parsing consumes
-// only the first pair, the second leaks into the path list and upstream
-// mounts regardless. The fork refuses unconsumed tokens at path
-// validation, so a duplicated switch fails the whole command. First-wins
-// coverage returns with the parser consumption fix (aug-adow).
+// Upstream lets the first of a repeated switch win. The fork refuses the
+// command instead: a repeated option is a mistake more often than an
+// intent (ada-adow, decided 2026-09-02).
 
 TEST_F(MountTest, DuplicateLabelIsRejected)
 {
@@ -1385,5 +1385,89 @@ TEST_F(MountTest, SymlinkToDeviceIsRefusedByThePolicyItself)
 	EXPECT_TRUE(sink::constructed.empty());
 }
 #endif
+
+// ---------------------------------------------------------------------
+// Option parsing (ada-adow, upstream #5025): every option is consumed
+// before any token can be taken for a path, and a leftover dash token
+// refuses the mount before the policy is asked about anything.
+// ---------------------------------------------------------------------
+
+TEST_F(MountTest, UnknownOptionIsRefusedBeforeThePolicySeesAnyPath)
+{
+	sink::HookCapture capture;
+
+	const auto result = Mount("C " + P("image.img") + " -t hdd -bogus");
+
+	EXPECT_FALSE(result.has_value());
+	EXPECT_TRUE(sink::verdicts.empty());
+}
+
+TEST_F(MountTest, MisspelledOptionIsRefusedBeforeThePolicySeesAnyPath)
+{
+	sink::HookCapture capture;
+
+	const auto result = Mount("C " + P("image.img") +
+	                          " -t hdd -siz 512,63,16,81");
+
+	EXPECT_FALSE(result.has_value());
+	EXPECT_TRUE(sink::verdicts.empty());
+}
+
+TEST_F(MountTest, UnknownOptionBeforeThePathIsRefused)
+{
+	sink::HookCapture capture;
+
+	const auto result = Mount("C -bogus " + P("image.img") + " -t hdd");
+
+	EXPECT_FALSE(result.has_value());
+	EXPECT_TRUE(sink::verdicts.empty());
+}
+
+TEST_F(MountTest, UnknownOptionOnADirectoryMountIsRefused)
+{
+	const auto result = Mount("C " + P("plain_dir") + " -bogus");
+
+	EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(MountTest, RepeatedOptionIsRefusedBeforeThePolicySeesAnyPath)
+{
+	sink::HookCapture capture;
+
+	const auto result = Mount("C " + P("image.img") +
+	                          " -t hdd -size 512,63,16,81 -size 512,63,16,81");
+
+	EXPECT_FALSE(result.has_value());
+	EXPECT_TRUE(sink::verdicts.empty());
+}
+
+TEST_F(MountTest, IdeFollowedByLabelKeepsBothOptions)
+{
+	const auto result = Mount("D " + P("image.iso") + " -ide -label GAME");
+
+	ASSERT_TRUE(result.has_value());
+	ASSERT_EQ(result->paths.size(), 1);
+	EXPECT_TRUE(result->is_ide);
+	EXPECT_EQ(result->label, "GAME");
+}
+
+TEST_F(MountTest, EveryKnownOptionTogetherLeavesOnlyThePath)
+{
+	// The guard against a future option that nobody consumes: it would
+	// fail here as a leftover instead of surfacing as a mount failure.
+	const auto result = Mount("C " + P("bootable.img") +
+	                          " -t hdd -fs fat -ro -label GAME -pr"
+	                          " -size 512,63,16,81 -freesize 10"
+	                          " -chs 100,16,63 -ide");
+
+	ASSERT_TRUE(result.has_value());
+	ASSERT_EQ(result->paths.size(), 1);
+	EXPECT_EQ(result->type, MountType::HardDiskImage);
+	EXPECT_EQ(result->fstype, MountFileSystemType::Fat16);
+	EXPECT_EQ(result->label, "GAME");
+	EXPECT_TRUE(result->roflag);
+	EXPECT_TRUE(result->is_ide);
+	EXPECT_EQ(result->sizes[3], 100);
+}
 
 } // namespace
