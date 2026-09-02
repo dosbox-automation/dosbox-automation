@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText:  2024-2025 The DOSBox Staging Team
+// SPDX-FileCopyrightText:  2026 dosbox-automation Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "host_locale.h"
@@ -90,6 +91,8 @@ static const std::unordered_map<std::string, KeyboardLayoutMaybeCodepage> WinToD
 	// Canadian (dual-layer, QWERTY)
 	{ "00000c0c", { "cf445" }      }, // Canadian French (Legacy)
 	{ "00011009", { "cf445" }      }, // Canadian Multilingual Standard
+	// Croatian (QWERTZ)
+	{ "0000041a", { "hr" }         }, // Croatian
 	// Czech (QWERTZ)
 	{ "00000405", { "cz" }         }, // Czech
 	// Czech (programmers, QWERTY)
@@ -225,7 +228,6 @@ static const std::unordered_map<std::string, KeyboardLayoutMaybeCodepage> WinToD
 	{ "0000046e", { "sf" }         }, // Luxembourgish
 	// Slovenian (QWERTZ)
 	{ "00000424", { "si" }         }, // Slovenian
-	{ "0000041a", { "si" }         }, // Standard
 	// Slovak (QWERTZ)
 	{ "0000041b", { "sk" }         }, // Slovak
 	// Albanian (deadkeys, QWERTZ)
