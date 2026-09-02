@@ -451,6 +451,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
 .au-screentext { margin: 0; padding: 16px; font-family: var(--font-mono); font-size: 13px; line-height: 1.45; color: var(--c-screen-fg); background: var(--c-screen-bg); border: 1px solid var(--color-accent-700); overflow: auto; max-width: 100%; max-height: 100%; white-space: pre; }
 .au-screenframe { width: 100%; height: 100%; min-height: 300px; background: #000 center/contain no-repeat; image-rendering: pixelated; border: 1px solid var(--color-accent-700); }
 .au-placeholder { font-size: 11px; color: var(--color-accent-500); }
+.au-caption { padding: 4px 14px; border-bottom: 1px solid var(--color-divider); font-size: 10px; color: var(--color-neutral-500); flex: none; }
 .au-luatoggle { padding: 2px 10px; border: 1px solid var(--color-accent-700); color: var(--color-accent-200); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
 .au-luatoggle:hover { background: var(--color-accent-800); }
 .au-lua { display: flex; flex-direction: column; height: 220px; flex: none; border-top: 1px solid var(--color-accent-700); }
@@ -739,6 +740,7 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
         <span id="au-stage-dot" class="au-dot big"></span>
         <span id="au-lua-toggle" class="au-luatoggle"></span>
       </div>
+      <div id="au-frame-caption" class="au-caption hidden"></div>
       <div class="au-stagearea">
         <pre id="au-screen-text" class="au-screentext hidden"></pre>
         <div id="au-screen-frame" class="au-screenframe hidden"></div>
@@ -938,7 +940,7 @@ class Workbench {
     setupOpen: false, gameDir: '$HOME/Games/keen4', gameExe: 'KEEN4E.EXE', autostart: true, cycles: '3000', cyclesProt: '60000', osKind: 'bash',
     exes: [], folderPicked: false, binPath: 'dosbox-automation', binNote: '',
     log: 'demo machine running - scan for a value you can see, e.g. health 100',
-    reqLog: '', latency: 0
+    reqLog: '', latency: 0, frameMs: 0
   };
 
   #renderQueued = false;
@@ -3144,7 +3146,9 @@ class Workbench {
       } catch (e) { this.setState({ reqLog: 'screen: ' + e.message }); }
     } else {
       try {
+        const t0 = performance.now();
         const b = await (await this.api('/api/v1/video/frame?format=png')).blob();
+        const frameMs = Math.round(performance.now() - t0);
         // Decode before swapping and revoke the old URL only after the
         // render applied the new one - a background-image swapped to an
         // undecoded blob paints empty for the decode gap (the flicker).
@@ -3153,7 +3157,7 @@ class Workbench {
         img.src = url;
         try { await img.decode(); } catch (e) {}
         const old = this.state.autoFrame;
-        this.setState({ autoFrame: url });
+        this.setState({ autoFrame: url, frameMs });
         if (old) setTimeout(() => URL.revokeObjectURL(old), 250);
       } catch (e) { this.setState({ reqLog: 'screen: ' + e.message }); }
     }
@@ -3196,6 +3200,10 @@ class Workbench {
     $('au-screen-text').classList.toggle('hidden', !showText);
     $('au-screen-frame').classList.toggle('hidden', !showFrame);
     $('au-screen-placeholder').classList.toggle('hidden', showText || showFrame);
+    // Viewers read the mirror as a video stream and ask why it stutters.
+    const showCaption = s.autoTab === 'frame' && this.live;
+    $('au-frame-caption').classList.toggle('hidden', !showCaption);
+    if (showCaption) $('au-frame-caption').textContent = 'Static screen preview: one frame every ' + s.pollMs + ' ms (last fetch ' + s.frameMs + ' ms), not a video feed. For smooth video use 02 - Capture video.';
     if (showText) $('au-screen-text').textContent = s.autoText;
     if (showFrame) $('au-screen-frame').style.backgroundImage = 'url("' + s.autoFrame + '")';
     $('au-screen-placeholder').textContent = s.autoTab === 'frame'
