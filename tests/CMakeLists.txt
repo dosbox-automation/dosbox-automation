@@ -53,6 +53,7 @@ add_executable(dosbox_tests
     webserver_cpu_write_tests.cpp
     webserver_frame_tap_tests.cpp
     multi_prefix_tests.cpp
+    zmbv_tests.cpp
 )
 
 # Disable some warnings for deliberately flawed test cases
@@ -74,6 +75,7 @@ target_link_libraries(dosbox_tests PRIVATE
     dosboxcommon
     lua
     SDL3::Headers
+    ${ZMBV_ZLIB_TARGET}
 )
 
 include(GoogleTest)

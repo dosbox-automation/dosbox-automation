@@ -470,6 +470,10 @@ static void create_avi_file(const uint16_t width, const uint16_t height,
 	if (!video.codec->SetupCompress(width, height, level)) {
 		return;
 	}
+	LOG_MSG("CAPTURE: ZMBV %s capture, deflate level %d, %s",
+	        is_rendered ? "rendered" : "raw",
+	        level,
+	        ZMBV_DeflateLibrary().c_str());
 
 	video.buf_size = video.codec->NeededSize(width, height, format);
 	video.buf.resize(video.buf_size);

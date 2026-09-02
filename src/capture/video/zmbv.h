@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText:  2002-2026 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #ifndef DOSBOX_ZMBV_H
 #define DOSBOX_ZMBV_H
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "dosbox_config.h"
@@ -18,6 +20,7 @@
 #define inflateInit zng_inflateInit
 #define inflateReset zng_inflateReset
 #define inflate zng_inflate
+#define inflateEnd zng_inflateEnd
 #define z_stream zng_stream
 #else
 #include <zlib.h>
@@ -136,5 +139,7 @@ public:
 };
 
 uint8_t ZMBV_ToBytesPerPixel(const ZMBV_FORMAT format);
+
+std::string ZMBV_DeflateLibrary();
 
 #endif

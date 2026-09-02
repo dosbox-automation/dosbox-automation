@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2002-2026 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "zmbv.h"
 
@@ -597,4 +598,14 @@ VideoCodec::VideoCodec()
 {
 	CreateVectorTable();
 	memset(&zstream, 0, sizeof(zstream));
+}
+
+std::string ZMBV_DeflateLibrary()
+{
+#if C_ZLIB_NG
+	return std::string("zlib-ng ") + zlibng_version();
+#else
+	// zlib-ng in compat mode reports itself here as "1.3.1.zlib-ng"
+	return std::string("zlib ") + zlibVersion();
+#endif
 }

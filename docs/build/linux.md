@@ -101,10 +101,22 @@ These are generic, distro-independent building instructions.
 - SDL3_image
 - asio
 - SpeexDSP
-- zlib
+- zlib (or zlib-ng, see below)
 
 Lua 5.5 is vendored in `vendor/lua` and built as part of dosbox-automation.
 No system Lua package is needed or used, in either build method.
+
+The ZMBV video capture encoder runs noticeably faster on zlib-ng. When
+the native zlib-ng development package is installed (it ships
+`zlib-ng.pc`), CMake links the encoder against it automatically and
+logs `zlib-ng` at the start of every capture; pass `-DOPT_ZLIB_NG=OFF`
+to stay on plain zlib. Without such a package, `-DOPT_FETCH_DEPS=ON`
+downloads zlib-ng 2.3.3 and builds it statically into the binary. That
+switch also builds SDL3, SDL3_image, iir1, mt32emu and FluidSynth from
+source when your distribution's versions are missing or too old, as an
+alternative to the local prefix described further down. Debian 13 does
+not package zlib-ng; Fedora and Arch do. The vcpkg build method gets
+zlib-ng regardless, through the overlay port in `vcpkg/ports/zlib`.
 
 Mind the SDL and FluidSynth versions: the code uses SDL functions
 introduced in 3.4.0 and FluidSynth functions introduced in 2.5, so older
@@ -132,10 +144,11 @@ not gospel:
 
 - Fedora: `gcc-c++ cmake ninja-build pkgconf-pkg-config alsa-lib-devel
   asio-devel fluidsynth-devel gtest-devel libpng-devel mesa-libGL-devel
-  opusfile-devel SDL3-devel SDL3_image-devel speexdsp-devel zlib-ng-devel`
+  opusfile-devel SDL3-devel SDL3_image-devel speexdsp-devel
+  zlib-ng-compat-devel zlib-ng-devel`
 - Arch: `base-devel cmake ninja pkgconf alsa-lib asio fluidsynth gtest
-  libpng opusfile sdl3 sdl3_image speexdsp zlib` (iir1 and mt32emu are on
-  the AUR)
+  libpng opusfile sdl3 sdl3_image speexdsp zlib zlib-ng` (iir1 and
+  mt32emu are on the AUR)
 - Gentoo: `dev-build/cmake dev-build/ninja media-libs/alsa-lib
   dev-cpp/asio media-sound/fluidsynth dev-cpp/gtest media-libs/libpng
   media-libs/opusfile media-libs/libsdl3 media-libs/sdl3-image

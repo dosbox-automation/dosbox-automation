@@ -2302,8 +2302,12 @@ source tree.
   libjpeg-turbo  JPEG codec (frame export)
                  License: IJG AND BSD-3-Clause AND Zlib
 
-  zlib-ng        Compression library, built in zlib-compat mode
-                 (replaces stock zlib via vcpkg overlay port)
+  zlib           Compression library (libpng, ZMBV capture)
+                 License: Zlib
+
+  zlib-ng        Faster deflate for the ZMBV capture encoder: vcpkg
+                 builds it in zlib-compat mode through the overlay
+                 port, system and fetched builds use its native API
                  License: Zlib
 
   Opusfile       Opus audio file decoder

@@ -384,7 +384,7 @@ endif()
 set(C_PER_PAGE_W_OR_X ON)
 
 option(OPT_FETCH_DEPS
-  "Download and build SDL3, SDL3_image, iir1, mt32emu, and FluidSynth from source when system versions are too old or missing"
+  "Download and build SDL3, SDL3_image, iir1, mt32emu, FluidSynth, and zlib-ng from source when system versions are too old or missing"
   OFF
 )
 
@@ -519,11 +519,53 @@ set(version      "${PROJECT_VERSION}")
 # PkgConfig is needed for speexdsp (no cmake config in vcpkg).
 find_package(PkgConfig REQUIRED)
 
-# Plain zlib for the ZMBV video codec. zlib-ng is not worth the extra
-# dependency here; ZMBV compression is not a bottleneck. C_ZLIB_NG stays
-# unset, so the upstream zmbv.h conditional resolves to the zlib API.
-find_package(ZLIB REQUIRED)
-set(ZMBV_ZLIB_TARGET ZLIB::ZLIB)
+# Deflate for the ZMBV video codec. zlib-ng roughly halves the encoder's
+# deflate share at rendered resolutions (ada-jrmb, measured 2026-09-01),
+# so every build method has a way to it:
+#   vcpkg   - the overlay port in vcpkg/ports/zlib builds zlib-ng in
+#             zlib-compat mode, so find_package(ZLIB) already returns it
+#   system  - a native zlib-ng package (zlib-ng.pc, zng_ API) is picked
+#             up here; a distro whose libz is zlib-ng-compat arrives
+#             through find_package(ZLIB) like stock zlib
+#   fetched - OPT_FETCH_DEPS builds zlib-ng from source, native and static
+# The native API keeps zlib-ng's symbols apart from the zlib that libpng
+# links, so both can live in one binary.
+option(OPT_ZLIB_NG
+  "Use native zlib-ng for ZMBV capture when a system package or OPT_FETCH_DEPS provides it"
+  ON
+)
+set(C_ZLIB_NG OFF)
+if (OPT_ZLIB_NG AND NOT VCPKG_TOOLCHAIN)
+  pkg_check_modules(ZLIB_NG QUIET IMPORTED_TARGET zlib-ng)
+  if (ZLIB_NG_FOUND)
+    set(C_ZLIB_NG ON)
+    set(ZMBV_ZLIB_TARGET PkgConfig::ZLIB_NG)
+    message(STATUS "ZMBV: using system zlib-ng ${ZLIB_NG_VERSION}")
+  elseif (OPT_FETCH_DEPS)
+    include(FetchContent)
+    message(STATUS "zlib-ng not found, fetching from source...")
+    # Plain variables override zlib-ng's option() calls (CMP0077) without
+    # leaking BUILD_TESTING or BUILD_SHARED_LIBS into the other fetches.
+    set(BUILD_TESTING OFF)
+    set(BUILD_SHARED_LIBS OFF)
+    set(ZLIB_COMPAT OFF)
+    set(ZLIB_ALIASES OFF)
+    FetchContent_Declare(zlib-ng
+      GIT_REPOSITORY https://github.com/zlib-ng/zlib-ng.git
+      GIT_TAG        2.3.3
+      GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(zlib-ng)
+    unset(BUILD_TESTING)
+    unset(BUILD_SHARED_LIBS)
+    set(C_ZLIB_NG ON)
+    set(ZMBV_ZLIB_TARGET zlib-ng)
+  endif()
+endif()
+if (NOT C_ZLIB_NG)
+  find_package(ZLIB REQUIRED)
+  set(ZMBV_ZLIB_TARGET ZLIB::ZLIB)
+endif()
 
 configure_file(
   src/dosbox_config.h.in.cmake
@@ -545,8 +587,8 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 # SDL3, SDL3_image, iir1, and FluidSynth can be fetched from source when
 # the system versions are too old or missing. Pass -DOPT_FETCH_DEPS=ON to
 # enable this. MT32Emu uses the same mechanism (see its OPT_MT32EMU block
-# above). Everything else (zlib, libpng, OpenGL, ALSA, SpeexDSP, GTest)
-# stays a system package requirement.
+# above) and zlib-ng (see the ZMBV block above). Everything else (libpng,
+# OpenGL, ALSA, SpeexDSP, GTest) stays a system package requirement.
 
 # 3.4.0 floor: upstream mapper code uses SDL_SetDefaultTextureScaleMode
 find_package(SDL3 3.4.0 QUIET CONFIG COMPONENTS SDL3)
