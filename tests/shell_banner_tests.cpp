@@ -33,11 +33,13 @@ std::vector<std::string> split_lines(const std::string& text)
 }
 
 std::string render_stripped_banner(const std::string& banner_markup,
-                                   const std::string& tag_markup)
+                                   const std::string& tag_markup,
+                                   const std::string& hint_markup)
 {
 	return format_str(strip_ansi_markup(banner_markup),
 	                  DOSBOX_GetDetailedVersion(),
-	                  strip_ansi_markup(tag_markup).c_str());
+	                  strip_ansi_markup(tag_markup).c_str(),
+	                  strip_ansi_markup(hint_markup).c_str());
 }
 
 // Minimal .po reader: returns the unescaped msgstr for a msgctxt, or an
@@ -118,19 +120,23 @@ void expect_lines_fit(const std::string& stripped_banner, const std::string& con
 TEST(ShellBanner, rendered_lines_fit_the_column_limit)
 {
 	expect_lines_fit(render_stripped_banner(ShellBannerFormat,
-	                                        ShellBannerWebserverEnabledTag),
+	                                        ShellBannerWebserverEnabledTag,
+	                                        ShellBannerWorkbenchHint),
 	                 "enabled");
 	expect_lines_fit(render_stripped_banner(ShellBannerFormat,
-	                                        ShellBannerWebserverDisabledTag),
+	                                        ShellBannerWebserverDisabledTag,
+	                                        ""),
 	                 "disabled");
 }
 
 TEST(ShellBanner, first_line_carries_version_and_webserver_state)
 {
 	const auto enabled  = render_stripped_banner(ShellBannerFormat,
-                                                    ShellBannerWebserverEnabledTag);
+                                                    ShellBannerWebserverEnabledTag,
+                                                    ShellBannerWorkbenchHint);
 	const auto disabled = render_stripped_banner(ShellBannerFormat,
-	                                             ShellBannerWebserverDisabledTag);
+	                                             ShellBannerWebserverDisabledTag,
+	                                             "");
 
 	const auto enabled_line1  = split_lines(enabled).at(0);
 	const auto disabled_line1 = split_lines(disabled).at(0);
@@ -144,7 +150,8 @@ TEST(ShellBanner, first_line_carries_version_and_webserver_state)
 TEST(ShellBanner, second_line_carries_url_and_command_hints)
 {
 	const auto banner = render_stripped_banner(ShellBannerFormat,
-	                                           ShellBannerWebserverEnabledTag);
+	                                           ShellBannerWebserverEnabledTag,
+	                                           ShellBannerWorkbenchHint);
 	const auto line2  = split_lines(banner).at(1);
 
 	EXPECT_NE(line2.find("https://www.dosbox-automation.org"), std::string::npos);
@@ -155,7 +162,8 @@ TEST(ShellBanner, second_line_carries_url_and_command_hints)
 TEST(ShellBanner, banner_ends_with_a_blank_line)
 {
 	const auto banner = render_stripped_banner(ShellBannerFormat,
-	                                           ShellBannerWebserverEnabledTag);
+	                                           ShellBannerWebserverEnabledTag,
+	                                           ShellBannerWorkbenchHint);
 	ASSERT_GE(banner.size(), 2u);
 	EXPECT_EQ(banner.substr(banner.size() - 2), "\n\n");
 }
@@ -181,10 +189,35 @@ TEST(ShellBanner, german_translation_fits_the_column_limit)
 	const auto disabled_tag = tag_or_default("SHELL_STARTUP_WEBSERVER_DISABLED",
 	                                         ShellBannerWebserverDisabledTag);
 
-	expect_lines_fit(render_stripped_banner(banner_de, enabled_tag),
+	const auto hint_de = tag_or_default("SHELL_STARTUP_WORKBENCH_HINT",
+	                                    ShellBannerWorkbenchHint);
+
+	expect_lines_fit(render_stripped_banner(banner_de, enabled_tag, hint_de),
 	                 "German enabled");
-	expect_lines_fit(render_stripped_banner(banner_de, disabled_tag),
+	expect_lines_fit(render_stripped_banner(banner_de, disabled_tag, ""),
 	                 "German disabled");
+}
+
+TEST(ShellBanner, workbench_hint_names_command_and_key_when_enabled)
+{
+	const auto banner = render_stripped_banner(ShellBannerFormat,
+	                                           ShellBannerWebserverEnabledTag,
+	                                           ShellBannerWorkbenchHint);
+	const auto lines  = split_lines(banner);
+	ASSERT_GE(lines.size(), 3u);
+	EXPECT_NE(lines.at(2).find("WORKBENCH"), std::string::npos);
+	EXPECT_NE(lines.at(2).find(PRIMARY_MOD_NAME "+" MMOD2_NAME "+W"), std::string::npos);
+}
+
+TEST(ShellBanner, no_hint_line_when_disabled)
+{
+	const auto banner = render_stripped_banner(ShellBannerFormat,
+	                                           ShellBannerWebserverDisabledTag,
+	                                           "");
+	const auto lines  = split_lines(banner);
+	// line 1, line 2, then the closing blank line
+	ASSERT_EQ(lines.size(), 3u);
+	EXPECT_TRUE(lines.at(2).empty());
 }
 
 } // namespace

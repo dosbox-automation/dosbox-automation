@@ -6,6 +6,7 @@
 #define DOSBOX_SHELL_BANNER_H
 
 #include "dosbox.h"
+#include "gui/mapper.h"
 
 // Compact two-line startup banner, replaces the old welcome box.
 // Shared between the shell message registration and the width tests;
@@ -14,7 +15,9 @@
 
 constexpr int ShellBannerMaxColumns = 78;
 
-// Format arguments: detailed version string, webserver status tag
+// Format arguments: detailed version string, webserver status tag,
+// workbench hint line (ShellBannerWorkbenchHint when the API is on,
+// "" when it is off).
 // [color=white] sets the ANSI bright attribute which [color=light-gray]
 // alone does not clear; every bright-to-dim transition needs a [reset].
 constexpr char ShellBannerFormat[] =
@@ -23,7 +26,13 @@ constexpr char ShellBannerFormat[] =
         "[color=white]https://www.dosbox-automation.org[reset][color=light-gray]"
         " - command list: [color=white]HELP[reset][color=light-gray],"
         " instructions: [color=white]MANUAL[reset]\n"
+        "%s"
         "\n";
+
+constexpr char ShellBannerWorkbenchHint[] =
+        "[color=light-gray]Cheat Workbench: type [color=white]WORKBENCH[reset]"
+        "[color=light-gray] or press [color=white]" PRIMARY_MOD_NAME
+        "+" MMOD2_NAME "+W[reset]\n";
 
 constexpr char ShellBannerWebserverEnabledTag[] = "[color=light-green][webserver enabled][reset]";
 

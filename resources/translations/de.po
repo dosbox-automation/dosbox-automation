@@ -12591,10 +12591,12 @@ msgctxt "SHELL_STARTUP_BANNER"
 msgid ""
 "[color=yellow]dosbox-automation [color=white]%s[reset] %s\n"
 "[color=white]https://www.dosbox-automation.org[reset][color=light-gray] - command list: [color=white]HELP[reset][color=light-gray], instructions: [color=white]MANUAL[reset]\n"
+"%s"
 "\n"
 msgstr ""
 "[color=yellow]dosbox-automation [color=white]%s[reset] %s\n"
 "[color=white]https://www.dosbox-automation.org[reset][color=light-gray] - Befehlsliste: [color=white]HELP[reset][color=light-gray], Handbuch: [color=white]MANUAL[reset]\n"
+"%s"
 "\n"
 
 #: src/shell/shell.cpp:703
@@ -12608,6 +12610,12 @@ msgstr "[color=light-green][Webserver aktiv][reset]"
 msgctxt "SHELL_STARTUP_WEBSERVER_DISABLED"
 msgid "[color=dark-gray][webserver disabled][reset]"
 msgstr "[color=dark-gray][Webserver inaktiv][reset]"
+
+#: src/shell/shell.cpp
+#, c-format, no-wrap
+msgctxt "SHELL_STARTUP_WORKBENCH_HINT"
+msgid "[color=light-gray]Cheat Workbench: type [color=white]WORKBENCH[reset][color=light-gray] or press [color=white]Ctrl+Alt+W[reset]\n"
+msgstr "[color=light-gray]Cheat Workbench: [color=white]WORKBENCH[reset][color=light-gray] eingeben oder [color=white]Strg+Alt+W[reset] drücken\n"
 
 #: src/shell/shell.cpp:706
 #, c-format, no-wrap
@@ -13654,6 +13662,92 @@ msgstr ""
 "Beispiele:\n"
 "  [color=light-green]path[reset]\n"
 "  [color=light-green]path[reset] [color=light-cyan]Z:\\;C:\\DOS[reset]\n"
+
+#: src/shell/shell.cpp
+#, c-format
+msgctxt "SHELL_CMD_WORKBENCH_HELP"
+msgid "Open the Cheat Workbench in the default browser.\n"
+msgstr "Die Cheat Workbench im Standardbrowser öffnen.\n"
+
+#: src/shell/shell.cpp
+#, c-format, no-wrap
+msgctxt "SHELL_CMD_WORKBENCH_HELP_LONG"
+msgid ""
+"Usage:\n"
+"  [color=light-green]workbench[reset]\n"
+"\n"
+"Notes:\n"
+"  - The Cheat Workbench is a page served by this emulator's web API.\n"
+"    A browser on this machine connects to it without a token prompt.\n"
+"\n"
+"  - Needs the web API: [color=white]webserver_enabled = true[reset] in the\n"
+"    [color=white][webserver][reset] section of the configuration.\n"
+"\n"
+"  - While a game runs, [color=white]Ctrl+Alt+W[reset] does the same.\n"
+msgstr ""
+"Verwendung:\n"
+"  [color=light-green]workbench[reset]\n"
+"\n"
+"Hinweise:\n"
+"  - Die Cheat Workbench ist eine Seite, die die Web-API dieses Emulators\n"
+"    ausliefert. Ein Browser auf diesem Rechner verbindet sich ohne Token-Abfrage.\n"
+"\n"
+"  - Benötigt die Web-API: [color=white]webserver_enabled = true[reset] im\n"
+"    Abschnitt [color=white][webserver][reset] der Konfiguration.\n"
+"\n"
+"  - Während ein Spiel läuft, tut [color=white]Strg+Alt+W[reset] dasselbe.\n"
+
+#: src/shell/shell.cpp
+#, c-format, no-wrap
+msgctxt "SHELL_CMD_WORKBENCH_OPENED"
+msgid ""
+"Opening the Cheat Workbench in your browser:\n"
+"  [color=white]%s[reset]\n"
+msgstr ""
+"Die Cheat Workbench wird im Browser geöffnet:\n"
+"  [color=white]%s[reset]\n"
+
+#: src/shell/shell.cpp
+#, c-format, no-wrap
+msgctxt "SHELL_CMD_WORKBENCH_ALREADY_OPEN"
+msgid ""
+"The Cheat Workbench is already open in your browser:\n"
+"  [color=white]%s[reset]\n"
+msgstr ""
+"Die Cheat Workbench ist bereits im Browser geöffnet:\n"
+"  [color=white]%s[reset]\n"
+
+#: src/shell/shell.cpp
+#, c-format, no-wrap
+msgctxt "SHELL_CMD_WORKBENCH_API_OFF"
+msgid ""
+"The web API is off, so there is no Cheat Workbench to open.\n"
+"Set [color=white]webserver_enabled = true[reset] in the [color=white][webserver][reset]\n"
+"section of your configuration and restart.\n"
+msgstr ""
+"Die Web-API ist aus, es gibt keine Cheat Workbench zum Öffnen.\n"
+"Setze [color=white]webserver_enabled = true[reset] im Abschnitt [color=white][webserver][reset]\n"
+"der Konfiguration und starte neu.\n"
+
+#: src/shell/shell.cpp
+#, c-format, no-wrap
+msgctxt "SHELL_CMD_WORKBENCH_BROWSER_FAILED"
+msgid ""
+"Could not start a browser. Open this address yourself:\n"
+"  [color=white]%s[reset]\n"
+msgstr ""
+"Es konnte kein Browser gestartet werden. Öffne diese Adresse selbst:\n"
+"  [color=white]%s[reset]\n"
+
+#: src/shell/shell.cpp
+#, c-format, no-wrap
+msgctxt "SHELL_CMD_WORKBENCH_TOKEN_PROMPT"
+msgid ""
+"The API is bound to a specific address, so the page will ask for the\n"
+"API token (see the emulator log or your launcher).\n"
+msgstr ""
+"Die API ist an eine bestimmte Adresse gebunden, daher fragt die Seite nach\n"
+"dem API-Token (siehe Emulator-Log oder Startskript).\n"
 
 #: src/shell/shell.cpp:1180
 #, c-format, no-wrap
