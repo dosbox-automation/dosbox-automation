@@ -687,6 +687,54 @@ def test_options_preflight_rejected(dosbox):
     assert r.status_code == 403
 
 
+def test_tool_page_embeds_token_for_loopback(dosbox):
+    import requests as req
+    token = dosbox.session.headers.get("Authorization", "").replace("Bearer ", "")
+    r = req.get(dosbox._url("/tools/cheat-workbench.html"),
+                headers={"Host": "127.0.0.1"}, timeout=dosbox.timeout)
+    assert r.status_code == 200
+    assert r.headers.get("Cache-Control") == "no-store"
+    assert r.headers.get("X-Content-Type-Options") == "nosniff"
+    assert "Access-Control-Allow-Origin" not in r.headers
+    assert r.text.count(token) == 1
+    injected = '<script>window.DOSBOX_API_TOKEN="' + token + '";</script>'
+    assert r.text.index(injected) < r.text.index("<title>")
+
+
+def test_old_workbench_path_redirects(dosbox):
+    import requests as req
+    r = req.get(dosbox._url("/cheat-workbench.html"),
+                headers={"Host": "127.0.0.1"}, timeout=dosbox.timeout,
+                allow_redirects=False)
+    assert r.status_code == 301
+    assert r.headers["Location"] == "/tools/cheat-workbench.html"
+
+
+def test_token_never_in_executable_static_files(dosbox):
+    import requests as req
+    token = dosbox.session.headers.get("Authorization", "").replace("Bearer ", "")
+    for path in ("/swagger-ui-bundle.js", "/openapi.json", "/index.html",
+                 "/api.html", "/style-index.css"):
+        r = req.get(dosbox._url(path), headers={"Host": "127.0.0.1"},
+                    timeout=dosbox.timeout)
+        assert r.status_code == 200, path
+        assert token not in r.text, path
+        assert token[:16] not in r.text, path
+
+
+def test_tool_page_prompt_mode_has_no_token(dosbox_e2e):
+    import requests as req
+    d = dosbox_e2e(extra_sets=["webserver_tool_token=prompt"]).client
+    token = d.session.headers.get("Authorization", "").replace("Bearer ", "")
+    r = req.get(d._url("/tools/cheat-workbench.html"),
+                headers={"Host": "127.0.0.1"}, timeout=d.timeout)
+    assert r.status_code == 200
+    assert token not in r.text
+    # the page's own reader mentions the global; the injected script line
+    # is what must be absent
+    assert '<script>window.DOSBOX_API_TOKEN=' not in r.text
+
+
 def test_event_array_size_cap(dosbox):
     giant = [{"type": "key", "key": "KBD_a", "pressed": True}] * 32001
     r = dosbox.input_sequence(giant)

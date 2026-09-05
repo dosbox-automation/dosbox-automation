@@ -27,6 +27,13 @@ webserver an attack surface by design. The short version:
 - Every API request needs a bearer token (64-char random hex, fresh per
   start, never fully logged, constant-time comparison). No default
   credential, no way to disable authentication.
+- Tool pages such as the Cheat Workbench receive the token written into
+  the HTML document itself, and only when the browser connects over
+  loopback; every other peer gets the page with an empty token field.
+  The token never appears in a script, JSON or other response a browser
+  could execute cross-origin, no CORS header is ever set, and the API
+  still demands the Authorization header on every call.
+  `webserver_tool_token = prompt` turns the delivery off.
 - The webserver binds to localhost only by default. Host header validation
   rejects DNS rebinding. No CORS headers are set, OPTIONS preflight is
   refused. Request bodies are capped.

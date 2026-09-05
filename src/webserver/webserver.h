@@ -8,7 +8,9 @@
 #include <charconv>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <string>
+#include <string_view>
 
 #include "http/http.h"
 #include "json/json.h"
@@ -80,5 +82,45 @@ void WEBSERVER_Init();
 void WEBSERVER_Destroy();
 void WEBSERVER_AddConfigSection(const ConfigPtr& conf);
 bool WEBSERVER_IsEnabled();
+
+struct WebserverEndpoint {
+	std::string bind_address = {};
+	int port                 = 0;
+};
+
+enum class WebserverToolLaunch { Opened, AlreadyOpen, ApiOff, BrowserFailed };
+
+// The one tool page so far: its route under /tools/ and the name the
+// page sends in X-DOSBox-Tool on every API call.
+constexpr std::string_view WorkbenchPage = "tools/cheat-workbench.html";
+constexpr std::string_view WorkbenchTool = "cheat-workbench";
+
+struct WebserverToolLaunchResult {
+	WebserverToolLaunch outcome = WebserverToolLaunch::ApiOff;
+	std::string url             = {};
+};
+
+// Empty while the web API is off.
+std::optional<WebserverEndpoint> WEBSERVER_GetEndpoint();
+
+// The URL a browser on this machine opens for a tool page. 0.0.0.0 and
+// :: become 127.0.0.1 so the peer is loopback and the token embedding
+// (ada-fb7c) fires; a specific address is used as bound.
+std::string WEBSERVER_ToolPageUrl(const WebserverEndpoint& endpoint,
+                                  std::string_view page);
+
+// False when the browser would reach the API over a non-loopback
+// address and the page will ask for the token.
+bool WEBSERVER_ToolPageIsLoopback(const WebserverEndpoint& endpoint);
+
+// AlreadyOpen when a page of that tool called the API within the last
+// five seconds from this machine; no second tab is opened.
+WebserverToolLaunchResult WEBSERVER_OpenToolPage(std::string_view page,
+                                                 std::string_view tool);
+
+// Mapper event "workbench", Ctrl+Alt+W by default (the Ctrl+F row is
+// taken by KDE and GNOME); registered whether or
+// not the API is on so the key is always in the mapper.
+void WEBSERVER_WorkbenchHotkey(bool pressed);
 
 #endif // DOSBOX_WEBSERVER_H

@@ -8,7 +8,7 @@ License: GPL-2.0-or-later. Contact: dosbox-automation-project@trinity2k.net
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cheat Workbench</title>
-<link rel="icon" href="favicon.ico">
+<link rel="icon" href="/favicon.ico">
 <style>
 :root {
   --color-bg: #f2f2f3;
@@ -452,6 +452,10 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
 .au-screenframe { width: 100%; height: 100%; min-height: 300px; background: #000 center/contain no-repeat; image-rendering: pixelated; border: 1px solid var(--color-accent-700); }
 .au-placeholder { font-size: 11px; color: var(--color-accent-500); }
 .au-caption { padding: 4px 14px; border-bottom: 1px solid var(--color-divider); font-size: 10px; color: var(--color-neutral-500); flex: none; }
+.au-prefs { display: flex; align-items: center; gap: 10px; padding: 4px 14px; border-bottom: 1px solid var(--color-divider); font-size: 10px; color: var(--color-neutral-500); flex: none; flex-wrap: wrap; }
+.au-prefs .au-modes { display: inline-flex; }
+.au-prefs .au-mode { flex: none; padding: 2px 8px; }
+.au-prefs .au-modes.off .au-mode { opacity: .4; cursor: default; }
 .au-luatoggle { padding: 2px 10px; border: 1px solid var(--color-accent-700); color: var(--color-accent-200); cursor: pointer; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
 .au-luatoggle:hover { background: var(--color-accent-800); }
 .au-lua { display: flex; flex-direction: column; height: 220px; flex: none; border-top: 1px solid var(--color-accent-700); }
@@ -741,6 +745,11 @@ body[data-mode="automate"] .main > .mode-automate { display: flex; }
         <span id="au-lua-toggle" class="au-luatoggle"></span>
       </div>
       <div id="au-frame-caption" class="au-caption hidden"></div>
+      <div id="au-frame-prefs" class="au-prefs hidden">
+        <span>source</span><span id="au-pv-src" class="au-modes"></span>
+        <span>format</span><span id="au-pv-fmt" class="au-modes"></span>
+        <span>quality</span><span id="au-pv-q" class="au-modes"></span>
+      </div>
       <div class="au-stagearea">
         <pre id="au-screen-text" class="au-screentext hidden"></pre>
         <div id="au-screen-frame" class="au-screenframe hidden"></div>
@@ -917,7 +926,7 @@ class Workbench {
   static FPS = 70;
 
   state = {
-    host: '', token: '', connected: false, mode: 'demo', statusText: 'DEMO', uiMode: 'cheat',
+    host: '', token: '', tokenSource: '', connected: false, mode: 'demo', statusText: 'DEMO', uiMode: 'cheat',
     mcb: null, regsData: null, statusData: null, ports: null, psp: null, portsOpen: true, portAdd: '', customPorts: [],
     portSets: {}, portSetName: '', portSetSel: '',
     findStr: '', findLen: 0, findMatches: [], findIdx: -1, writeLog: [], dumpOpen: false,
@@ -931,6 +940,7 @@ class Workbench {
     luaOpen: false, luaSrc: '-- runs inside dosbox-automation\nlocal hp = memory.read_u8(0x1A4C0)\nprint("health", hp)', luaOut: '',
     mixer: { master: 80, sb: 70, fm: 60, speaker: 50 }, capVideo: false, capAudio: false,
     pollMs: 500, polling: true,
+    pvSrc: 'native', pvFmt: 'png', pvQ: 90,
     scanValue: '100', width: 1, compare: 'exact', signed: false,
     rangeStart: '0x00000', rangeEnd: '0x100000',
     passes: [], results: [], selected: [], anchor: -1, scanning: false,
@@ -971,6 +981,25 @@ class Workbench {
     this.renderCtx(); this.renderSetup();
   }
 
+  // Token delivery, in precedence order: the engine wrote it into this
+  // page for a loopback browser; the launcher put it in the URL fragment;
+  // the browser remembered it; the user pastes it.
+  applyDeliveredToken(sameOrigin) {
+    let delivered = null, deliveredBy = '';
+    const m = /^#token=([0-9a-f]{64})$/i.exec(location.hash || '');
+    if (m) {
+      delivered = m[1]; deliveredBy = 'link';
+      history.replaceState(null, '', location.pathname + location.search);
+    } else if (typeof window.DOSBOX_API_TOKEN === 'string' && /^[0-9a-f]{64}$/i.test(window.DOSBOX_API_TOKEN)) {
+      delivered = window.DOSBOX_API_TOKEN; deliveredBy = 'page';
+    }
+    if (!delivered) return;
+    if (this.state.connected) this.onConnect();
+    this.setState({ token: delivered, tokenSource: deliveredBy });
+    try { localStorage.setItem('cw-token', delivered); } catch (e) {}
+    if (sameOrigin) setTimeout(() => this.onConnect(), 0);
+  }
+
   init() {
     const sameOrigin = /^https?:$/.test(location.protocol);
     this.setState({ host: sameOrigin ? location.origin : 'http://127.0.0.1:8386' });
@@ -981,7 +1010,19 @@ class Workbench {
     window.addEventListener('keydown', (e) => this.onKey(e));
     try { this.setState({ portSets: JSON.parse(localStorage.getItem('cw-port-sets') || '{}') }); } catch (e) {}
     try { const t = localStorage.getItem('cw-token'); if (t) this.setState({ token: t }); } catch (e) {}
+    this.applyDeliveredToken(sameOrigin);
+    // a launcher link pasted into a tab that already shows the page only
+    // changes the hash, and the browser does not reload for that
+    window.addEventListener('hashchange', () => this.applyDeliveredToken(sameOrigin));
     try { this.setState({ bmSets: JSON.parse(localStorage.getItem('cw-bm-sets') || '{}') }); } catch (e) {}
+    try {
+      const pv = JSON.parse(localStorage.getItem('cw-preview') || '{}');
+      const upd = {};
+      if (pv.src === 'native' || pv.src === 'rendered') upd.pvSrc = pv.src;
+      if (pv.fmt === 'png' || pv.fmt === 'jpeg') upd.pvFmt = pv.fmt;
+      if ([80, 85, 90, 95].includes(pv.q)) upd.pvQ = pv.q;
+      this.setState(upd);
+    } catch (e) {}
     this.hexRowCount = 16;
     this.hexPaneEl = $('hx-pane');
     this.ramTop = 0x100000; this.ramMcbs = null; this.ramConvKB = 640;
@@ -1105,7 +1146,8 @@ class Workbench {
   get live() { return this.state.mode === 'live' && this.state.connected; }
   async api(path, opts = {}) {
     const t0 = performance.now();
-    const h = Object.assign({ Authorization: 'Bearer ' + this.state.token }, opts.headers || {});
+    // the tool name lets the engine tell a live page from none (WORKBENCH and the hotkey)
+    const h = Object.assign({ Authorization: 'Bearer ' + this.state.token, 'X-DOSBox-Tool': 'cheat-workbench' }, opts.headers || {});
     const res = await fetch(this.state.host.replace(/\/$/, '') + path, Object.assign({}, opts, { headers: h }));
     // request lines go to their own footer channel so action feedback survives polling
     this.setState({ latency: Math.round(performance.now() - t0), reqLog: (opts.method || 'GET') + ' ' + path + ' → ' + res.status });
@@ -1142,7 +1184,8 @@ class Workbench {
       ));
       return;
     }
-    this.setState({ mode: 'live', statusText: 'CONNECTING…' });
+    const src = this.state.tokenSource;
+    this.setState({ mode: 'live', statusText: 'CONNECTING…' + (src ? ' (token from ' + src + ')' : '') });
     try {
       const info = await (await this.api('/api/v1/dosbox/info')).json();
       // Prefill the setup's binary path from the running instance: appimage
@@ -3147,7 +3190,7 @@ class Workbench {
     } else {
       try {
         const t0 = performance.now();
-        const b = await (await this.api('/api/v1/video/frame?format=png')).blob();
+        const b = await (await this.api('/api/v1/video/frame?' + this.previewQuery())).blob();
         const frameMs = Math.round(performance.now() - t0);
         // Decode before swapping and revoke the old URL only after the
         // render applied the new one - a background-image swapped to an
@@ -3163,10 +3206,34 @@ class Workbench {
     }
   }
 
+  previewQuery() {
+    const s = this.state;
+    const q = s.pvFmt === 'jpeg' ? 'format=jpeg&quality=' + s.pvQ : 'format=png';
+    return q + '&mode=' + (s.pvSrc === 'rendered' ? 'rendered' : 'raw');
+  }
+  setPreviewPref(upd) {
+    // A rendered PNG frame costs about 30 ms to encode at window size.
+    if (upd.pvSrc === 'rendered' && this.state.pvFmt === 'png' && this.state.pvSrc !== 'rendered') {
+      upd.pvFmt = 'jpeg';
+      this.setState({ log: 'rendered preview switched to JPEG (PNG at window size is ~30 ms a frame)' });
+    }
+    this.setState(upd);
+    const s = this.state;
+    try { localStorage.setItem('cw-preview', JSON.stringify({ src: s.pvSrc, fmt: s.pvFmt, q: s.pvQ })); } catch (e) {}
+    setTimeout(() => this.refreshScreen(), 20);
+  }
   buildStageStatic() {
     const tab = (id) => () => { this.setState({ autoTab: id }); setTimeout(() => this.refreshScreen(), 20); };
     $('au-tab-text').addEventListener('click', tab('text'));
     $('au-tab-frame').addEventListener('click', tab('frame'));
+    const prefRow = (elId, key, opts) => {
+      $(elId).replaceChildren(...opts.map(([id, label]) =>
+        el('span', { class: 'au-mode', 'data-id': String(id), text: label,
+          onclick: () => this.setPreviewPref({ [key]: id }) })));
+    };
+    prefRow('au-pv-src', 'pvSrc', [['native', 'native (browser scales)'], ['rendered', 'rendered (post-shader)']]);
+    prefRow('au-pv-fmt', 'pvFmt', [['png', 'PNG lossless'], ['jpeg', 'JPEG']]);
+    prefRow('au-pv-q', 'pvQ', [[80, '80'], [85, '85'], [90, '90'], [95, '95']]);
     $('au-lua-toggle').addEventListener('click', () => this.setState({ luaOpen: !this.state.luaOpen }));
     $('au-lua-src').addEventListener('input', (e) => this.setState({ luaSrc: e.target.value }));
     $('au-lua-run').addEventListener('click', async () => {
@@ -3203,7 +3270,12 @@ class Workbench {
     // Viewers read the mirror as a video stream and ask why it stutters.
     const showCaption = s.autoTab === 'frame' && this.live;
     $('au-frame-caption').classList.toggle('hidden', !showCaption);
-    if (showCaption) $('au-frame-caption').textContent = 'Static screen preview: one frame every ' + s.pollMs + ' ms (last fetch ' + s.frameMs + ' ms), not a video feed. For smooth video use 02 - Capture video.';
+    if (showCaption) $('au-frame-caption').textContent = 'Static screen preview: ' + s.pvSrc + ' frame as ' + (s.pvFmt === 'jpeg' ? 'JPEG q' + s.pvQ : 'PNG') + ', one every ' + s.pollMs + ' ms (last fetch ' + s.frameMs + ' ms), not a video feed. For smooth video use 02 - Capture video.';
+    $('au-frame-prefs').classList.toggle('hidden', s.autoTab !== 'frame');
+    for (const [row, val] of [['au-pv-src', s.pvSrc], ['au-pv-fmt', s.pvFmt], ['au-pv-q', s.pvQ]]) {
+      for (const n of $(row).children) n.classList.toggle('active', n.dataset.id === String(val));
+    }
+    $('au-pv-q').classList.toggle('off', s.pvFmt !== 'jpeg');
     if (showText) $('au-screen-text').textContent = s.autoText;
     if (showFrame) $('au-screen-frame').style.backgroundImage = 'url("' + s.autoFrame + '")';
     $('au-screen-placeholder').textContent = s.autoTab === 'frame'
@@ -3334,6 +3406,8 @@ class Workbench {
       'cd "$(dirname "$0")"',
       'export DOSBOX_API_TOKEN="$(openssl rand -hex 32)"',
       'echo "API token: $DOSBOX_API_TOKEN"',
+      'echo "Cheat Workbench (this machine): http://127.0.0.1:8386/tools/cheat-workbench.html"',
+      'echo "Link for a browser elsewhere:   http://127.0.0.1:8386/tools/cheat-workbench.html#token=$DOSBOX_API_TOKEN"',
       '# emulator binary - from the running instance when connected, else assumes PATH / probes below',
       'DBA="' + s.binPath + '"',
       'if ! command -v "$DBA" >/dev/null 2>&1 && ! [ -x "$DBA" ]; then',
@@ -3353,6 +3427,8 @@ class Workbench {
       'rem start dosbox-automation with a known API token (set your own 64-hex value)',
       'set DOSBOX_API_TOKEN=replace-with-64-hex-chars',
       'echo API token: %DOSBOX_API_TOKEN%',
+      'echo Cheat Workbench (this machine): http://127.0.0.1:8386/tools/cheat-workbench.html',
+      'echo Link for a browser elsewhere:   http://127.0.0.1:8386/tools/cheat-workbench.html#token=%DOSBOX_API_TOKEN%',
       'rem resolve the emulator binary (autodetected in the Workbench setup)',
       'set DBA=' + s.binPath,
       'if not exist "%DBA%" if exist "dosbox-automation.exe" set DBA=dosbox-automation.exe',

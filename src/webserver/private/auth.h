@@ -5,6 +5,7 @@
 #ifndef DOSBOX_WEBSERVER_AUTH_H
 #define DOSBOX_WEBSERVER_AUTH_H
 
+#include <cctype>
 #include <cstdint>
 #include <string>
 
@@ -23,6 +24,21 @@ inline bool ConstantTimeEquals(const std::string& a, const std::string& b)
 		diff |= static_cast<uint8_t>(a[i]) ^ static_cast<uint8_t>(b[i]);
 	}
 	return diff == 0;
+}
+
+// 64 lowercase or uppercase hex characters, the only shape a token
+// takes on any channel.
+inline bool IsValidHexToken(const std::string& s)
+{
+	if (s.size() != 64) {
+		return false;
+	}
+	for (const char c : s) {
+		if (!std::isxdigit(static_cast<unsigned char>(c))) {
+			return false;
+		}
+	}
+	return true;
 }
 
 } // namespace Webserver

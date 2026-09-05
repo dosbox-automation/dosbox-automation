@@ -6,30 +6,34 @@
 #include "bridge.h"
 #include "capture.h"
 #include "control.h"
-#include "mixer.h"
 #include "drive.h"
 #include "input.h"
+#include "mixer.h"
 #include "private/auth.h"
 #include "private/cpu.h"
 #include "private/dos.h"
-#include "private/shutdown.h"
 #include "private/freeze.h"
 #include "private/io_port.h"
 #include "private/memory.h"
+#include "private/shutdown.h"
+#include "private/tools.h"
 #include "video.h"
 
 #include "lua/lua_bridge_commands.h"
 
 #include "dos/programs/mount_policy.h"
+#include "gui/mapper.h"
 #include "gui/osd/osd.h"
 #include "gui/osd/osd_port.h"
 
 #include <cctype>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -43,10 +47,10 @@
 #include "http/http.h"
 #include "json/json.h"
 
+#include "augra/log.h"
 #include "config/config.h"
 #include "dosbox.h"
 #include "misc/cross.h"
-#include "augra/log.h"
 #include "misc/logging.h"
 #include "misc/support.h"
 
@@ -108,6 +112,7 @@ bool IsPublicDocPath(const std::string& method, const std::string& path)
 	        "/swagger-ui.css",
 	        "/swagger-ui-bundle.js",
 	        "/cheat-workbench.html",
+	        "/tools/cheat-workbench.html",
 	        "/favicon.ico",
 	};
 	return public_paths.count(path) > 0;
@@ -180,8 +185,10 @@ static void setup_api_handlers()
 	server.Post("/api/v1/capture/video/start", CaptureStartCommand::Post);
 	server.Post("/api/v1/capture/video/stop", CaptureStopCommand::Post);
 	server.Get("/api/v1/capture/video/status", CaptureStatusCommand::Get);
-	server.Get("/api/v1/capture/video/compression", CaptureCompressionGetCommand::Get);
-	server.Put("/api/v1/capture/video/compression", CaptureCompressionSetCommand::Put);
+	server.Get("/api/v1/capture/video/compression",
+	           CaptureCompressionGetCommand::Get);
+	server.Put("/api/v1/capture/video/compression",
+	           CaptureCompressionSetCommand::Put);
 
 	server.Post("/api/v1/capture/audio/start", AudioCaptureStartCommand::Post);
 	server.Post("/api/v1/capture/audio/stop", AudioCaptureStopCommand::Post);
@@ -266,7 +273,8 @@ static bool write_token_file(const std::string& token)
 	std::error_code ec;
 	fs::create_directories(dir, ec);
 	if (ec) {
-		augra::log_warn("webserver", "cannot create token dir '%s': %s",
+		augra::log_warn("webserver",
+		                "cannot create token dir '%s': %s",
 		                dir.string().c_str(),
 		                ec.message().c_str());
 		return false;
@@ -277,7 +285,8 @@ static bool write_token_file(const std::string& token)
 	{
 		auto out = std::ofstream(tmp, std::ios::binary | std::ios::trunc);
 		if (!out.is_open()) {
-			augra::log_warn("webserver", "cannot write token file '%s'",
+			augra::log_warn("webserver",
+			                "cannot write token file '%s'",
 			                tmp.string().c_str());
 			return false;
 		}
@@ -287,7 +296,8 @@ static bool write_token_file(const std::string& token)
 #if !defined(WIN32)
 	fs::permissions(tmp, fs::perms::owner_read | fs::perms::owner_write, ec);
 	if (ec) {
-		augra::log_warn("webserver", "cannot set permissions on '%s'",
+		augra::log_warn("webserver",
+		                "cannot set permissions on '%s'",
 		                tmp.string().c_str());
 		fs::remove(tmp, ec);
 		return false;
@@ -296,7 +306,8 @@ static bool write_token_file(const std::string& token)
 
 	fs::rename(tmp, path, ec);
 	if (ec) {
-		augra::log_warn("webserver", "cannot rename token file: %s",
+		augra::log_warn("webserver",
+		                "cannot rename token file: %s",
 		                ec.message().c_str());
 		fs::remove(tmp, ec);
 		return false;
@@ -314,19 +325,6 @@ static void remove_token_file()
 	std::error_code ec;
 	std::filesystem::remove(token_file_path, ec);
 	token_file_path.clear();
-}
-
-static bool is_valid_hex_token(const std::string& s)
-{
-	if (s.size() != 64) {
-		return false;
-	}
-	for (const char c : s) {
-		if (!std::isxdigit(static_cast<unsigned char>(c))) {
-			return false;
-		}
-	}
-	return true;
 }
 
 static std::string extract_bearer_token(const std::string& auth_header)
@@ -367,7 +365,8 @@ static void setup_security(const std::string& addr, int port,
 		const auto host = strip_port(req.get_header_value("Host"));
 
 		if (allowed_hosts.find(host) == allowed_hosts.end()) {
-			augra::log_warn("webserver", "rejected request with Host header '%s'",
+			augra::log_warn("webserver",
+			                "rejected request with Host header '%s'",
 			                req.get_header_value("Host").c_str());
 			res.status = httplib::StatusCode::Forbidden_403;
 			res.set_content("Forbidden", "text/plain");
@@ -384,10 +383,16 @@ static void setup_security(const std::string& addr, int port,
 		        req.get_header_value("Authorization"));
 
 		if (!ConstantTimeEquals(token, api_token)) {
-			augra::log_warn("webserver", "rejected request with invalid token");
+			augra::log_warn("webserver",
+			                "rejected request with invalid token");
 			res.status = httplib::StatusCode::Unauthorized_401;
 			res.set_content("Unauthorized", "text/plain");
 			return httplib::Server::HandlerResponse::Handled;
+		}
+
+		if (IsLoopbackPeer(req.remote_addr)) {
+			NoteToolPageSeen(req.get_header_value("X-DOSBox-Tool"),
+			                 std::chrono::steady_clock::now());
 		}
 
 		return httplib::Server::HandlerResponse::Unhandled;
@@ -404,8 +409,60 @@ static void setup_security(const std::string& addr, int port,
 	server.set_payload_max_length(10 * 1024 * 1024);
 }
 
+// Tool pages live outside the static mounts because httplib serves a
+// mounted file before any registered handler runs; a mount would hand
+// out the un-injected page. Loaded once: the page does not change while
+// the engine runs.
+static void setup_tool_pages(const std::string& api_token, const bool embed_token)
+{
+	const auto page_path = get_resource_path("webserver-tools") /
+	                       "cheat-workbench.html";
+	std::string page;
+	{
+		auto in = std::ifstream(page_path, std::ios::binary);
+		if (!in) {
+			augra::log_warn("webserver",
+			                "tool page missing: %s",
+			                page_path.string().c_str());
+		} else {
+			page.assign(std::istreambuf_iterator<char>(in), {});
+		}
+	}
+
+	server.Get("/tools/cheat-workbench.html",
+	           [page, api_token, embed_token](const httplib::Request& req,
+	                                          httplib::Response& res) {
+		           if (page.empty()) {
+			           res.status = httplib::StatusCode::NotFound_404;
+			           res.set_content("tool page not installed",
+			                           "text/plain");
+			           return;
+		           }
+		           res.set_header("Cache-Control", "no-store");
+		           if (embed_token && IsLoopbackPeer(req.remote_addr)) {
+			           if (const auto injected = InjectToken(page, api_token)) {
+				           res.set_content(*injected,
+				                           "text/html; charset=utf-8");
+				           return;
+			           }
+			           augra::log_warn("webserver",
+			                           "tool page has no <head>, serving "
+			                           "it without the token");
+		           }
+		           res.set_content(page, "text/html; charset=utf-8");
+	           });
+
+	// The pre-0.85.1 address; bookmarks and the primer point at it.
+	server.Get("/cheat-workbench.html",
+	           [](const httplib::Request&, httplib::Response& res) {
+		           res.set_redirect("/tools/cheat-workbench.html",
+		                            httplib::StatusCode::MovedPermanently_301);
+	           });
+}
+
 static void run(const std::string addr, const int port,
-                const std::string resource_home, const bool use_token_file)
+                const std::string resource_home, const bool use_token_file,
+                const bool embed_tool_token)
 {
 	const auto config_home = (get_config_dir() / DefaultWebserverDir).string();
 
@@ -417,7 +474,7 @@ static void run(const std::string addr, const int port,
 	const char* env_token = std::getenv("DOSBOX_API_TOKEN");
 	if (env_token) {
 		std::string candidate(env_token);
-		if (is_valid_hex_token(candidate)) {
+		if (IsValidHexToken(candidate)) {
 			api_token      = std::move(candidate);
 			token_from_env = true;
 		} else {
@@ -435,6 +492,7 @@ static void run(const std::string addr, const int port,
 	server.set_mount_point("/", resource_home);
 
 	setup_api_handlers();
+	setup_tool_pages(api_token, embed_tool_token);
 	setup_security(addr, port, api_token);
 
 	server.set_exception_handler(error_handler);
@@ -442,19 +500,20 @@ static void run(const std::string addr, const int port,
 	server.Get("/api/v1/dosbox/info",
 	           [](const httplib::Request&, httplib::Response& res) {
 		           json j;
-		           j["version"] = DOSBOX_GetDetailedVersion();
+		           j["version"]  = DOSBOX_GetDetailedVersion();
 		           j["features"] = {
-		                   {"memory", true},
-		                   {"input", true},
-		                   {"cpu_registers", true},
-		                   {"cpu_control", true},
-		                   {"port_io", true},
-		                   {"freeze", true},
-		                   {"debugger", false},
+		                   {       "memory",  true},
+		                   {        "input",  true},
+		                   {"cpu_registers",  true},
+		                   {  "cpu_control",  true},
+		                   {      "port_io",  true},
+		                   {       "freeze",  true},
+		                   {     "debugger", false},
 		           };
-		           // For AppImage runs the executable path points into the
-		           // transient squashfs mount; $APPIMAGE is the relaunchable
-		           // file. Launcher generators prefer appimage over binary.
+		           // For AppImage runs the executable path points into
+		           // the transient squashfs mount; $APPIMAGE is the
+		           // relaunchable file. Launcher generators prefer
+		           // appimage over binary.
 		           j["binary"] = get_executable_file().string();
 		           const char* appimage = std::getenv("APPIMAGE");
 		           j["appimage"] = appimage ? json(appimage) : json(nullptr);
@@ -465,10 +524,13 @@ static void run(const std::string addr, const int port,
 	// can read it without scraping stderr.
 	if (use_token_file && !token_from_env) {
 		if (write_token_file(api_token)) {
-			augra::log_info("webserver", "token written to %s",
+			augra::log_info("webserver",
+			                "token written to %s",
 			                token_file_path.string().c_str());
 		} else {
-			augra::log_info("webserver", "API token: %.8s...", api_token.c_str());
+			augra::log_info("webserver",
+			                "API token: %.8s...",
+			                api_token.c_str());
 		}
 	} else if (token_from_env) {
 		augra::log_info("webserver", "using API token from DOSBOX_API_TOKEN");
@@ -476,13 +538,17 @@ static void run(const std::string addr, const int port,
 		augra::log_info("webserver", "API token: %.8s...", api_token.c_str());
 	}
 
-	augra::log_info("webserver", "starting HTTP REST API on http://%s:%d",
+	augra::log_info("webserver",
+	                "starting HTTP REST API on http://%s:%d",
 	                addr.c_str(),
 	                port);
 
 	auto ok = server.listen(addr, port);
 	if (!ok) {
-		augra::log_warn("webserver", "failed to bind to %s:%d", addr.c_str(), port);
+		augra::log_warn("webserver",
+		                "failed to bind to %s:%d",
+		                addr.c_str(),
+		                port);
 	}
 }
 
@@ -524,6 +590,17 @@ static void init_config_settings(SectionProp& section)
 	        "can read the token from this file instead of scraping log output.\n"
 	        "Has no effect when DOSBOX_API_TOKEN is set via environment variable.");
 
+	auto tool_token = section.AddString("webserver_tool_token", OnlyAtStart, "embed");
+	tool_token->SetValues({"embed", "prompt"});
+	tool_token->SetHelp(
+	        "How a tool page served by this instance, such as the Cheat Workbench,\n"
+	        "obtains the API token ('embed' by default):\n"
+	        "  embed:   Write the token into the page for a browser on this machine\n"
+	        "           (loopback connections only). Other peers get the page without it.\n"
+	        "  prompt:  Leave the token field for pasting.\n"
+	        "Never affects the API itself, which requires the Authorization header\n"
+	        "on every request.");
+
 	auto osd = section.AddBool("webserver_osd", OnlyAtStart, true);
 	osd->SetHelp(
 	        "Show on-screen indicators while automation is driving the machine\n"
@@ -557,7 +634,8 @@ static void init_config_settings(SectionProp& section)
 
 } // namespace Webserver
 
-static bool is_webserver_enabled = false;
+static bool is_webserver_enabled                 = false;
+static std::optional<WebserverEndpoint> endpoint = {};
 
 static bool is_remote_address(const std::string& addr)
 {
@@ -566,6 +644,12 @@ static bool is_remote_address(const std::string& addr)
 
 void WEBSERVER_Init()
 {
+	MAPPER_AddHandler(WEBSERVER_WorkbenchHotkey,
+	                  SDL_SCANCODE_W,
+	                  PRIMARY_MOD | MMOD2,
+	                  "workbench",
+	                  "Workbench");
+
 	MountPolicy::InitPolicyConfig(get_primary_config_path());
 
 	auto section = get_section("webserver");
@@ -589,6 +673,8 @@ void WEBSERVER_Init()
 		}
 
 		is_webserver_enabled = true;
+		const auto port      = section->GetInt("webserver_port");
+		endpoint             = WebserverEndpoint{addr, port};
 
 		// Runs before AUTOEXEC_Init, so autoexec MOUNT and BOOT are
 		// covered by the whitelist from the first line onwards.
@@ -601,13 +687,20 @@ void WEBSERVER_Init()
 		// automation surface, so it comes and goes with it
 		OSDPORT_Init();
 
-		const auto port = section->GetInt("webserver_port");
 		const auto resource_home = get_resource_path("webserver").string();
 		const auto use_token_file = section->GetBool("webserver_token_file");
+		const bool embed_tool_token = section->GetString(
+		                                      "webserver_tool_token") ==
+		                              "embed";
 
 		Webserver::InputRecording::InstallHooks();
 
-		std::thread thread(Webserver::run, addr, port, resource_home, use_token_file);
+		std::thread thread(Webserver::run,
+		                   addr,
+		                   port,
+		                   resource_home,
+		                   use_token_file,
+		                   embed_tool_token);
 
 		thread.detach();
 	}
@@ -632,4 +725,9 @@ void WEBSERVER_AddConfigSection(const ConfigPtr& conf)
 bool WEBSERVER_IsEnabled()
 {
 	return is_webserver_enabled;
+}
+
+std::optional<WebserverEndpoint> WEBSERVER_GetEndpoint()
+{
+	return endpoint;
 }

@@ -11,6 +11,8 @@ target_sources(dosboxcommon PRIVATE
   io_port.cpp
   memory.cpp
   mixer.cpp
+  tool_launch.cpp
+  tools.cpp
   video.cpp
   webserver.cpp)
 
