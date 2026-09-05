@@ -1148,11 +1148,61 @@ class Workbench {
     const t0 = performance.now();
     // the tool name lets the engine tell a live page from none (WORKBENCH and the hotkey)
     const h = Object.assign({ Authorization: 'Bearer ' + this.state.token, 'X-DOSBox-Tool': 'cheat-workbench' }, opts.headers || {});
-    const res = await fetch(this.state.host.replace(/\/$/, '') + path, Object.assign({}, opts, { headers: h }));
+    let res;
+    try {
+      res = await fetch(this.state.host.replace(/\/$/, '') + path, Object.assign({}, opts, { headers: h }));
+    } catch (e) {
+      this.onEngineGone(e);
+      throw e;
+    }
+    this.failStreak = 0;
     // request lines go to their own footer channel so action feedback survives polling
     this.setState({ latency: Math.round(performance.now() - t0), reqLog: (opts.method || 'GET') + ' ' + path + ' → ' + res.status });
+    if (res.status === 401 && this.state.connected) this.onTokenRejected();
     if (!res.ok) throw new Error(path + ' → HTTP ' + res.status);
     return res;
+  }
+  // A refused token while connected means the engine was restarted with a
+  // new one (or the field holds a stale value). Drop to demo so the polls
+  // stop, and when this page got its token from the engine, reload once:
+  // the new engine writes the new token into the page. The timestamp
+  // keeps a wrong token in prompt mode from reloading in a loop.
+  onTokenRejected() {
+    this.setState({ connected: false, mode: 'demo', statusText: 'TOKEN REJECTED - DEMO', log: 'the engine refused the token; it was probably restarted' });
+    if (this.state.tokenSource !== 'page') return;
+    let last = 0;
+    try { last = Number(sessionStorage.getItem('cw-401-reload') || 0); } catch (e) {}
+    if (Date.now() - last < 10000) return;
+    try { sessionStorage.setItem('cw-401-reload', String(Date.now())); } catch (e) {}
+    location.reload();
+  }
+  // Three failed fetches in a row while connected: the engine is gone.
+  // Keep knocking every two seconds; a restarted engine answers 200 with
+  // the same token or 401 with a new one, and onTokenRejected handles the
+  // second case.
+  onEngineGone(e) {
+    if (!this.state.connected) return;
+    this.failStreak = (this.failStreak || 0) + 1;
+    if (this.failStreak < 3) return;
+    this.setState({ connected: false, mode: 'demo', statusText: 'UNREACHABLE - DEMO', log: 'lost the engine: ' + String(e.message || e) });
+    this.startReconnect();
+  }
+  startReconnect() {
+    if (this.reconnectTimer) return;
+    this.reconnectTimer = setInterval(async () => {
+      if (this.state.connected) { this.stopReconnect(); return; }
+      let res;
+      try {
+        res = await fetch(this.state.host.replace(/\/$/, '') + '/api/v1/dosbox/info',
+          { headers: { Authorization: 'Bearer ' + this.state.token } });
+      } catch (e) { return; }
+      this.stopReconnect();
+      if (res.status === 401) { this.setState({ connected: true }); this.onTokenRejected(); return; }
+      if (res.ok) this.onConnect();
+    }, 2000);
+  }
+  stopReconnect() {
+    if (this.reconnectTimer) { clearInterval(this.reconnectTimer); this.reconnectTimer = null; }
   }
   async readMem(addr, len) {
     if (!this.live) return this.demo.mem.slice(addr, addr + len);

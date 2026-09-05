@@ -155,6 +155,9 @@ WEOF
 chmod 755 "$wrapper"
 
 cp --preserve=timestamps "$source_dir/scripts/clients/cheat-workbench.sh" "$stage/$name/"
+if [ -f "$build_dir/build-info.txt" ]; then
+    cp --preserve=timestamps "$build_dir/build-info.txt" "$stage/$name/"
+fi
 
 tarball="$out_dir/$name.tar.xz"
 tar -C "$stage" -cJf "$tarball" "$name"

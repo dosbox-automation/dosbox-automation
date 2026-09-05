@@ -34,6 +34,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <mutex>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -337,6 +338,33 @@ static std::string extract_bearer_token(const std::string& auth_header)
 	return {};
 }
 
+// A workbench tab left over from a previous engine run polls with the
+// old token twice a second; one line per burst keeps the log readable.
+static void log_rejected_token()
+{
+	using clock = std::chrono::steady_clock;
+	static std::mutex mutex;
+	static clock::time_point last_logged = {};
+	static int suppressed                = 0;
+
+	const std::lock_guard lock(mutex);
+	const auto now = clock::now();
+	if (last_logged != clock::time_point{} &&
+	    now - last_logged < std::chrono::seconds(10)) {
+		++suppressed;
+		return;
+	}
+	if (suppressed > 0) {
+		augra::log_warn("webserver",
+		                "rejected request with invalid token (%d more in the last 10 s)",
+		                suppressed);
+	} else {
+		augra::log_warn("webserver", "rejected request with invalid token");
+	}
+	suppressed  = 0;
+	last_logged = now;
+}
+
 static void setup_security(const std::string& addr, int port,
                            const std::string& api_token)
 {
@@ -383,8 +411,7 @@ static void setup_security(const std::string& addr, int port,
 		        req.get_header_value("Authorization"));
 
 		if (!ConstantTimeEquals(token, api_token)) {
-			augra::log_warn("webserver",
-			                "rejected request with invalid token");
+			log_rejected_token();
 			res.status = httplib::StatusCode::Unauthorized_401;
 			res.set_content("Unauthorized", "text/plain");
 			return httplib::Server::HandlerResponse::Handled;
