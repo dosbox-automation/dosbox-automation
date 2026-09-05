@@ -154,6 +154,8 @@ exec "$SCRIPT_DIR/bin/dosbox" "$@"
 WEOF
 chmod 755 "$wrapper"
 
+cp --preserve=timestamps "$source_dir/scripts/clients/cheat-workbench.sh" "$stage/$name/"
+
 tarball="$out_dir/$name.tar.xz"
 tar -C "$stage" -cJf "$tarball" "$name"
 

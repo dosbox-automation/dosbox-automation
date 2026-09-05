@@ -81,10 +81,12 @@ Source: "{#StagingDir}\Resources\*"; DestDir: "{app}\Resources"; Flags: ignoreve
 Source: "{#StagingDir}\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingDir}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingDir}\THIRD_PARTY_LICENSES.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StagingDir}\cheat-workbench.cmd"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; Start Menu
 Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Comment: "DOS emulator with HTTP REST API for automation"
+Name: "{userprograms}\Start Cheat Workbench"; Filename: "{app}\cheat-workbench.cmd"; WorkingDir: "{app}"; IconFilename: "{app}\{#MyAppExeName}"; Comment: "Start dosbox-automation with the web API and open the Cheat Workbench"
 Name: "{userprograms}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
 ; Desktop icon (optional)
