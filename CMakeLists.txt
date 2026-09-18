@@ -197,6 +197,10 @@ elseif (APPLE)
 elseif (LINUX)
   set(DOSBOX_PLATFORM_LINUX ON)
 
+elseif (CMAKE_SYSTEM_NAME MATCHES "^(FreeBSD|OpenBSD|NetBSD|DragonFly)$")
+  set(DOSBOX_PLATFORM_BSD ON)
+  set(BSD ON)
+
 else()
   message(FATAL_ERROR "Unknown system ${CMAKE_SYSTEM_NAME}")
 endif()
@@ -542,8 +546,18 @@ if (OPT_TESTS)
   enable_testing()
 endif()
 
-# Linux
-set(C_ALSA "${DOSBOX_PLATFORM_LINUX}")
+# ALSA
+if (DOSBOX_PLATFORM_LINUX)
+    set(C_ALSA ON)
+
+# On BSD, ALSA is optional. When available, the alsa-seq-server
+# needs to be running to play ALSA MIDI sequences.
+elseif (DOSBOX_PLATFORM_BSD)
+    find_package(ALSA)
+    if (ALSA_FOUND)
+        set(C_ALSA ON)
+    endif()
+endif()
 
 # Windows
 if (DOSBOX_PLATFORM_WINDOWS)
