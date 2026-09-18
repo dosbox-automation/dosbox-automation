@@ -5,6 +5,8 @@
 #define DOSBOX_FILESYSTEM_H
 
 #include <filesystem>
+#include <fstream>
+
 namespace std_fs {
 using namespace std::filesystem;
 using ifstream = std::ifstream;

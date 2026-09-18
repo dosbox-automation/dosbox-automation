@@ -39,10 +39,12 @@ static const std::string VariableLanguage  = "LANGUAGE";
 static const std::string WayfireConfigFile = "WAYFIRE_CONFIG_FILE";
 
 // Strings for logging
-static const std::string SourceTty     = "TTY: ";
 static const std::string SourceKde     = "KDE: ";
 static const std::string SourceGnome   = "GNOME: ";
 static const std::string SourceWayfire = "WAYFIRE: ";
+#if defined(__linux__)
+static const std::string SourceTty     = "TTY: ";
+#endif // __linux__
 
 // These keyboard models are going to be considered as 102-key
 // keyboards, as they have a '>/<' key between right shift and 'Z'
