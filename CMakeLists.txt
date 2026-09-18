@@ -599,6 +599,9 @@ set(version      "${PROJECT_VERSION}")
 # PkgConfig is needed for speexdsp (no cmake config in vcpkg).
 find_package(PkgConfig REQUIRED)
 
+# Threads are needed
+find_package(Threads REQUIRED)
+
 # Deflate for the ZMBV video codec. zlib-ng roughly halves the encoder's
 # deflate share at rendered resolutions (ada-jrmb, measured 2026-09-01),
 # so every build method has a way to it:
