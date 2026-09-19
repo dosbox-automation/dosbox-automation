@@ -201,6 +201,14 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "^(FreeBSD|OpenBSD|NetBSD|DragonFly)$")
   set(DOSBOX_PLATFORM_BSD ON)
   set(BSD ON)
 
+  # Detect if we're compiling with GCC on BSD so we can statically link the
+  # compiler's versioned runtimes and compile some deps from source (GoogleTest)
+  # to avoid a runtime dynamic GLIBC ABI mismatch (occurred under GhostBSD + GCC
+  # 17.x).
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(DOSBOX_IS_BSD_GCC TRUE)
+  endif()
+
 else()
   message(FATAL_ERROR "Unknown system ${CMAKE_SYSTEM_NAME}")
 endif()
@@ -883,6 +891,10 @@ target_link_libraries(dosbox PRIVATE
   dosboxcommon
   SDL3::Headers
 )
+
+if(DOSBOX_IS_BSD_GCC)
+    target_link_options(dosbox PRIVATE -static-libstdc++ -static-libgcc)
+endif()
 
 # Export dynamic symbols so loguru's stack traces can resolve names
 if (HAS_STACK_INCLUDES)
