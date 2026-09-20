@@ -33,7 +33,13 @@
     },
     {
       "name": "sdl3",
-      "platform": "!linux"
+      "platform": "!linux",
+      "features": [
+        {
+          "name": "macos-keyboard-grab",
+          "platform": "osx"
+        }
+      ]
     },
     {
       "name": "sdl3-image",

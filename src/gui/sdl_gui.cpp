@@ -1067,6 +1067,21 @@ void GFX_SetMouseRawInput([[maybe_unused]] const bool requested_raw_input)
 	// remains the case, remove the associated config option and related code.
 }
 
+static void set_keyboard_capture()
+{
+	assert(sdl.window);
+
+	const auto pref = get_sdl_section()->GetString("keyboard_capture");
+
+	// In 'auto' mode, the keyboard follows the mouse
+	const auto capture_keyboard = (pref == "auto") ? sdl.is_mouse_captured
+	                                               : has_true(pref);
+
+	if (!SDL_SetWindowKeyboardGrab(sdl.window, capture_keyboard)) {
+		LOG_WARNING("SDL: Failed to set keyboard grab: %s", SDL_GetError());
+	}
+}
+
 void GFX_SetMouseCapture(const bool requested_capture)
 {
 	if (is_using_offscreen_driver()) {
@@ -1081,6 +1096,10 @@ void GFX_SetMouseCapture(const bool requested_capture)
 		       requested_capture ? "putting the mouse into"
 		                         : "taking the mouse out of");
 	}
+
+	sdl.is_mouse_captured = requested_capture;
+
+	set_keyboard_capture();
 }
 
 void GFX_SetMouseVisibility(const bool requested_visible)
@@ -1703,17 +1722,6 @@ static void set_window_icon(SDL_Window* window)
 	}
 	SDL_SetWindowIcon(window, surface);
 	SDL_DestroySurface(surface);
-}
-
-static void set_keyboard_capture()
-{
-	assert(sdl.window);
-
-	const auto capture_keyboard = get_sdl_section()->GetBool("keyboard_capture");
-
-	if (!SDL_SetWindowKeyboardGrab(sdl.window, capture_keyboard)) {
-		LOG_WARNING("SDL: Failed to set keyboard grab: %s", SDL_GetError());
-	}
 }
 
 static void apply_active_settings()
@@ -3023,12 +3031,20 @@ static void init_sdl_config_settings(SectionProp& section)
 	pbool = section.AddBool("pause_when_inactive", Always, false);
 	pbool->SetHelp("Pause emulation when the window is inactive ('off' by default).");
 
-	pbool = section.AddBool("keyboard_capture", Always, false);
-	pbool->SetHelp(
-	        "Capture system keyboard shortcuts ('off' by default).\n"
-	        "When enabled, most system shortcuts such as Alt+Tab are captured and sent to\n"
-	        "dosbox-automation. This is useful for Windows 3.1 and some DOS programs with\n"
-	        "unchangeable keyboard shortcuts that conflict with system shortcuts.");
+	pstring = section.AddString("keyboard_capture", Always, "off");
+	pstring->SetValues({"auto", "on", "off"});
+	pstring->SetHelp(
+	        "Capture system keyboard shortcuts ('off' by default). When captured, most system\n"
+	        "shortcuts such as Alt+Tab are sent to DOSBox Staging instead of the host OS.\n"
+	        "This is useful for Windows 3.1 and some DOS programs with unchangeable keyboard\n"
+	        "shortcuts that conflict with system shortcuts. Possible values:\n"
+	        "\n"
+	        "  auto:  Capture system shortcuts only while the mouse is captured. Releasing\n"
+	        "         the mouse gives the shortcuts back to the host OS.\n"
+	        "\n"
+	        "  on:    Always capture system shortcuts.\n"
+	        "\n"
+	        "  off:   Never capture system shortcuts (default).");
 
 	pstring = section.AddPath("mapperfile", Always, MAPPERFILE);
 	pstring->SetHelp(
