@@ -46,6 +46,28 @@ static const char* safe_gl_get_string(const GLenum requested_name,
 	return result ? reinterpret_cast<const char*>(result) : default_result;
 }
 
+// BSD's llvmpipe renderer has a bug where red and blue channels are swapped in higher
+// core profiles, such as 4.5 and 4.6. This was confirmed using a standalone test
+// program on FreedBSD + aarch64 and GhostBSD + x86-64, on Mesa 25.x and 26.x, on
+// different Xorg versions, compiled with GCC and Clang. For now, a simple work around
+// solves it with minimal intrusion until it's fixed.
+
+static bool needs_red_blue_swap_workaround() noexcept {
+#if defined(BSD)
+	static const bool needs_workaround = [] {
+		const char* r = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
+		const bool is_llvmpipe = r && std::string_view{r}.starts_with("llvmpipe");
+		if (is_llvmpipe) {
+			LOG_WARNING("OPENGL: Working around BSD llvmpipe red-blue channel swap bug");
+		}
+		return is_llvmpipe;
+    }();
+    return needs_workaround;
+#else
+    return false;
+#endif
+}
+
 OpenGlRenderer::OpenGlRenderer(const int x, const int y, const int width,
                                const int height, SDL_WindowFlags sdl_window_flags)
 {
@@ -196,6 +218,9 @@ bool OpenGlRenderer::InitRenderer()
 	         safe_gl_get_string(GL_RENDERER, "unknown"),
 	         safe_gl_get_string(GL_SHADING_LANGUAGE_VERSION, "unknown"),
 	         safe_gl_get_string(GL_VENDOR, "unknown"));
+
+	// log and cache the result
+	(void) needs_red_blue_swap_workaround();
 
 	// Vertex data of a single oversized triangle encompassing the viewport
 	// Lower left
@@ -419,6 +444,8 @@ void OpenGlRenderer::RecreateInputTexture()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+	const auto pixel_write_format = needs_red_blue_swap_workaround() ? GL_RGBA : GL_BGRA;
+
 	// Just create the texture; we'll copy the image data later with
 	// `glTexSubImage2D()`
 	//
@@ -428,7 +455,7 @@ void OpenGlRenderer::RecreateInputTexture()
 	             input_texture.width,  // width
 	             input_texture.height, // height
 	             0,                    // border (must be always 0)
-	             GL_BGRA,              // pixel data format
+	             pixel_write_format,   // pixel data format
 	             GL_UNSIGNED_BYTE,     // pixel data type
 	             nullptr               // pointer to image data
 	);
@@ -484,15 +511,17 @@ void OpenGlRenderer::PrepareFrame()
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, input_texture.texture);
 
+		const auto pixel_write_format = needs_red_blue_swap_workaround() ? GL_RGBA : GL_BGRA;
+
 		glTexSubImage2D(GL_TEXTURE_2D,
 		                0, // mimap level (0 = base image)
 		                0, // x offset
 		                0, // y offset
 		                input_texture.width,  // width
 		                input_texture.height, // height
-		                GL_BGRA,              // pixel data format
-		                GL_UNSIGNED_INT_8_8_8_8_REV, // pixel data type
-		                last_framebuf.data() // pointer to image data
+		                pixel_write_format,   // pixel data format
+				GL_UNSIGNED_INT_8_8_8_8_REV, // pixel data type
+		                last_framebuf.data()  // pointer to image data
 		);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -744,11 +773,13 @@ RenderedImage OpenGlRenderer::ReadPixelsPostShader(const DosBox::Rect output_rec
 	// potentially revert to the default 4-byte alignment
 	glPixelStorei(GL_PACK_ALIGNMENT, 1);
 
+	const auto pixel_read_format = needs_red_blue_swap_workaround() ? GL_RGB : GL_BGR;
+
 	glReadPixels(iroundf(output_rect_px.x),
 	             iroundf(output_rect_px.y),
 	             image.params.width,
 	             image.params.height,
-	             GL_BGR,
+	             pixel_read_format,
 	             GL_UNSIGNED_BYTE,
 	             image.image_data);
 
