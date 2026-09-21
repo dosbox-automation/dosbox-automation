@@ -899,6 +899,14 @@ endif()
 # Export dynamic symbols so loguru's stack traces can resolve names
 if (HAS_STACK_INCLUDES)
   target_link_options(dosbox PRIVATE "-rdynamic")
+
+  # On FreeBSD, backtrace()/backtrace_symbols() live in
+  # libexecinfo, not in libc (unlike glibc on Linux)
+  if (DOSBOX_PLATFORM_BSD)
+    find_library(EXECINFO_LIBRARY execinfo REQUIRED)
+    target_link_libraries(loguru PUBLIC ${EXECINFO_LIBRARY})
+  endif()
+
 endif()
 
 # Add installation rules
