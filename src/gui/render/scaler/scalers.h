@@ -33,7 +33,7 @@ constexpr int ScalerMaxHeightTtf = 2880;
 extern std::array<int, ScalerMaxHeightTtf> scaler_changed_lines;
 extern int scaler_changed_line_index;
 
-typedef void (*ScalerLineHandler)(const void* src);
+typedef void (*ScalerLineHandler)(const void* src_line_data);
 
 struct Scaler {
 	int x_scale = 0;

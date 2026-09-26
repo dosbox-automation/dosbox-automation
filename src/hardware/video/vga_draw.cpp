@@ -74,10 +74,9 @@
 //   ReelMagic is active, the ReelMagic module intercepts the draw line call
 //   and insert data from the decoded MPEG stream into the line buffer.
 //
-// - Note that `RENDER_DrawLine()` is *not* a static function but a function
-//   pointer set up in `render.cpp`. There's some scaler cache management
-//   trickery going on there with the various line handlers, but the main path
-//   is setting `RENDER_DrawLine()` to a line handler function of one of the
+// - Note that there's some scaler cache management trickery going on in
+//   `render.cpp` with the various line handlers, but the main path is setting
+//   `current_line_handler` to a line handler function wrapper of one of the
 //   scalers (in `render_reset()`). We've only kept the simple scalers that
 //   can only convert internal scanline data stored in arbitrary internal
 //   pixel formats to 32-bit BGRX32 pixels, and optionally perform width
@@ -1402,12 +1401,6 @@ static void VGA_TTF_DrawPart(uint32_t lines)
 		// Always render the full line of text at once
 		if (vga.draw.address_line == 0) {
 
-			// TODO: Contrary to other line/part drawing routines,
-			// we can easily get the information whether the line is
-			// precisely as it was before, or if anything changed.
-			// We could pass this information to the renderer, which
-			// in turn could skip it's 'memcmp' calls.
-
 			const auto address = VGA_Text_Memwrap(vga.draw.address);
 			TTF_DrawPrepareBlockLine(address,
 			                         vga.draw.ttf.render_lines_done);
@@ -1420,8 +1413,11 @@ static void VGA_TTF_DrawPart(uint32_t lines)
 				const uint32_t cursor_block =
 					(vga.draw.cursor.address - vga.draw.address) >> 1;
 
+				bool is_line_dirty = false;
 				if (skip_cursor(line_in_block, cursor_block)) {
-					data = TTF_DrawLine(address, vga.draw.ttf.render_lines_done);
+					data = TTF_DrawLine(address,
+					                    vga.draw.ttf.render_lines_done,
+					                    is_line_dirty);
 
 				} else {
 					const auto color_index =
@@ -1432,10 +1428,11 @@ static void VGA_TTF_DrawPart(uint32_t lines)
 					data = TTF_DrawLine(address,
 					                    vga.draw.ttf.render_lines_done,
 					                    cursor_block,
-					                    cursor_color);
+					                    cursor_color,
+					                    is_line_dirty);
 				}
 
-				RENDER_DrawLine(data);
+				RENDER_DrawLine(data, is_line_dirty);
 				++vga.draw.ttf.render_lines_done;
 			}
 		}
