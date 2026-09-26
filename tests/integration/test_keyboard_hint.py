@@ -52,7 +52,7 @@ def test_a_chosen_layout_gets_no_hint(dosbox_e2e, tmp_path):
 
 
 def test_a_written_us_still_gets_the_hint(dosbox_e2e, tmp_path):
-    # The config layer cannot tell a written 'us' from the default (ada-2lbz)
+    # A written 'us' gets the hint like the default, by decision (D6, ada-2lbz)
     text = screen_after_start(dosbox_e2e, tmp_path, "de", keyboard_layout="us")
 
     assert "Host keyboard looks German" in text

@@ -789,8 +789,9 @@ endif()
 pkg_check_modules(SPEEXDSP REQUIRED IMPORTED_TARGET speexdsp)
 
 add_executable(dosbox src/main.cpp src/dosbox.cpp)
+set_target_properties(dosbox PROPERTIES OUTPUT_NAME dosbox-automation)
 if (OPT_DEBUGGER)
-  set_target_properties(dosbox PROPERTIES OUTPUT_NAME dosbox_with_debugger)
+  set_target_properties(dosbox PROPERTIES OUTPUT_NAME dosbox-automation-debugger)
 endif()
 
 set(LICENSE_FILES

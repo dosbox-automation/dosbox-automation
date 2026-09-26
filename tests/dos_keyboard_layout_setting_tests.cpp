@@ -100,8 +100,8 @@ TEST(KeyboardLayoutHint, SilentWhenAnotherLayoutIsInUse)
 	EXPECT_FALSE(DOS_GetKeyboardLayoutHint("fr", {}, {"custom"}));
 }
 
-// The config layer cannot tell a written 'us' from the default, so the
-// hint shows for both (ada-2lbz); pinned so a change here is deliberate
+// A written 'us' gets the hint like the default, by decision (design D6,
+// ada-2lbz closed); pinned so a change here is deliberate
 TEST(KeyboardLayoutHint, AWrittenUsStillGetsTheHint)
 {
 	const auto hint = DOS_GetKeyboardLayoutHint("us", Layouts{{"gr"}}, {});

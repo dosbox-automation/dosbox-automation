@@ -3306,6 +3306,14 @@ BUNDLED DOS UTILITIES (resources/drives/y/dos/)
                  License: GPL-3.0-or-later (a separate program, bundled)
                  Source: vendor/dos-programs/view-1.0.zip (SOURCE/VIEW)
                  Homepage: https://dosbox-automation.org
+                 Links the Open Watcom C runtime (below) under an
+                 additional permission per GPL-3.0 section 7, stated in
+                 the package's DOC/VIEW/README.TXT.
+
+  Open Watcom    C runtime library, linked into view.com
+                 Copyright (c) Sybase, Inc. and the Open Watcom contributors
+                 License: Sybase Open Watcom Public License 1.0
+                 Source: https://github.com/open-watcom/open-watcom-v2
 
   FreeDOS FIND   Text search filter (v3.0b)
                  Authors: Jim Hall, Eric Auer, Imre Leber

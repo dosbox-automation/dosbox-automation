@@ -29,7 +29,7 @@ from e2e_helpers import (
 
 DOSBOX_BIN = os.environ.get(
     "DOSBOX_BIN",
-    str(Path(__file__).resolve().parents[2] / "build" / "debug-linux" / "dosbox"),
+    str(Path(__file__).resolve().parents[2] / "build" / "debug-linux" / "dosbox-automation"),
 )
 DISKS_DIR = Path(__file__).resolve().parents[1] / "files" / "disks"
 WORKSPACE = Path(__file__).resolve().parents[2] / ".workspace" / "test-runs"

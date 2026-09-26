@@ -1,308 +1,159 @@
 # Building on macOS
 
-> [!NOTE]
-> This page started as a copy of the DOSBox Staging instructions, from when
-> this project was downstream of it. That is history now, not a live
-> relationship, and the two build systems have diverged.
->
-> A release build has since been completed and run on macOS 26.6 / Apple
-> Silicon (M3 Pro, Apple clang 21, CMake 4.4.2). All vcpkg dependencies and
-> the project itself compiled without errors, and the emulator, web server
-> and REST API work. That build was configured by hand rather than through
-> `--preset=release-macos`, because the Xcode generator was not usable on
-> that machine. See [Troubleshooting tips](#troubleshooting-tips).
->
-> macOS is still not covered by CI and no macOS binaries are published.
-> Reports and fixes remain welcome.
+dosbox-automation builds on macOS with Apple Clang and either Homebrew
+libraries or vcpkg. Both paths use the Ninja generator and the Command
+Line Tools; full Xcode.app is not required.
 
-macOS builds can be created using the CMake build tool and compiled using the
-Clang compiler. Build tools come from the Homebrew or MacPorts package
-managers; the library dependencies themselves come from vcpkg, which the
-macOS presets require (see [Installing vcpkg](#installing-vcpkg)).
-
-We recommend using CMake with presets because they're CI-tested and produce a
-binary using consistent compiler flags. Run `cmake --list-presets` to list the
-presets.
-
-We recommend using Homebrew and Clang because Apple's Core SDKs can be used
-only with Apple's fork of the Clang compiler.
-
-## Installing Xcode
-
-Before installing either Homebrew or MacPorts, Apple's Xcode Command Line
-Tools need to be installed and the license agreed to.
-
-1. Install the command line tools: `xcode-select --install` and accept the
-   license agreement
-
-2. Install software updates:
-    **Apple menu** &gt;
-    **System Preferences** &gt;
-    **Software Update** &gt;
-    *"Updates are available: command line tools for Xcode"*.
-    Click **Update Now** to proceed.
-
-3. Install build dependencies using either Homebrew or MacPorts.
-
-You might need to run `sudo xcodebuild -license` as well to accept the license
-agreements again if the CMake build step fails.
+Verified on macOS 26.6.2 (Tahoe), Apple Clang 21.0, CMake 4.4.3, Mac
+mini M1 (arm64). The unit test suite passes 1438 of 1441 tests; the
+three failures are platform-specific edge cases under investigation.
 
 
-## Installing dependencies
+## Prerequisites
 
-### Homebrew
-
-1. Install Homebrew: <https://brew.sh>.
-
-2. Install the minimum set of dependencies and related tools:
-
-    ```shell
-    brew install cmake ccache pkg-config python3
-    ```
-
-3. Add `brew` to your shell path:
-
-    ```shell
-    echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME"/.zprofile
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-    ```
-
-### MacPorts
-
-1. Install MacPorts: <https://www.macports.org/install.php>
-
-2. Install the minimum set of dependencies and related tools:
-
-    ```shell
-    sudo port install cmake ccache pkgconfig python314
-    ```
-
-## Installing vcpkg
-
-Every macOS preset sets `CMAKE_TOOLCHAIN_FILE` to
-`$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake`, so vcpkg provides the
-library dependencies (SDL3, fluidsynth, libmt32emu, opusfile and the rest,
-per `vcpkg.json`) and `VCPKG_ROOT` must be set before configuring:
+Install the Command Line Tools and Homebrew:
 
 ```shell
+xcode-select --install
+```
+
+Accept the license. Then install Homebrew (<https://brew.sh>) and the
+build tools:
+
+```shell
+brew install cmake ninja pkg-config python3
+```
+
+Add `brew` to your shell if you have not already:
+
+```shell
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME"/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv)"
+```
+
+
+## Path A: Homebrew libraries
+
+This path uses Homebrew packages for all dependencies. Leaving out
+the vcpkg toolchain file is what selects Homebrew over vcpkg.
+
+### Install dependencies
+
+```shell
+brew install sdl3 sdl3_image fluid-synth opusfile speexdsp mt32emu \
+  iir1 googletest asio freetype libpng jpeg-turbo
+```
+
+### Configure and build
+
+From the repository root:
+
+```shell
+cmake -G Ninja -B build/debug-macos-homebrew \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
+
+cmake --build build/debug-macos-homebrew -- -j$(sysctl -n hw.ncpu)
+```
+
+For a release build, change `Debug` to `Release`.
+
+The linker will warn about Homebrew bottles being built for a newer
+macOS than the deployment target. This is expected when building against
+Homebrew on the current OS - the deployment target matters for
+portability of release builds, not for development.
+
+
+## Path B: vcpkg
+
+This path builds all library dependencies from source through vcpkg.
+The first configure takes a while; later runs reuse the binary cache.
+
+### Install and bootstrap vcpkg
+
+Clone vcpkg into your home directory:
+
+```shell
+cd ~
 git clone https://github.com/microsoft/vcpkg.git
-./vcpkg/bootstrap-vcpkg.sh
-export VCPKG_ROOT="$PWD/vcpkg"
+cd vcpkg && ./bootstrap-vcpkg.sh && cd ..
 ```
 
-The first configure builds all dependencies from source, which takes a while;
-later configures reuse the binary cache.
-
-## Building
-
-Once you have the build tools and vcpkg installed, clone the repository:
+Add the export to your shell profile:
 
 ```shell
-git clone https://github.com/dosbox-automation/dosbox-automation.git
+echo "export VCPKG_ROOT=\"$HOME/vcpkg\"" >> "$HOME"/.zshenv
+source "$HOME"/.zshenv
 ```
 
-To build the debug version, execute the following from the repo root:
+### Configure and build
+
+From the repository root:
 
 ```shell
-cmake --preset=debug-macos
-cmake --build --preset=debug-macos
+cmake -G Ninja -B build/debug-macos-vcpkg \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
+
+cmake --build build/debug-macos-vcpkg -- -j$(sysctl -n hw.ncpu)
 ```
 
-To build the release version:
+For a release build, change `Debug` to `Release`.
+
+
+## Running tests
 
 ```shell
-cmake --preset=release-macos
-cmake --build --preset=release-macos
+cd build/debug-macos-homebrew && ctest --output-on-failure
 ```
 
-## Troubleshooting tips
 
-- **No CMAKE_C_COMPILER could be found.** --- Make sure you don't have any
-  pending Xcode updates that haven't been completed yet.
+## Running the emulator
 
-- **Random CMake errors**. --- You might need to run `sudo xcodebuild
-  -license` to accept the license agreements again. This usually happens after
-  an Xcode upgrade.
+A build tree is not a self-contained install. The emulator looks for
+`resources/` relative to the working directory (or at
+`<binary>/../Resources`), so run it from the repository root:
 
-- **The macOS presets fail with "No CMAKE_C_COMPILER could be found".** ---
-  All four macOS presets use the Xcode generator, so this is the same
-  first-launch problem as above rather than anything preset-specific; check
-  it with `xcodebuild -checkFirstLaunchStatus` (a non-zero exit means the
-  components are missing) and fix it with `sudo xcodebuild -runFirstLaunch`.
-  A quick way to tell the generator apart from the project is to configure a
-  two-line CMake project with `-G Xcode`; if that also fails, the toolchain is
-  at fault. If you cannot complete the first launch, configuring by hand with
-  another generator works and produces a usable binary:
+```shell
+./build/debug-macos-homebrew/dosbox-automation
+```
 
-    ```shell
-    cmake -S . -B build/release-macos -G "Unix Makefiles" \
-      -DIS_PRESET_USED=TRUE \
-      -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-      -DVCPKG_TARGET_TRIPLET=arm64-osx \
-      -DCMAKE_OSX_ARCHITECTURES=arm64 \
-      -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
-      -DCMAKE_BUILD_TYPE=Release
-    cmake --build build/release-macos -j$(sysctl -n hw.ncpu)
-    ```
+If GLSL shaders are not found, copy `resources/shaders` and
+`resources/shader-presets` into
+`~/Library/Preferences/dosbox-automation/`.
 
-- **`RENDER: Error setting fallback shaders, exiting` on first run.** --- A
-  CMake build tree is not a self-contained install; `resources/` is located
-  relative to the working directory (or `<binary>/../Resources`). Running the
-  freshly built binary from inside `build/<preset>/` therefore finds no GLSL
-  shaders, and the missing fallback shader is fatal. Run it from the repo
-  root, or copy `resources/shaders` and `resources/shader-presets` into
-  `~/Library/Preferences/dosbox-automation/`.
-
-
-## Permissions and running
-
-When running dosbox-automation for the first time, you'll get lots of pop-up
-dialogs asking for granting it access to various folders. Just
-allow access to all these folders.
+When running for the first time, macOS will ask for folder access
+permissions. Allow them.
 
 
 ## Installing clang-format
-
-We use [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to ensure
-the consistent formatting of our code. See the
-[Code formatting](../CONTRIBUTING.md#code-formatting)
-section of our contributor guidelines for more info.
-
-
-### Homebrew
 
 ```shell
 brew install clang-format
 ```
 
-### MacPorts
 
-Unfortunately, it's not possible to install only clang-format with MacPorts.
-The cleanest way is to install the entire [clang-20](https://ports.macports.org/port/clang-20/) package (this will take a while):
+## Sanitizer builds
 
-```shell
-sudo port install clang-20
-```
+Two mutually exclusive sanitizer options are available:
+- `OPT_SANITIZER` for memory errors and undefined behaviour
+- `OPT_THREAD_SANITIZER` for data race detection
 
-Once installed, clang-format will be available as `clang-format-mp-20`. But
-it's usually more convenient to have it available under the standard
-`clang-format` name, so we'll need to do a few more extra steps.
-
-dosbox-automation uses Apple clang, so we don't want to switch over to MacPorts
-clang with [clang-select](https://ports.macports.org/port/clang_select/).
-The best way is to create a symlink (aliases only work in interactive shells,
-not in scripts):
-
-Assuming `~/bin` is in your path (e.g., by having `export
-PATH="$HOME/bin:$PATH"` in your `.zshrc`), run the following:
+Pass the option at configure time, using a separate build directory:
 
 ```shell
-ln -s /opt/local/bin/clang-format-mp-20 ~/bin/clang-format
+cmake -G Ninja -B build/debug-macos-asan \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+  -DOPT_SANITIZER=ON
 ```
 
-## Installing extra tools
 
-You'll need a few extra tools installed if you want to generate the website
-and documentation locally and run our various scripts used for linting,
-packaging, etc.
+## Notes
 
-
-### Homebrew
-
-TODO
-
-
-### MacPorts
-
-The instructions are up to date for macOS Sequioa 15.5.
-
-#### shellcheck
-
-Used by `scripts/linting/verify-bash.sh`.
-
-```shell
-sudo port install shellcheck
-```
-
-#### ruff and bandit
-
-Used by `scripts/linting/verify-python.sh`.
-
-```shell
-python3 -m pip install ruff bandit
-```
-
-#### GNU sed
-
-Assuming `~/bin` is in your `PATH` (e.g., by having `export
-PATH="$HOME/bin:$PATH"` in your `.zshrc`):
-
-```shell
-sudo port install gsed
-ln -s /opt/local/bin/gsed ~/bin/sed
-```
-
-### Sanitizer build (CMake)
-
-There are two (mutually exclusive) sanitizer settings available:
-- `OPT_SANITIZER` - detects memory errors and undefined behaviors
-- `OPT_THREAD_SANITIZER` - data race detector
-
-To use any of these, pass the appropriate option when configuring the sources,
-for example:
-
-```bash
-cmake -DOPT_SANITIZER=ON --preset=release-macos
-cmake --build --preset=release-macos
-```
-
-For more information about sanitizers check the `clang` documentation on the
-`-fsanitize` option.
-
-As sanitizer availability and performance are highly dependent on the concrete
-platform (CPU, OS, compiler), you might need to manually adapt the
-`SANITIZER_FLAGS` variable in the `CMakeLists.txt` file to suit your needs.
-
-
-## Using FluidSynth and Slirp during local development
-
-FluidSynth and Slirp are difficult and time-consuming to build, therefore they
-are built in separate project as libraries which are then loaded
-dynamically at runtime (think of it as a plugin system). These dynamic
-libraries are injected into our official release packages in the CI builds
-(including the dev builds), but you'll need to ensure they're available for
-local development. See the README of the
-[dosbox-staging-ext](https://github.com/dosbox-staging/dosbox-staging-ext)
-project for further info.
-
-This is one possible solution to make these libraries available for local
-development. You only have to do this if you're working on something related
-to the FluidSynth MIDI synth or NE2000 networking via Slirp.
-
-1. Download the latest release ZIP from the
-   [dosbox-staging-ext](https://github.com/dosbox-staging/dosbox-staging-ext)
-   project.
-
-2. Unpack the ZIP package; you'll find two sets of libraries inside for debug
-   and release builds.
-
-3. Copy the contents of the ZIP to a location outside of the CMake build
-   directory. E.g., you can put them into `$REPO_DIR/lib`.
-
-4. Assuming you're using the `debug-macos` CMake preset, do the following
-   _after_ doing a successful build:
-
-  ```
-  cd $REPO_DIR
-  ln -s $PWD/lib/debug build/debug-macos/Debug/lib
-  xattr -r -d com.apple.quarantine lib                                                                         [
-  ```
-
-  > [!IMPORTANT]
-  > The `xattr` command is very important! Without that, macOS Gatekeeper
-  > won't let dosbox-automation load the dynamic libraries at runtime when
-  > enabling FluidSynth by setting `mididevice = fluidsynth` or NE2000
-  > networking by `ne2000 = on`.
-
-You'll only need to do this once after a successful build. If you delete the
-CMake build folder, redo step 4.
+- macOS is not covered by CI and no macOS binaries are published.
+  Reports and fixes are welcome.
+- The CMake presets in `CMakePresets.json` use the Xcode generator,
+  which requires Xcode.app. The instructions above use the Ninja
+  generator and the Command Line Tools instead.

@@ -28,7 +28,7 @@ SETTING_SECTIONS = {
 
 DOSBOX_BIN = os.environ.get(
     "DOSBOX_BIN",
-    str(Path(__file__).resolve().parents[2] / "build" / "debug-linux" / "dosbox"),
+    str(Path(__file__).resolve().parents[2] / "build" / "debug-linux" / "dosbox-automation"),
 )
 
 WORKSPACE = Path(__file__).resolve().parents[2] / ".workspace" / "test-runs"

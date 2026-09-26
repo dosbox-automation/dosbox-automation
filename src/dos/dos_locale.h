@@ -527,8 +527,8 @@ struct KeyboardLayoutHint {
 
 struct KeyboardLayoutMaybeCodepage;
 
-// A written 'keyboard_layout = us' counts as the default: the config
-// layer keeps no record of where a value came from (ada-2lbz)
+// A written 'keyboard_layout = us' counts as the default, by decision:
+// the first-start config holds every default (design D6, ada-2lbz closed)
 std::optional<KeyboardLayoutHint> DOS_GetKeyboardLayoutHint(
         const std::string& active_layout,
         const std::vector<KeyboardLayoutMaybeCodepage>& detected_host_layouts,

@@ -240,7 +240,7 @@ std::deque<std_fs::path> get_standard_font_dirs()
 		return {};
 	}
 	return {std_fs::path(windows_directory) / "Fonts"};
-#elif C_COREFOUNDATION
+#elif defined(MACOSX)
 	std::deque<std_fs::path> result = {};
 
 	const auto path_1 = to_native_path("/Library/Fonts");

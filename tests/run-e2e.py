@@ -17,7 +17,7 @@ Usage:
     python3 tests/run-e2e.py --list-games     # list game manifests and disk availability
 
 Environment:
-    DOSBOX_BIN    Path to dosbox binary (default: build/debug-linux/dosbox)
+    DOSBOX_BIN    Path to dosbox binary (default: build/debug-linux/dosbox-automation)
 
 Categories:
     api     API contract tests (test_api_contract.py)

@@ -31,6 +31,7 @@ if(APPLE)
 target_sources(dosboxcommon PRIVATE
   render/macos_colorspace.mm
 )
+target_link_libraries(dosboxcommon PRIVATE "-framework Cocoa")
 endif()
 
 if (OPT_DEBUGGER)
