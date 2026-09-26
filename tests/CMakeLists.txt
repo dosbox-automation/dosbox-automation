@@ -1,5 +1,27 @@
 # Tests support
-find_package(GTest REQUIRED)
+
+# If we're compiling with GCC on BSD systems, build GTest from source instead of
+# using the system-provided package because it's typically built with the base
+# Clang/libc++ toolchain, which fails to link (detected on GhostBSD + GCC 17.x).
+
+if (DOSBOX_IS_BSD_GCC)
+    message(STATUS "BSD + GCC detected: vendoring GoogleTest to match compiler ABI")
+
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/releases/download/v1.18.0/googletest-1.18.0.tar.gz
+        URL_HASH SHA256=6e3191c1455468b3fc35a417fb565c1c5071aee1b7e7f85e30cf48a98d37d8b5
+    )
+    set(INSTALL_GTEST OFF)
+    set(BUILD_GMOCK ON)
+    set(BUILD_SHARED_LIBS OFF)
+    FetchContent_MakeAvailable(googletest)
+    unset(BUILD_SHARED_LIBS)
+
+else()
+    find_package(GTest REQUIRED)
+endif()
 
 add_executable(dosbox_tests
     ansi_code_markup_tests.cpp
@@ -102,6 +124,10 @@ target_link_libraries(dosbox_tests PRIVATE
     Freetype::Freetype
     ${ZMBV_ZLIB_TARGET}
 )
+
+if (DOSBOX_IS_BSD_GCC)
+    target_link_options(dosbox_tests PRIVATE -static-libstdc++ -static-libgcc)
+endif()
 
 # %TEMP% is on the Windows mount denylist, so the mount suites keep their
 # fixtures in the build tree there (ada-925x)

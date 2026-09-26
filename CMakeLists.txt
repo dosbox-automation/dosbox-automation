@@ -197,6 +197,18 @@ elseif (APPLE)
 elseif (LINUX)
   set(DOSBOX_PLATFORM_LINUX ON)
 
+elseif (CMAKE_SYSTEM_NAME MATCHES "^(FreeBSD|OpenBSD|NetBSD|DragonFly)$")
+  set(DOSBOX_PLATFORM_BSD ON)
+  set(BSD ON)
+
+  # Detect if we're compiling with GCC on BSD so we can statically link the
+  # compiler's versioned runtimes and compile some deps from source (GoogleTest)
+  # to avoid a runtime dynamic GLIBC ABI mismatch (occurred under GhostBSD + GCC
+  # 17.x).
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(DOSBOX_IS_BSD_GCC TRUE)
+  endif()
+
 else()
   message(FATAL_ERROR "Unknown system ${CMAKE_SYSTEM_NAME}")
 endif()
@@ -542,8 +554,18 @@ if (OPT_TESTS)
   enable_testing()
 endif()
 
-# Linux
-set(C_ALSA "${DOSBOX_PLATFORM_LINUX}")
+# ALSA
+if (DOSBOX_PLATFORM_LINUX)
+    set(C_ALSA ON)
+
+# On BSD, ALSA is optional. When available, the alsa-seq-server
+# needs to be running to play ALSA MIDI sequences.
+elseif (DOSBOX_PLATFORM_BSD)
+    find_package(ALSA)
+    if (ALSA_FOUND)
+        set(C_ALSA ON)
+    endif()
+endif()
 
 # Windows
 if (DOSBOX_PLATFORM_WINDOWS)
@@ -584,6 +606,9 @@ set(version      "${PROJECT_VERSION}")
 
 # PkgConfig is needed for speexdsp (no cmake config in vcpkg).
 find_package(PkgConfig REQUIRED)
+
+# Threads are needed
+find_package(Threads REQUIRED)
 
 # Deflate for the ZMBV video codec. zlib-ng roughly halves the encoder's
 # deflate share at rendered resolutions (ada-jrmb, measured 2026-09-01),
@@ -867,9 +892,21 @@ target_link_libraries(dosbox PRIVATE
   SDL3::Headers
 )
 
+if(DOSBOX_IS_BSD_GCC)
+    target_link_options(dosbox PRIVATE -static-libstdc++ -static-libgcc)
+endif()
+
 # Export dynamic symbols so loguru's stack traces can resolve names
 if (HAS_STACK_INCLUDES)
   target_link_options(dosbox PRIVATE "-rdynamic")
+
+  # On FreeBSD, backtrace()/backtrace_symbols() live in
+  # libexecinfo, not in libc (unlike glibc on Linux)
+  if (DOSBOX_PLATFORM_BSD)
+    find_library(EXECINFO_LIBRARY execinfo REQUIRED)
+    target_link_libraries(loguru PUBLIC ${EXECINFO_LIBRARY})
+  endif()
+
 endif()
 
 # Add installation rules

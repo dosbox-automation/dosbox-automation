@@ -89,6 +89,7 @@ target_link_libraries(dosboxcommon PRIVATE
   nuked
   plmpeg
   PkgConfig::SPEEXDSP
+  Threads::Threads
 )
 
 if (C_MANYMOUSE)

@@ -31,6 +31,11 @@
       "description": "Configure for Debug build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/debug-linux",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "cacheVariables": {
         "IS_PRESET_USED" : "TRUE",
         "CMAKE_BUILD_TYPE": "Debug",
@@ -43,6 +48,11 @@
       "description": "Configure for Release build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/release-linux",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "cacheVariables": {
         "IS_PRESET_USED" : "TRUE",
         "CMAKE_BUILD_TYPE": "Release",
@@ -55,6 +65,11 @@
       "description": "Configure for Debug build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/debug-linux",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "cacheVariables": {
         "IS_PRESET_USED" : "TRUE",
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
@@ -67,10 +82,49 @@
       "description": "Configure for Release build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/release-linux",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
       "cacheVariables": {
         "IS_PRESET_USED" : "TRUE",
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "debug-bsd",
+      "displayName": "Debug (BSD target OS), using system libs",
+      "description": "Configure for Debug build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/debug-bsd",
+      "condition": {
+        "type": "matches",
+        "string": "${hostSystemName}",
+        "regex": "BSD"
+      },
+      "cacheVariables": {
+        "IS_PRESET_USED" : "TRUE",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "USE_SYSTEM_LIBS": "ON"
+      }
+    },
+    {
+      "name": "release-bsd",
+      "displayName": "Release (BSD target OS), using system libs",
+      "description": "Configure for Release build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release-bsd",
+      "condition": {
+        "type": "matches",
+        "string": "${hostSystemName}",
+        "regex": "BSD"
+      },
+      "cacheVariables": {
+        "IS_PRESET_USED" : "TRUE",
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_SYSTEM_LIBS": "ON"
       }
     },
     {
@@ -256,6 +310,16 @@
       "configuration": "Release"
     },
     {
+      "name": "debug-bsd",
+      "configurePreset" : "debug-bsd",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release-bsd",
+      "configurePreset" : "release-bsd",
+      "configuration": "Release"
+    },
+    {
       "name": "debug-macos",
       "configurePreset" : "debug-macos",
       "configuration": "Debug",
@@ -342,6 +406,22 @@
     {
       "name": "release-linux-vcpkg",
       "configurePreset" : "release-linux",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "debug-bsd",
+      "configurePreset" : "debug-bsd",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "release-bsd",
+      "configurePreset" : "release-bsd",
       "configuration": "Release",
       "output": {
         "outputOnFailure": true
