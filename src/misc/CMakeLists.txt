@@ -28,18 +28,19 @@ if (DOSBOX_PLATFORM_WINDOWS)
   target_link_libraries(dosboxcommon PRIVATE Shlwapi)
 
 elseif (DOSBOX_PLATFORM_MACOS)
-  # Linux & macOS-only filesystem helpers
+  # POSIX-compatible filesystem helpers
   target_sources(dosboxcommon PRIVATE fs_utils_posix.cpp)
 
   # macOS-only locale detection
   target_sources(dosboxcommon PRIVATE host_locale_macos.cpp)
 
-elseif (DOSBOX_PLATFORM_LINUX)
-  # Linux & macOS-only filesystem helpers
+elseif (DOSBOX_PLATFORM_LINUX OR DOSBOX_PLATFORM_BSD)
+  # POSIX-compatible filesystem helpers
   target_sources(dosboxcommon PRIVATE fs_utils_posix.cpp)
 
-  # Linux-only locale detection
+  # Linux and BSD-compatible locale detection
   target_sources(dosboxcommon PRIVATE host_locale_linux.cpp)
+
 endif()
 
 target_sources(dosbox PRIVATE messages.cpp)

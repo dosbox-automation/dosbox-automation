@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText:  2021-2026 The DOSBox Staging Team
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include "ethernet_slirp.h"
+
 #include <algorithm>
 #include <map>
 #include <stdexcept>
@@ -9,10 +11,7 @@
 #include <sys/socket.h> // AF_INET
 #endif
 
-#include "dosbox.h"
-#include "dosbox_config.h"
 #include "utils/dynlib.h"
-#include "ethernet_slirp.h"
 #include "hardware/timer.h"
 #include "config/setup.h"
 #include "utils/string_utils.h"
