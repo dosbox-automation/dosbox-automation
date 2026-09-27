@@ -64,4 +64,27 @@ TEST(MixerConfigureFadeOut, OutOfBounds)
 	ASSERT_FALSE(channel.ConfigureFadeOut("3001 10000"));
 }
 
+
+TEST(MixerDeviceFormat, SampleRateFollowsTheDevice)
+{
+	EXPECT_EQ(MIXER_PickSampleRate(48000, 44100), 44100);
+}
+
+TEST(MixerDeviceFormat, SampleRateFallsBackWhenDeviceReportsNone)
+{
+	EXPECT_EQ(MIXER_PickSampleRate(48000, 0), 48000);
+	EXPECT_EQ(MIXER_PickSampleRate(48000, -1), 48000);
+}
+
+TEST(MixerDeviceFormat, BlocksizeFollowsTheDevice)
+{
+	EXPECT_EQ(MIXER_PickBlocksize(1024, 512), 512);
+}
+
+TEST(MixerDeviceFormat, BlocksizeFallsBackWhenDeviceReportsNone)
+{
+	EXPECT_EQ(MIXER_PickBlocksize(1024, 0), 1024);
+	EXPECT_EQ(MIXER_PickBlocksize(1024, -7), 1024);
+}
+
 } // namespace

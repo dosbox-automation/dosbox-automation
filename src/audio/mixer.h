@@ -457,6 +457,11 @@ void MIXER_DeregisterChannel(MixerChannelPtr& channel);
 // Mixer configuration and initialization
 void MIXER_AddConfigSection(const ConfigPtr& conf);
 void MIXER_Init();
+
+// The rate and blocksize the mixer runs at: the device's when SDL reports
+// one, else the requested value. Pure, so the choice is unit-testable.
+int MIXER_PickSampleRate(const int requested_hz, const int device_hz);
+int MIXER_PickBlocksize(const int requested_frames, const int device_frames);
 void MIXER_Destroy();
 
 int MIXER_GetSampleRate();

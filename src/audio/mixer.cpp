@@ -47,6 +47,8 @@
 // must be included after dosbox_config.h
 #include <SDL3/SDL.h>
 
+#include "augra/log.h"
+
 CHECK_NARROWING();
 
 // #define DEBUG_MIXER
@@ -2753,6 +2755,16 @@ void MIXER_CloseAudioDevice()
 	}
 }
 
+int MIXER_PickSampleRate(const int requested_hz, const int device_hz)
+{
+	return device_hz > 0 ? device_hz : requested_hz;
+}
+
+int MIXER_PickBlocksize(const int requested_frames, const int device_frames)
+{
+	return device_frames > 0 ? device_frames : requested_frames;
+}
+
 // Sets `mixer.sample_rate_hz` and `mixer.blocksize` on success
 static bool init_sdl_sound(const int requested_sample_rate_hz,
                            const int requested_blocksize_in_frames,
@@ -2811,14 +2823,38 @@ static bool init_sdl_sound(const int requested_sample_rate_hz,
 	//
 	int obtained_blocksize = 0;
 
-	SDL_GetAudioDeviceFormat(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &obtained, &obtained_blocksize);
-	const auto obtained_sample_rate_hz = obtained.freq;
+	if (!SDL_GetAudioDeviceFormat(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
+	                              &obtained,
+	                              &obtained_blocksize)) {
+		augra::log_warn("mixer",
+		                "can't query the audio device format: %s",
+		                SDL_GetError());
+	}
 
-	mixer.sample_rate_hz = obtained_sample_rate_hz;
-	mixer.blocksize = obtained_blocksize;
+	mixer.sample_rate_hz = MIXER_PickSampleRate(requested_sample_rate_hz,
+	                                            obtained.freq);
+	mixer.blocksize = MIXER_PickBlocksize(requested_blocksize_in_frames,
+	                                      obtained_blocksize);
 
-	assert(obtained.channels == NumStereoChannels);
-	assert(obtained.format == desired.format);
+	// The stream converts to whatever the device runs at, so the mixer keeps
+	// rendering F32 stereo and only the rate follows the device; the device's
+	// own format is not ours to assert on (OSS on FreeBSD reports S16, ada-c4uw)
+	SDL_AudioSpec stream_format = desired;
+	stream_format.freq          = mixer.sample_rate_hz;
+
+	if (!SDL_SetAudioStreamFormat(mixer.sdl_device, &stream_format, nullptr)) {
+		augra::log_error("mixer",
+		                 "can't set the audio stream format: %s; sound output is disabled",
+		                 SDL_GetError());
+
+		SDL_DestroyAudioStream(mixer.sdl_device);
+		mixer.sdl_device = nullptr;
+
+		set_section_property_value("mixer", "nosound", "off");
+		return false;
+	}
+
+	const int obtained_sample_rate_hz = mixer.sample_rate_hz;
 
 	// Did SDL negotiate a different playback rate?
 	if (obtained_sample_rate_hz != requested_sample_rate_hz) {
@@ -2833,11 +2869,11 @@ static bool init_sdl_sound(const int requested_sample_rate_hz,
 	}
 
 	// Did SDL adjust the hint request?
-	if (!allow_negotiate && obtained_blocksize != requested_blocksize_in_frames) {
+	if (!allow_negotiate && mixer.blocksize != requested_blocksize_in_frames) {
 		LOG_MSG("MIXER: SDL changed the requested blocksize of "
 		        "%d to %d frames",
 		        requested_blocksize_in_frames,
-		        obtained_blocksize);
+		        mixer.blocksize);
 
 		set_section_property_value("mixer",
 		                           "blocksize",
