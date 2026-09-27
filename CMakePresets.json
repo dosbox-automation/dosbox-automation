@@ -184,6 +184,78 @@
       }
     },
     {
+      "name": "debug-macos-homebrew",
+      "displayName": "Debug (macOS, Homebrew libraries, Ninja)",
+      "description": "Configure for Debug build with the Ninja generator (Command Line Tools, no Xcode.app)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/debug-macos-homebrew",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "IS_PRESET_USED": "TRUE",
+        "USE_SYSTEM_LIBS": "ON",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release-macos-homebrew",
+      "displayName": "Release (macOS, Homebrew libraries, Ninja)",
+      "description": "Configure for Release build with the Ninja generator (Command Line Tools, no Xcode.app)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release-macos-homebrew",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "IS_PRESET_USED": "TRUE",
+        "USE_SYSTEM_LIBS": "ON",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "debug-macos-vcpkg",
+      "displayName": "Debug (macOS, vcpkg, Ninja)",
+      "description": "Configure for Debug build with the Ninja generator (Command Line Tools, no Xcode.app)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/debug-macos-vcpkg",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "IS_PRESET_USED": "TRUE",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release-macos-vcpkg",
+      "displayName": "Release (macOS, vcpkg, Ninja)",
+      "description": "Configure for Release build with the Ninja generator (Command Line Tools, no Xcode.app)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/release-macos-vcpkg",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "IS_PRESET_USED": "TRUE",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
       "name": "debug-windows-vs2022",
       "displayName": "Debug (Windows host CPU with VS2022)",
       "description": "Configure for Debug build",
@@ -344,6 +416,26 @@
       "nativeToolOptions": ["-quiet"]
     },
     {
+      "name": "debug-macos-homebrew",
+      "configurePreset": "debug-macos-homebrew",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release-macos-homebrew",
+      "configurePreset": "release-macos-homebrew",
+      "configuration": "Release"
+    },
+    {
+      "name": "debug-macos-vcpkg",
+      "configurePreset": "debug-macos-vcpkg",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release-macos-vcpkg",
+      "configurePreset": "release-macos-vcpkg",
+      "configuration": "Release"
+    },
+    {
       "name": "debug-windows-vs2022",
       "configurePreset" : "debug-windows-vs2022",
       "configuration": "Debug"
@@ -454,6 +546,38 @@
     {
       "name": "release-macos-x86_64",
       "configurePreset" : "release-macos-x86_64",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "debug-macos-homebrew",
+      "configurePreset": "debug-macos-homebrew",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "release-macos-homebrew",
+      "configurePreset": "release-macos-homebrew",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "debug-macos-vcpkg",
+      "configurePreset": "debug-macos-vcpkg",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "release-macos-vcpkg",
+      "configurePreset": "release-macos-vcpkg",
       "configuration": "Release",
       "output": {
         "outputOnFailure": true

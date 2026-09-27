@@ -5,8 +5,7 @@ libraries or vcpkg. Both paths use the Ninja generator and the Command
 Line Tools; full Xcode.app is not required.
 
 Verified on macOS 26.6.2 (Tahoe), Apple Clang 21.0, CMake 4.4.3, Mac
-mini M1 (arm64). The unit test suite passes 1438 of 1441 tests; the
-three failures are platform-specific edge cases under investigation.
+mini M1 (arm64). The full unit test suite passes on the Homebrew build.
 
 
 ## Prerequisites
@@ -49,14 +48,15 @@ brew install sdl3 sdl3_image fluid-synth opusfile speexdsp mt32emu \
 From the repository root:
 
 ```shell
-cmake -G Ninja -B build/debug-macos-homebrew \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
-
-cmake --build build/debug-macos-homebrew -- -j$(sysctl -n hw.ncpu)
+cmake --preset debug-macos-homebrew
+cmake --build --preset debug-macos-homebrew -- -j$(sysctl -n hw.ncpu)
 ```
 
-For a release build, change `Debug` to `Release`.
+For a release build use `release-macos-homebrew`. The presets set the
+Ninja generator, the build type, a deployment target of macOS 12.0 and
+`USE_SYSTEM_LIBS=ON`, which makes the build find opusfile through
+pkg-config instead of a CMake package file, since Homebrew ships none;
+the build directory is `build/<preset name>`.
 
 The linker will warn about Homebrew bottles being built for a newer
 macOS than the deployment target. This is expected when building against
@@ -91,15 +91,12 @@ source "$HOME"/.zshenv
 From the repository root:
 
 ```shell
-cmake -G Ninja -B build/debug-macos-vcpkg \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
-
-cmake --build build/debug-macos-vcpkg -- -j$(sysctl -n hw.ncpu)
+cmake --preset debug-macos-vcpkg
+cmake --build --preset debug-macos-vcpkg -- -j$(sysctl -n hw.ncpu)
 ```
 
-For a release build, change `Debug` to `Release`.
+For a release build use `release-macos-vcpkg`. The preset reads
+`VCPKG_ROOT` for the toolchain file.
 
 
 ## Running tests
@@ -154,6 +151,7 @@ cmake -G Ninja -B build/debug-macos-asan \
 
 - macOS is not covered by CI and no macOS binaries are published.
   Reports and fixes are welcome.
-- The CMake presets in `CMakePresets.json` use the Xcode generator,
-  which requires Xcode.app. The instructions above use the Ninja
-  generator and the Command Line Tools instead.
+- `CMakePresets.json` also carries `debug-macos` and `release-macos`
+  presets for the Xcode generator, which need Xcode.app. The
+  `*-macos-homebrew` and `*-macos-vcpkg` presets used above need only
+  the Command Line Tools.
