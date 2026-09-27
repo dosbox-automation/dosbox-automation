@@ -24,7 +24,7 @@ install_icons() {
     cp desktop/$DESKTOP_FILE $DEST_PATH/applications/$DESKTOP_FILE
 
     ## Replace executable location in the .desktop file
-    sed -i 's\Exec=dosbox\Exec='$(realpath dosbox)'\g' $DEST_PATH/applications/$DESKTOP_FILE
+    sed -i 's\Exec=dosbox-automation$\Exec='$(realpath dosbox-automation)'\g' $DEST_PATH/applications/$DESKTOP_FILE
 }
 
 remove_icons() {

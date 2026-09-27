@@ -267,7 +267,7 @@ endif()
 
 # Diagnostic option: emit a PDB for the release binary without changing
 # codegen. clang-cl /Zi emits CodeView into the objects (no codegen
-# difference); /DEBUG makes the linker produce dosbox.pdb. /DEBUG also
+# difference); /DEBUG makes the linker produce dosbox-automation.pdb. /DEBUG also
 # flips the linker defaults to /OPT:NOREF,NOICF, which would change the
 # binary layout, so both are re-pinned to keep the release image
 # identical (matters for heap-layout-sensitive bugs, see aug-zj8l).

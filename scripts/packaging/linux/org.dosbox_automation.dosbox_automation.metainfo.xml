@@ -58,7 +58,7 @@
     <release version="0.75.0" date="2020-05-06"/>
   </releases>
   <provides>
-    <binary>dosbox</binary>
+    <binary>dosbox-automation</binary>
   </provides>
   <recommends>
     <control>keyboard</control>

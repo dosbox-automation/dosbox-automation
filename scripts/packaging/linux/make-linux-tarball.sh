@@ -50,8 +50,8 @@ if [ ! -f "$build_dir/CMakeCache.txt" ]; then
     echo "error: $build_dir is not a CMake build directory" >&2
     exit 1
 fi
-if [ ! -x "$build_dir/dosbox" ]; then
-    echo "error: no dosbox binary in $build_dir - build first" >&2
+if [ ! -x "$build_dir/dosbox-automation" ]; then
+    echo "error: no dosbox-automation binary in $build_dir - build first" >&2
     exit 1
 fi
 
@@ -119,7 +119,7 @@ while read -r soname arrow path _; do
     cp -L --preserve=timestamps "$path" "$libdir/$soname"
     echo "bundled $soname from $path"
     bundled=$((bundled + 1))
-done < <(LD_LIBRARY_PATH="$search_path" ldd "$stage/$name/bin/dosbox")
+done < <(LD_LIBRARY_PATH="$search_path" ldd "$stage/$name/bin/dosbox-automation")
 
 if [ "$bundled" -eq 0 ]; then
     rmdir "$libdir"
@@ -150,7 +150,7 @@ cat > "$wrapper" << 'WEOF'
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export LIBDECOR_PLUGIN_DIR="$SCRIPT_DIR/bin/lib/libdecor/plugins-1"
 export DOSBOX_DECOR_ICON="$SCRIPT_DIR/share/dosbox-automation/icons/png/icon_256.png"
-exec "$SCRIPT_DIR/bin/dosbox" "$@"
+exec "$SCRIPT_DIR/bin/dosbox-automation" "$@"
 WEOF
 chmod 755 "$wrapper"
 

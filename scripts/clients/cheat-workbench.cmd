@@ -7,13 +7,13 @@ rem prints the Cheat Workbench URL, a link carrying the token for a browser
 rem on another machine, and the token itself.
 rem
 rem Usage: cheat-workbench.cmd [nowait]
-rem   DOSBOX_BIN   emulator to start (default: dosbox.exe next to this script)
+rem   DOSBOX_BIN   emulator to start (default: dosbox-automation.exe next to this script)
 rem   DOSBOX_PORT  API port (default 8386)
 setlocal
 cd /d "%~dp0"
 
 if "%DOSBOX_PORT%"=="" set DOSBOX_PORT=8386
-if "%DOSBOX_BIN%"=="" set DOSBOX_BIN=%~dp0dosbox.exe
+if "%DOSBOX_BIN%"=="" set DOSBOX_BIN=%~dp0dosbox-automation.exe
 if not exist "%DOSBOX_BIN%" (
   echo error: %DOSBOX_BIN% not found; set DOSBOX_BIN to the emulator executable
   if not "%1"=="nowait" pause

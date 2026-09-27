@@ -30,5 +30,5 @@ tell application "Terminal"
 end tell
 END
 
-/Applications/dosbox-automation.app/Contents/MacOS/dosbox --working-dir "$CWD"
+/Applications/dosbox-automation.app/Contents/MacOS/dosbox-automation --working-dir "$CWD"
 

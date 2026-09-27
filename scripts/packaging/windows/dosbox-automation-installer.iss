@@ -3,7 +3,7 @@
 ;
 ; Inno Setup script for dosbox-automation Windows installer.
 ;
-; Expects a staged build directory with dosbox.exe, Resources/, and docs.
+; Expects a staged build directory with dosbox-automation.exe, Resources/, and docs.
 ; The build-windows.sh script creates this staging layout.
 ;
 ; Build with:
@@ -17,9 +17,9 @@
 #endif
 #define MyAppPublisher "dosbox-automation contributors"
 #define MyAppURL "https://dosbox-automation.org"
-#define MyAppExeName "dosbox.exe"
+#define MyAppExeName "dosbox-automation.exe"
 
-; Path to the staged build directory containing dosbox.exe + Resources/
+; Path to the staged build directory containing dosbox-automation.exe + Resources/
 ; Override via /DStagingDir="..."
 #ifndef StagingDir
   #define StagingDir "..\..\augrudottir-dosbox-automation\dist\staging"
@@ -44,7 +44,7 @@ LicenseFile={#StagingDir}\LICENSE
 OutputDir={#StagingDir}\..
 OutputBaseFilename=dosbox-automation-{#MyAppVersion}-windows-x64-setup
 SetupIconFile={#StagingDir}\Resources\icons\windows\dosbox-automation.ico
-UninstallDisplayIcon={app}\dosbox.exe
+UninstallDisplayIcon={app}\dosbox-automation.exe
 
 ; Compression
 Compression=lzma2/ultra64
@@ -72,7 +72,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; Main executable
-Source: "{#StagingDir}\dosbox.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StagingDir}\dosbox-automation.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 ; Resources tree (shaders, soundfonts, translations, drives, icons, webserver)
 Source: "{#StagingDir}\Resources\*"; DestDir: "{app}\Resources"; Flags: ignoreversion recursesubdirs createallsubdirs

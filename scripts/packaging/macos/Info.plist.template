@@ -9,7 +9,7 @@
 	<string>dosbox-automation</string>
 
 	<key>CFBundleExecutable</key>
-	<string>dosbox</string>
+	<string>dosbox-automation</string>
 
 	<key>CFBundleIconFile</key>
 	<string>dosbox-automation.icns</string>
