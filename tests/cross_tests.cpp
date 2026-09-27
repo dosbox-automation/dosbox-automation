@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <cstdlib>
 #include <string>
 
@@ -26,5 +27,34 @@ TEST(StandardFontDirs, UnsetWindirGivesNoDirectoryInsteadOfCrashing)
 	EXPECT_TRUE(directories.empty());
 }
 #endif
+
+TEST(MallocAligned, SizeRoundsUpToAlignmentMultiple)
+{
+	EXPECT_EQ(aligned_alloc_size(13, 8), 16u);
+	EXPECT_EQ(aligned_alloc_size(16, 8), 16u);
+	EXPECT_EQ(aligned_alloc_size(1, 8), 8u);
+	EXPECT_EQ(aligned_alloc_size(0, 8), 0u);
+}
+
+TEST(MallocAligned, SizeThatCannotBeRoundedIsReportedAsZero)
+{
+	EXPECT_EQ(aligned_alloc_size(SIZE_MAX, 8), 0u);
+	EXPECT_EQ(aligned_alloc_size(SIZE_MAX - 6, 8), 0u);
+	EXPECT_EQ(aligned_alloc_size(SIZE_MAX - 7, 8), SIZE_MAX - 7);
+	EXPECT_EQ(aligned_alloc_size(5, 0), 5u);
+}
+
+TEST(MallocAligned, HugeSizeReturnsNullInsteadOfAZeroLengthBlock)
+{
+	EXPECT_EQ(malloc_aligned(SIZE_MAX, 8), nullptr);
+}
+
+TEST(MallocAligned, OddSizeAllocatesAndIsAligned)
+{
+	void* p = malloc_aligned(13, 8);
+	ASSERT_NE(p, nullptr);
+	EXPECT_EQ(reinterpret_cast<uintptr_t>(p) % 8, 0u);
+	free_aligned(p);
+}
 
 } // namespace

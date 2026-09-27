@@ -8,6 +8,8 @@
 
 #include "dosbox.h"
 
+#include <cassert>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -144,14 +146,32 @@ bool get_expanded_files(const std::string &path,
                         bool files_only,
                         bool skip_native_path = false) noexcept;
 
+// std::aligned_alloc wants a size that is a multiple of the alignment; glibc
+// tolerates any size, macOS returns nullptr (render out_buf, 2026-09-27).
+// 0 means the rounding overflowed, which malloc_aligned turns into nullptr.
+constexpr size_t aligned_alloc_size(const size_t size, const size_t alignment)
+{
+	if (alignment == 0) {
+		return size;
+	}
+	if (size > SIZE_MAX - (alignment - 1)) {
+		return 0;
+	}
+	return (size + alignment - 1) / alignment * alignment;
+}
+
 // Aligned memory allocate and free, supports Microsoft Vicual C
 inline void* malloc_aligned(const size_t size, const size_t alignment)
 {
+	const auto rounded = aligned_alloc_size(size, alignment);
+	if (size != 0 && rounded == 0) {
+		return nullptr;
+	}
 #ifdef _MSC_VER
 	// Microsoft Visual C does not support 'std::aligned_alloc'
-	return _aligned_malloc(size, alignment);
+	return _aligned_malloc(rounded, alignment);
 #else
-	return std::aligned_alloc(alignment, size);
+	return std::aligned_alloc(alignment, rounded);
 #endif
 }
 
