@@ -99,6 +99,7 @@ add_executable(dosbox_tests
     docs_location_tests.cpp
     osd_tests.cpp
     mount_policy_tests.cpp
+    mount_policy_system_paths_tests.cpp
     lua_engine_tests.cpp
     lua_coroutine_tests.cpp
     lua_api_tests.cpp

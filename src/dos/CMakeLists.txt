@@ -62,6 +62,7 @@ target_sources(dosboxcommon PRIVATE
   programs/mount.cpp
   programs/mount_common.cpp
   programs/mount_policy.cpp
+  programs/mount_policy_system_paths.cpp
   programs/mouse.cpp
   programs/mousectl.cpp
   programs/move.cpp

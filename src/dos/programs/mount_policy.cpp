@@ -43,11 +43,7 @@
 
 #include "mount_policy.h"
 
-#if defined(WIN32)
-#include "mount_policy_windows.h"
-#else
-#include "mount_policy_linux.h"
-#endif
+#include "mount_policy_system_paths.h"
 
 #include "augra/log.h"
 #include "config/config.h"
@@ -145,85 +141,12 @@ bool HasSymlinkComponent(const std::filesystem::path& canonical_path)
 	return false;
 }
 
-static bool IsBareRoot(const std::filesystem::path& canonical_path)
-{
-#if defined(WIN32)
-	// "C:\", "D:\", etc.
-	const auto s = canonical_path.string();
-	return (s.size() == 3 && std::isalpha(static_cast<unsigned char>(s[0])) &&
-	        s[1] == ':' && (s[2] == '\\' || s[2] == '/'));
-#else
-	return canonical_path == "/";
-#endif
-}
-
-// Case-insensitive prefix check for path strings. On Windows,
-// C:\Windows and c:\windows are the same path; byte-exact comparison
-// can defeat the system-path denylist via case mismatch.
-static bool PathStartsWith(const std::string& path, const std::string& prefix)
-{
-	if (path.size() < prefix.size()) {
-		return false;
-	}
-#if defined(WIN32)
-	for (size_t i = 0; i < prefix.size(); ++i) {
-		if (std::tolower(static_cast<unsigned char>(path[i])) !=
-		    std::tolower(static_cast<unsigned char>(prefix[i]))) {
-			return false;
-		}
-	}
-	return true;
-#else
-	return path.compare(0, prefix.size(), prefix) == 0;
-#endif
-}
-
-static bool PathEquals(const std::string& a, const std::string& b)
-{
-#if defined(WIN32)
-	if (a.size() != b.size()) {
-		return false;
-	}
-	return PathStartsWith(a, b);
-#else
-	return a == b;
-#endif
-}
-
 bool IsUnderSystemPath(const std::filesystem::path& canonical_path)
 {
-	if (IsBareRoot(canonical_path)) {
-		return true;
-	}
-
-	const auto& system_paths = SystemPaths();
-	const auto canonical_str = canonical_path.string();
-
-	for (const auto& sys_path : system_paths) {
-		const auto sys_str = sys_path.string();
-
-		if (PathEquals(canonical_str, sys_str)) {
-			return true;
-		}
-
-		// Check prefix: canonical must start with sys_path followed
-		// by a path separator, so "/etc" blocks "/etc/shadow" but
-		// not "/etcetera"
-		if (canonical_str.size() > sys_str.size() &&
-		    PathStartsWith(canonical_str, sys_str)) {
-			const auto next = canonical_str[sys_str.size()];
-#if defined(WIN32)
-			if (next == '\\' || next == '/') {
-				return true;
-			}
-#else
-			if (next == '/') {
-				return true;
-			}
-#endif
-		}
-	}
-	return false;
+	return IsUnderSystemPathIn(canonical_path,
+	                           SystemPaths(),
+	                           CarveOuts(),
+	                           AncestorsFor(CurrentHostOs()));
 }
 
 bool IsUnderAnyRoot(const std::filesystem::path& canonical_path,
@@ -234,24 +157,8 @@ bool IsUnderAnyRoot(const std::filesystem::path& canonical_path,
 	// Roots are expected to be canonical already (from ParsePathList
 	// or from CanonicalizeExisting at the call site).
 	for (const auto& root : roots) {
-		const auto root_str = root.string();
-
-		if (PathEquals(canonical_str, root_str)) {
+		if (PathIsAtOrBelow(canonical_str, root.string())) {
 			return true;
-		}
-
-		if (canonical_str.size() > root_str.size() &&
-		    PathStartsWith(canonical_str, root_str)) {
-			const auto next = canonical_str[root_str.size()];
-#if defined(WIN32)
-			if (next == '\\' || next == '/') {
-				return true;
-			}
-#else
-			if (next == '/') {
-				return true;
-			}
-#endif
 		}
 	}
 	return false;

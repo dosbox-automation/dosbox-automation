@@ -27,6 +27,13 @@ namespace {
 
 namespace fs = std::filesystem;
 
+// A system directory the host does not reach through a symlink
+#if defined(__APPLE__)
+constexpr auto kPlainSystemDir = "/private/etc";
+#elif !defined(WIN32)
+constexpr auto kPlainSystemDir = "/etc";
+#endif
+
 // -- Test fixture: temp directory with automatic cleanup --
 
 class MountPolicyTest : public testing::Test {
@@ -590,9 +597,10 @@ TEST_F(MountPolicyTest, DirMountOwnerTrustedSkipsWhitelist)
 #if !defined(WIN32)
 TEST_F(MountPolicyTest, DirMountSystemPathRejectedEvenOwnerTrusted)
 {
-	// /etc exists on the system, not in our temp dir
+	// A system directory that is not itself a symlink: on macOS /etc
+	// points into /private, and the symlink check runs first
 	const auto verdict = MountPolicy::ValidateDirectoryMount(
-	        fs::path("/etc"), fs::path("/etc"), {}, DirMountPolicy::OwnerTrusted);
+	        fs::path(kPlainSystemDir), fs::path(kPlainSystemDir), {}, DirMountPolicy::OwnerTrusted);
 
 	EXPECT_FALSE(verdict.allowed);
 	EXPECT_EQ(verdict.reason, DenyReason::SystemPath);
@@ -696,7 +704,7 @@ TEST_F(MountPolicyTest, BundledDrivesBaseDoesNotOpenSystemPaths)
 	const std::vector<fs::path> bases = {fs::canonical(drives)};
 
 	const auto verdict = MountPolicy::ValidateDirectoryMount(
-	        fs::path("/etc"), anchor, bases, DirMountPolicy::WhitelistEnforced);
+	        fs::path(kPlainSystemDir), anchor, bases, DirMountPolicy::WhitelistEnforced);
 	EXPECT_FALSE(verdict.allowed);
 	EXPECT_EQ(verdict.reason, DenyReason::SystemPath);
 }
@@ -856,6 +864,36 @@ TEST_F(MountPolicyTest, ImagePathUnderSystemDir)
 	}
 	const auto verdict = MountPolicy::ValidateImagePath(
 	        fs::path("/etc/passwd"), MountOrigin::GuestCommand, {});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::SystemPath);
+}
+#endif
+
+#if defined(__APPLE__)
+TEST_F(MountPolicyTest, MacosPasswdUnderPrivateEtcIsASystemPath)
+{
+	// The symlink-free spelling: /etc/passwd is refused for the symlink
+	// component, /private/etc/passwd has to be refused as a system path
+	if (!fs::is_regular_file("/private/etc/passwd")) {
+		GTEST_SKIP() << "/private/etc/passwd missing";
+	}
+	const auto verdict = MountPolicy::ValidateImagePath(
+	        fs::path("/private/etc/passwd"), MountOrigin::GuestCommand, {});
+
+	EXPECT_FALSE(verdict.allowed);
+	EXPECT_EQ(verdict.reason, DenyReason::SystemPath);
+}
+#endif
+
+#if defined(__FreeBSD__)
+TEST_F(MountPolicyTest, FreebsdRuntimeLinkerIsASystemPath)
+{
+	if (!fs::is_regular_file("/libexec/ld-elf.so.1")) {
+		GTEST_SKIP() << "/libexec/ld-elf.so.1 missing";
+	}
+	const auto verdict = MountPolicy::ValidateImagePath(
+	        fs::path("/libexec/ld-elf.so.1"), MountOrigin::GuestCommand, {});
 
 	EXPECT_FALSE(verdict.allowed);
 	EXPECT_EQ(verdict.reason, DenyReason::SystemPath);

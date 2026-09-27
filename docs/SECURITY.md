@@ -40,6 +40,22 @@ webserver an attack surface by design. The short version:
 - Every MOUNT, BOOT, and drive-swap path is validated before a drive is
   constructed: paths must resolve, symlink components are rejected, system
   directories are blocked, and disk images must pass structural validation.
+  The blocked directories come from one table with a row per host OS
+  (Linux, Windows, macOS, FreeBSD, NetBSD, OpenBSD, DragonFly), checked
+  against the canonical path. On the Unix rows a mount is refused when
+  it sits inside a blocked directory and also when it contains one, so a
+  parent such as `/private` on macOS cannot be mounted to reach the
+  named system directories below it; on Windows only the directory, its
+  subtree and every drive root are refused, because that list carries
+  the user's own temp directory. The bare root is refused everywhere.
+  `/opt` is blocked on every Unix build with `/opt/games` left open, and
+  `/var/home` (Linux) and `/usr/home` (FreeBSD, DragonFly) stay open on
+  every build under those spellings, for the installs where `/home` is a
+  symlink into them; a path that goes through the `/home` symlink is
+  refused as a symlink component, as any symlinked path is. The table is tested on every
+  host, so a Linux build checks the macOS and BSD rows too. All of this
+  is from 0.86.0; earlier releases apply the 17-entry Linux list to
+  every non-Windows build, without `/opt` and without the parent rule.
   With the webserver enabled, directory mounts, API disk swaps, and the
   image mounts of MOUNT and BOOT are all whitelist-restricted, including
   when they are typed in the guest shell or run from autoexec, and a
