@@ -41,6 +41,11 @@ endif()
 
 add_executable(dosbox_tests
     ansi_code_markup_tests.cpp
+    archive_entry_names_tests.cpp
+    archive_exclusive_file_tests.cpp
+    archive_identity_tests.cpp
+    archive_reader_tests.cpp
+    archive_zip_central_directory_tests.cpp
     batch_file_tests.cpp
     bda_cursor_type_tests.cpp
     bit_view_tests.cpp

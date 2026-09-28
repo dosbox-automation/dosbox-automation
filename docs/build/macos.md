@@ -40,8 +40,12 @@ the vcpkg toolchain file is what selects Homebrew over vcpkg.
 
 ```shell
 brew install sdl3 sdl3_image fluid-synth opusfile speexdsp mt32emu \
-  iir1 googletest asio freetype libpng jpeg-turbo
+  iir1 googletest asio freetype libpng jpeg-turbo libarchive
 ```
+
+Homebrew's libarchive is keg-only (macOS ships the library without
+headers). The configure step asks `brew --prefix libarchive` for its
+location, so no extra path setting is needed.
 
 ### Configure and build
 

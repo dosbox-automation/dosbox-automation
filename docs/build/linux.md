@@ -129,7 +129,7 @@ Verified on Debian 13:
 
 ```bash
 sudo apt install git build-essential cmake ninja-build pkg-config \
-    libasound2-dev libasio-dev libfluidsynth-dev libgtest-dev \
+    libarchive-dev libasound2-dev libasio-dev libfluidsynth-dev libgtest-dev \
     libgl1-mesa-dev libpng-dev libopusfile-dev libsdl3-dev \
     libsdl3-image-dev libspeexdsp-dev zlib1g-dev
 ```

@@ -13,6 +13,15 @@
     "opusfile",
     "fluidsynth",
     {
+      "name": "libarchive",
+      "default-features": false,
+      "features": [
+        "bzip2",
+        "lzma",
+        "zstd"
+      ]
+    },
+    {
       "name": "freetype",
       "default-features": false,
       "features": [

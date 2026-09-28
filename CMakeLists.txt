@@ -658,6 +658,22 @@ if (NOT C_ZLIB_NG)
   set(ZMBV_ZLIB_TARGET ZLIB::ZLIB)
 endif()
 
+# Archive mounts (ada-xke9) through libarchive: 3.4.0 first has the RAR 5.0
+# reader and AlmaLinux 8 ships 3.3.3, so alma8 takes the vcpkg port. Homebrew's
+# libarchive is keg-only, so the find module needs its prefix as a hint.
+if (APPLE AND NOT VCPKG_TOOLCHAIN)
+  execute_process(COMMAND brew --prefix libarchive
+    OUTPUT_VARIABLE HOMEBREW_LIBARCHIVE_PREFIX
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+  )
+  if (HOMEBREW_LIBARCHIVE_PREFIX)
+    set(LibArchive_ROOT "${HOMEBREW_LIBARCHIVE_PREFIX}")
+  endif()
+endif()
+find_package(LibArchive 3.4.0 REQUIRED)
+message(STATUS "Archive mounts: libarchive ${LibArchive_VERSION}")
+
 configure_file(
   src/dosbox_config.h.in.cmake
   ${CMAKE_CURRENT_BINARY_DIR}/include/dosbox_config.h
@@ -879,12 +895,13 @@ if (LIBATOMIC)
   target_link_libraries(dosboxcommon PRIVATE ${LIBATOMIC})
 endif()
 
-target_link_libraries(dosboxcommon PUBLIC loguru augra-log)
+target_link_libraries(dosboxcommon PUBLIC loguru augra-log LibArchive::LibArchive)
 target_link_libraries(dosboxcommon PUBLIC
   $<IF:$<TARGET_EXISTS:iir::iir>,iir::iir,iir::iir_static>
 )
 target_link_libraries(dosboxcommon PRIVATE
   decoders
+  sha256
 )
 
 target_link_libraries(dosbox PRIVATE

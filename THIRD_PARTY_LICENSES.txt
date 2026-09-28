@@ -2010,10 +2010,15 @@ Public License instead of this License.  But first, please read
 --------------------------------------------------------------------------------
 Public Domain
 --------------------------------------------------------------------------------
-Used by: loguru, PDCurses, decoders (dr_flac, dr_mp3, dr_wav, stb_vorbis)
+Used by: loguru, PDCurses, sha256, decoders (dr_flac, dr_mp3, dr_wav, stb_vorbis)
 
   loguru         Lightweight logging library
                  Public domain
+
+  sha256         SHA-256 (B-Con crypto-algorithms)
+                 Brad Conte, released into the public domain free of
+                 any restrictions (the repository's README)
+                 https://github.com/B-Con/crypto-algorithms
 
   PDCurses       Console window library
                  Public domain (some auxiliary files under other licenses)
@@ -2549,6 +2554,13 @@ source tree.
   asio           Asynchronous I/O library (standalone, non-Boost)
                  Copyright (c) 2003-2024 Christopher M. Kohlhoff
                  License: BSL-1.0
+
+  libarchive     Archive reading for archive mounts (zip, RAR, 7z, tar)
+                 Copyright (c) 2003-2024 Tim Kientzle and libarchive contributors
+                 https://www.libarchive.org
+                 License: BSD-2-Clause (text in the vendored libraries section)
+                 Seven RAR test fixtures under tests/files/archives/ are
+                 taken from its test suite (see the README there)
 
 --------------------------------------------------------------------------------
 Boost Software License 1.0

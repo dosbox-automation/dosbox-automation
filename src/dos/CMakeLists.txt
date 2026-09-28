@@ -38,6 +38,13 @@ target_sources(dosboxcommon PRIVATE
   drives.cpp
   programs.cpp
 
+  archive/archive_identity.cpp
+  archive/archive_reader.cpp
+  archive/descriptor.cpp
+  archive/entry_names.cpp
+  archive/exclusive_file.cpp
+  archive/zip_central_directory.cpp
+
   programs/append.cpp
   programs/attrib.cpp
   programs/autotype.cpp
