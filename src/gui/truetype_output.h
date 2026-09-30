@@ -47,12 +47,19 @@ uint32_t TTF_HardwareLine(const uint32_t render_line);
 void TTF_DrawPrepareScreen();
 
 // To be called at the start of each row of text
-void TTF_DrawPrepareBlockLine(const uint8_t* vram_address, const uint32_t render_line);
+void TTF_DrawPrepareBlockLine(const uint8_t* vram_address,
+                              const uint32_t render_line);
 
-// Actual line dwawing
-const uint8_t* TTF_DrawLine(const uint8_t* vram_address, const uint32_t render_line);
-const uint8_t* TTF_DrawLine(const uint8_t* vram_address, const uint32_t render_line,
-                            const uint32_t cursor_block, const Rgb888& cursor_color);
+// Actual line drawing. Sets the 'is_line_dirty' flag if it detects that the
+// rendered image has probably changed, otherwise puts 'false' there
+const uint8_t* TTF_DrawLine(const uint8_t* vram_address,
+                            const uint32_t render_line,
+                            bool& is_line_dirty);
+const uint8_t* TTF_DrawLine(const uint8_t* vram_address,
+                            const uint32_t render_line,
+                            const uint32_t cursor_block,
+                            const Rgb888& cursor_color,
+                            bool& is_line_dirty);
 
 // ***************************************************************************
 // External notifications
