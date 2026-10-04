@@ -96,6 +96,7 @@ add_executable(dosbox_tests
     fraction_tests.cpp
     fs_utils_tests.cpp
     fs_utf8_shortname_tests.cpp
+    hardware_audio_gus.cpp
     i8042_wide_read_tests.cpp
     int10_modes_tests.cpp
     joystick_reinit_tests.cpp
