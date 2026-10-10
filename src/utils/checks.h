@@ -36,8 +36,15 @@
 //   3. Finish the macro with END_MACRO to swalllow the semicolon and avoid
 //      name collisions and warnings about unused variables.
 
+// Two-level paste so __COUNTER__ is expanded before concatenation. The name is
+// unique per use, so several files can share one translation unit (unity
+// builds). The previous `END_MACRO_##__FILE__##__LINE__` never expanded its
+// operands, so every use produced the same identifier.
+#define CHECKS_CONCAT_IMPL(a, b) a##b
+#define CHECKS_CONCAT(a, b)      CHECKS_CONCAT_IMPL(a, b)
+
 #define END_MACRO \
-	struct END_MACRO_##__FILE__##__LINE__ {}
+	struct CHECKS_CONCAT(END_MACRO_, __COUNTER__) {}
 
 // `-Wconversion` enables a few noisy warnings wholesale that we then need
 // to disable manually.
