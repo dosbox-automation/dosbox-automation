@@ -663,12 +663,10 @@ void MOUSE_EventButton(const MouseButtonId button_id, const bool pressed)
 	}
 
 	// Notify mouse interfaces
-	int btn_count = 0;
 	for (const auto interface_id : AllMouseInterfaceIds) {
 		auto& interface = MouseInterface::GetInstance(interface_id);
 		if (interface.IsUsingHostPointer()) {
 			interface.NotifyButton(button_id, pressed);
-			++btn_count;
 		}
 	}
 	if (mouse_button_hook) {
