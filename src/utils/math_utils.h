@@ -348,42 +348,90 @@ inline int round_to_multiple_of(int m, int x)
 	return static_cast<int>(i * m);
 }
 
-// Rounds a floating point value to an integer,
-// clamps the result to the targeet type
+// Rounds a floating point value to a 64-bit integer,
+// clamps the result to the target type.
 
 inline uint8_t round_to_uint8(const float value)
 {
 	assert(std::isfinite(value));
+
+	if (value >= static_cast<float>(UINT8_MAX)) {
+		return UINT8_MAX;
+	} else if (value <= 0.0f) {
+		return 0;
+	}
+
 	return clamp_to_uint8(std::lround(value));
 }
 
 inline uint16_t round_to_uint16(const float value)
 {
 	assert(std::isfinite(value));
+
+	if (value >= static_cast<float>(UINT16_MAX)) {
+		return UINT16_MAX;
+	} else if (value <= 0.0f) {
+		return 0;
+	}
+
 	return clamp_to_uint16(std::lround(value));
 }
 
 inline uint32_t round_to_uint32(const float value)
 {
 	assert(std::isfinite(value));
+
+	if (value >= static_cast<float>(UINT32_MAX)) {
+		return UINT32_MAX;
+	} else if (value <= 0.0f) {
+		return 0;
+	}
+
+#ifdef WIN32
+	// On Windows 'long' is a 32-bit type (64-bit on Linux or macOS), so it cannot
+	// store UINT32_MAX - thus 'std::llround' is used
+	return clamp_to_uint32(std::llround(value));
+#else
 	return clamp_to_uint32(std::lround(value));
+#endif
 }
 
 inline int8_t round_to_int8(const float value)
 {
 	assert(std::isfinite(value));
+
+	if (value >= static_cast<float>(INT8_MAX)) {
+		return INT8_MAX;
+	} else if (value <= static_cast<float>(INT8_MIN)) {
+		return INT8_MIN;
+	}
+
 	return clamp_to_int8(std::lround(value));
 }
 
 inline int16_t round_to_int16(const float value)
 {
 	assert(std::isfinite(value));
+
+	if (value >= static_cast<float>(INT16_MAX)) {
+		return INT16_MAX;
+	} else if (value <= static_cast<float>(INT16_MIN)) {
+		return INT16_MIN;
+	}
+
 	return clamp_to_int16(std::lround(value));
 }
 
 inline int32_t round_to_int32(const float value)
 {
 	assert(std::isfinite(value));
+
+	if (value >= static_cast<float>(INT32_MAX)) {
+		return INT32_MAX;
+	} else if (value <= static_cast<float>(INT32_MIN)) {
+		return INT32_MIN;
+	}
+
 	return clamp_to_int32(std::lround(value));
 }
 

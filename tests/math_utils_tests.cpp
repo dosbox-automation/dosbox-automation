@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "utils/math_utils.h"
 
@@ -350,6 +351,86 @@ TEST(round_to_multiple_of, negative)
 	EXPECT_EQ(round_to_multiple_of(11, -7), -11);
 	EXPECT_EQ(round_to_multiple_of(11, -12), -22);
 	EXPECT_EQ(round_to_multiple_of(11, -11), -11);
+}
+
+TEST(round_to_integer, unsigned_8)
+{
+	EXPECT_EQ(round_to_uint8(-5.1f),  0);
+	EXPECT_EQ(round_to_uint8(0.01f),  0);
+	EXPECT_EQ(round_to_uint8(0.49f),  0);
+	EXPECT_EQ(round_to_uint8(0.50f),  1);
+	EXPECT_EQ(round_to_uint8(1.00f),  1);
+}
+
+TEST(round_to_integer, unsigned_16)
+{
+	EXPECT_EQ(round_to_uint16(-5.1f),  0);
+	EXPECT_EQ(round_to_uint16(0.01f),  0);
+	EXPECT_EQ(round_to_uint16(0.49f),  0);
+	EXPECT_EQ(round_to_uint16(0.50f),  1);
+	EXPECT_EQ(round_to_uint16(1.00f),  1);
+}
+
+TEST(round_to_integer, unsigned_32)
+{
+	EXPECT_EQ(round_to_uint32(-5.1f),  0);
+	EXPECT_EQ(round_to_uint32(0.01f),  0);
+	EXPECT_EQ(round_to_uint32(0.49f),  0);
+	EXPECT_EQ(round_to_uint32(0.50f),  1);
+	EXPECT_EQ(round_to_uint32(1.00f),  1);
+}
+
+TEST(round_to_integer, signed_8)
+{
+	EXPECT_EQ(round_to_int8(-5.49f), -5);
+	EXPECT_EQ(round_to_int8(-5.50f), -6);
+
+	EXPECT_EQ(round_to_int8(0.01f),  0);
+	EXPECT_EQ(round_to_int8(0.49f),  0);
+	EXPECT_EQ(round_to_int8(0.50f),  1);
+	EXPECT_EQ(round_to_int8(1.00f),  1);
+}
+
+TEST(round_to_integer, signed_16)
+{
+	EXPECT_EQ(round_to_int16(-5.49f), -5);
+	EXPECT_EQ(round_to_int16(-5.50f), -6);
+
+	EXPECT_EQ(round_to_int16(0.01f),  0);
+	EXPECT_EQ(round_to_int16(0.49f),  0);
+	EXPECT_EQ(round_to_int16(0.50f),  1);
+	EXPECT_EQ(round_to_int16(1.00f),  1);
+}
+
+TEST(round_to_integer, signed_32)
+{
+	EXPECT_EQ(round_to_int32(-5.49f), -5);
+	EXPECT_EQ(round_to_int32(-5.50f), -6);
+
+	EXPECT_EQ(round_to_int32(0.01f),  0);
+	EXPECT_EQ(round_to_int32(0.49f),  0);
+	EXPECT_EQ(round_to_int32(0.50f),  1);
+	EXPECT_EQ(round_to_int32(1.00f),  1);
+}
+
+TEST(round_to_integer, input_over_boundary)
+{
+	constexpr float LargePositive = static_cast<float>(UINT64_MAX) * 2.0f;
+	constexpr float LargeNegative = -LargePositive;
+
+	EXPECT_EQ(round_to_uint8(LargePositive),  UINT8_MAX);
+	EXPECT_EQ(round_to_uint8(LargeNegative),  UINT8_MIN);
+	EXPECT_EQ(round_to_uint16(LargePositive), UINT16_MAX);
+	EXPECT_EQ(round_to_uint16(LargeNegative), UINT16_MIN);
+	EXPECT_EQ(round_to_uint32(LargePositive), UINT32_MAX);
+	EXPECT_EQ(round_to_uint32(LargeNegative), UINT32_MIN);
+
+	EXPECT_EQ(round_to_int8(LargePositive),  INT8_MAX);
+	EXPECT_EQ(round_to_int8(LargeNegative),  INT8_MIN);
+	EXPECT_EQ(round_to_int16(LargePositive), INT16_MAX);
+	EXPECT_EQ(round_to_int16(LargeNegative), INT16_MIN);
+	EXPECT_EQ(round_to_int32(LargePositive), INT32_MAX);
+	EXPECT_EQ(round_to_int32(LargeNegative), INT32_MIN);
 }
 
 } // namespace
