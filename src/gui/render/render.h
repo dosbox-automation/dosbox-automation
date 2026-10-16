@@ -245,8 +245,18 @@ enum class ColorSpace {
 
 float get_gamma(const ColorSpace cs);
 
+typedef void (*RenderLineHandler)(const void* src_line_data, const bool is_line_dirty);
+
 extern Render render;
-extern ScalerLineHandler RENDER_DrawLine;
+
+// Use this call if you don't know whether the line data has changed since the
+// previous call for the same line
+void RENDER_DrawLine(const void* src_line_data);
+
+// If you know that the line is unchanged since the previous call, pass
+// 'is_line_dirty = false' - this will skip some CPU-costly processing.
+// If unsure, pass 'true'.
+void RENDER_DrawLine(const void* src_line_data, const bool is_line_dirty);
 
 void RENDER_Init();
 void RENDER_Reinit();

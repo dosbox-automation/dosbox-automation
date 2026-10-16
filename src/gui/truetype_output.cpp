@@ -1937,10 +1937,12 @@ public:
 	                const uint32_t render_line,
 	                const bool hercules_underline);
 
-	const RenderDataLine& GetRenderData(const uint32_t render_line);
+	const RenderDataLine& GetRenderData(const uint32_t render_line,
+	                                    bool& is_line_dirty);
 	const RenderDataLine& GetRenderData(const uint32_t render_line,
 	                                    const uint32_t cursor_block,
-	                                    const Rgb888& cursor_color);
+	                                    const Rgb888& cursor_color,
+	                                    bool& is_line_dirty);
 
 	void UpdateColors(const ColorLookupTable& new_colors_foreground,
 	                  const ColorLookupTable& new_colors_background);
@@ -2115,17 +2117,23 @@ void ScreenCache::RestoreAreaUnderCursor(CacheEntry& cache_entry)
 	cache_entry.has_cursor = false;
 }
 
-const RenderDataLine& ScreenCache::GetRenderData(const uint32_t render_line)
+const RenderDataLine& ScreenCache::GetRenderData(const uint32_t render_line,
+                                                 bool& is_line_dirty)
 {
 	auto& cache_entry = cache[render_line];
-	RestoreAreaUnderCursor(cache_entry);
+
+	if (cache_entry.has_cursor) {
+		is_line_dirty = true;
+		RestoreAreaUnderCursor(cache_entry);
+	}
 
 	return cache_entry.render_data;
 }
 
 const RenderDataLine& ScreenCache::GetRenderData(const uint32_t render_line,
                                                  const uint32_t new_cursor_block,
-                                                 const Rgb888& new_cursor_color)
+                                                 const Rgb888& new_cursor_color,
+                                                 bool& is_line_dirty)
 {
 	auto& cache_entry = cache[render_line];
 
@@ -2136,6 +2144,7 @@ const RenderDataLine& ScreenCache::GetRenderData(const uint32_t render_line,
 		return cache_entry.render_data;
 	}
 
+	is_line_dirty = true;
 	RestoreAreaUnderCursor(cache_entry);
 
 	cache_entry.cursor_block = new_cursor_block;
@@ -2901,9 +2910,14 @@ static bool is_hercules_underline(const uint32_t render_line)
 
 static const RenderDataLine EmptyLine = {0};
 
-const uint8_t* TTF_DrawLine(const uint8_t* vram_address, const uint32_t render_line)
+const uint8_t* TTF_DrawLine(const uint8_t* vram_address,
+                            const uint32_t render_line,
+                            bool& is_line_dirty)
 {
+	is_line_dirty = false;
+
 	if (render_line >= vga.draw.ttf.blocks_vertical * vga.draw.ttf.block_height) {
+		is_line_dirty = true;
 		return EmptyLine.data();
 	}
 
@@ -2915,24 +2929,32 @@ const uint8_t* TTF_DrawLine(const uint8_t* vram_address, const uint32_t render_l
 		return EmptyLine.data();
 	}
 	if (screen_cache.IsLineDirty(render_line, hercules_underline)) {
+		is_line_dirty = true;
 		screen_cache.UpdateLine(vram_address, render_line, hercules_underline);
 	}
 
-	return screen_cache.GetRenderData(render_line).data();
+	return screen_cache.GetRenderData(render_line, is_line_dirty).data();
 
 #else
 	alignas(SimdAlignment) static RenderDataLine render_data = {};
 
+	is_line_dirty = true;
 	draw_line(render_data, vram_address, render_line, hercules_underline);
 
 	return render_data.data();
 #endif
 }
 
-const uint8_t* TTF_DrawLine(const uint8_t* vram_address, const uint32_t render_line,
-                            const uint32_t cursor_block, const Rgb888& cursor_color)
+const uint8_t* TTF_DrawLine(const uint8_t* vram_address,
+                            const uint32_t render_line,
+                            const uint32_t cursor_block,
+                            const Rgb888& cursor_color,
+                            bool& is_line_dirty)
 {
+	is_line_dirty = false;
+
 	if (render_line >= vga.draw.ttf.blocks_vertical * vga.draw.ttf.block_height) {
+		is_line_dirty = true;
 		return EmptyLine.data();
 	}
 
@@ -2944,16 +2966,18 @@ const uint8_t* TTF_DrawLine(const uint8_t* vram_address, const uint32_t render_l
 		return EmptyLine.data();
 	}
 	if (screen_cache.IsLineDirty(render_line, hercules_underline)) {
+		is_line_dirty = true;
 		screen_cache.UpdateLine(vram_address, render_line, hercules_underline);
 	}
 
 	return screen_cache
-	        .GetRenderData(render_line, cursor_block, cursor_color)
+	        .GetRenderData(render_line, cursor_block, cursor_color, is_line_dirty)
 	        .data();
 
 #else
 	alignas(SimdAlignment) static RenderDataLine render_data = {};
 
+	is_line_dirty = true;
 	draw_line(render_data, vram_address, render_line, hercules_underline);
 	draw_cursor(render_data, cursor_block, cursor_color);
 

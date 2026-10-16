@@ -43,15 +43,14 @@ CHECK_NARROWING();
 
 Render render;
 
-// The handler for the next line of the frame; RENDER_DrawLine itself
-// always points to bounded_line_handler
-static ScalerLineHandler current_line_handler = nullptr;
+// The handler for the next line of the frame
+static RenderLineHandler current_line_handler = nullptr;
 
 static bool warned_extra_lines = false;
 
 // Nothing else stops a frame that delivers more lines than render_reset()
 // sized the cache for; drop them instead of writing past it (ada-a08x)
-static void bounded_line_handler(const void* src_line_data)
+static void bounded_line_handler(const void* src_line_data, const bool is_line_dirty)
 {
 	const auto pitch = render.scale.cache_pitch;
 	const auto start = reinterpret_cast<const uint8_t*>(render.scale.cache);
@@ -70,10 +69,18 @@ static void bounded_line_handler(const void* src_line_data)
 		}
 		return;
 	}
-	current_line_handler(src_line_data);
+	current_line_handler(src_line_data, is_line_dirty);
 }
 
-ScalerLineHandler RENDER_DrawLine = bounded_line_handler;
+void RENDER_DrawLine(const void* src_line_data)
+{
+	bounded_line_handler(src_line_data, true);
+}
+
+void RENDER_DrawLine(const void* src_line_data, const bool is_line_dirty)
+{
+	bounded_line_handler(src_line_data, is_line_dirty);
+}
 
 static std::mutex shared_frame_mutex;
 static RenderedImage shared_frame = {};
@@ -191,11 +198,27 @@ static bool maybe_gfx_start_update()
 	return true;
 }
 
-static void empty_line_handler(const void*) {}
+static void empty_line_handler(const void*, const bool) {}
 
-static void start_line_handler(const void* src_line_data)
+static void scale_line_handler(const void* src_line_data, const bool)
 {
-	if (src_line_data) {
+	render.scale.line_handler(src_line_data);
+}
+
+static void scale_palette_line_handler(const void* src_line_data, const bool)
+{
+	render.scale.line_palette_handler(src_line_data);
+}
+
+static void start_line_handler(const void* src_line_data, const bool is_line_dirty)
+{
+	if (src_line_data && is_line_dirty) {
+
+		// Most renderers can't tell whether the line is dirty or not, in such case
+		// we are going to get the dirty flag set every time. At least the TrueType
+		// text renderer can in some cases mark the line as dirty where in reality it
+		// is not. Thus, we do the (costly...) memory compare to be sure.
+		//
 		if (std::memcmp(src_line_data,
 		                render.scale.cache_read,
 		                render.scale.cache_pitch) != 0) {
@@ -218,8 +241,8 @@ static void start_line_handler(const void* src_line_data)
 
 			render.updating_frame = true;
 
-			current_line_handler = render.scale.line_handler;
-			current_line_handler(src_line_data);
+			current_line_handler = scale_line_handler;
+			current_line_handler(src_line_data, true);
 			return;
 		}
 	}
@@ -229,7 +252,7 @@ static void start_line_handler(const void* src_line_data)
 	scaler_changed_lines[0] += render.scale.y_scale;
 }
 
-static void finish_line_handler(const void* src_line_data)
+static void finish_line_handler(const void* src_line_data, const bool)
 {
 	if (src_line_data) {
 		std::memcpy(render.scale.cache_read,
@@ -240,7 +263,7 @@ static void finish_line_handler(const void* src_line_data)
 	render.scale.cache_read += render.scale.cache_pitch;
 }
 
-static void clear_cache_handler(const void* src_line_data)
+static void clear_cache_handler(const void* src_line_data, const bool)
 {
 	// `src_line_data` contains a scanline worth of pixel data. All screen
 	// mode widths are multiples of 8, therefore we can access this data one
@@ -327,7 +350,7 @@ bool RENDER_StartUpdate()
 			return false;
 		}
 
-		current_line_handler = render.scale.line_palette_handler;
+		current_line_handler = scale_palette_line_handler;
 
 		render.render_in_progress = true;
 		return true;
