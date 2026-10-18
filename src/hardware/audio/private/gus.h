@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText:  2020-2025 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #ifndef DOSBOX_PRIVATE_GUS_H
 #define DOSBOX_PRIVATE_GUS_H
@@ -30,6 +31,9 @@ constexpr uint32_t BYTES_PER_DMA_XFER = 8 * 1024;         // 8 KB per transfer
 constexpr uint32_t ISA_BUS_THROUGHPUT = 32 * 1024 * 1024; // 32 MB/s
 constexpr uint16_t DMA_TRANSFERS_PER_S = ISA_BUS_THROUGHPUT / BYTES_PER_DMA_XFER;
 constexpr double MS_PER_DMA_XFER = MillisInSecond / DMA_TRANSFERS_PER_S;
+
+// The recording delivers silence in 1 ms slices.
+constexpr double MS_PER_RECORD_XFER = 1.0;
 
 // Voice-channel and state related constants
 constexpr uint8_t MAX_VOICES          = 32;
@@ -186,6 +190,24 @@ union DmaControlRegister {
 	bit_view<7, 1> are_samples_high_bit_inverted;
 };
 
+// Sampling Control Register (49h), section 2.6.1.7 of the UltraSound Lowlevel
+// Toolkit revision 2.01. It runs the recording over the second DMA channel,
+// independent of the DRAM upload set up through 41h.
+union SamplingControlRegister {
+	uint8_t data = 0;
+	bit_view<0, 1> is_enabled;
+	bit_view<1, 1> is_stereo;
+	bit_view<2, 1> is_channel_16bit;
+	bit_view<3, 2> rate_divisor;
+	bit_view<5, 1> wants_irq_on_terminal_count;
+
+	// Written: 16-bit samples. Read: terminal count IRQ pending.
+	bit_view<6, 1> are_samples_16bit;
+	bit_view<6, 1> has_pending_terminal_count_irq;
+
+	bit_view<7, 1> are_samples_high_bit_inverted;
+};
+
 // Reset Register (4Ch), section 2.6.1.9, page 16, of the UltraSound Software
 // Development Kit (SDK) Version 2.22
 union ResetRegister {
@@ -273,7 +295,8 @@ public:
 	MixerChannelPtr channel = nullptr;
 	RWQueue<AudioFrame> output_queue {1};
 
-	std::function<bool()> PerformDmaTransfer = {};
+	bool PerformDramDmaTransfer();
+	bool PerformRecordDmaTransfer();
 
 private:
 	Gus()                      = delete;
@@ -287,6 +310,9 @@ private:
 	void UpdateDmaAddr(uint32_t offset) noexcept;
 	void DmaCallback(const DmaChannel* chan, DmaEvent event);
 	void StartDmaTransfers();
+	void StartRecordDmaTransfers();
+	void UpdateDmaTerminalCountIrq();
+	int GetRecordSampleRateHz() const noexcept;
 
 	template <SampleSize sample_size>
 	bool SizedDmaTransfer();
@@ -354,8 +380,7 @@ private:
 	uint8_t selected_register = 0;
 
 	// Control states
-	uint8_t sample_ctrl = 0;
-	uint8_t timer_ctrl  = 0;
+	uint8_t timer_ctrl = 0;
 
 	// DMA states
 	uint16_t dma_addr       = 0;
@@ -363,6 +388,15 @@ private:
 
 	uint8_t dma1      = 0; // playback DMA
 	uint8_t dma2      = 0; // recording DMA
+
+	// DRAM upload width and the recording, section 2.6.1 of the
+	// UltraSound Lowlevel Toolkit revision 2.01
+	SampleSize dram_dma_sample_size                   = SampleSize::Bits8;
+	SamplingControlRegister sampling_control_register = {};
+	SampleSize record_sample_size                     = SampleSize::Bits8;
+	uint8_t sampling_frequency                        = 0;
+	std::vector<uint8_t> record_silence               = {};
+	double record_bytes_owed                          = 0.0;
 
 	// IRQ states
 	uint8_t irq1       = 0; // playback IRQ

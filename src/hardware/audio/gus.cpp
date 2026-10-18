@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "private/gus.h"
 
+#include <algorithm>
 #include <array>
 #include <iomanip>
 #include <memory>
@@ -730,9 +732,16 @@ bool Gus::IsDmaXfer16Bit() noexcept
 	return (dma_control_register.is_channel_16bit && dma1 >= 4);
 }
 
+bool Gus::PerformDramDmaTransfer()
+{
+	return dram_dma_sample_size == SampleSize::Bits16
+	             ? SizedDmaTransfer<SampleSize::Bits16>()
+	             : SizedDmaTransfer<SampleSize::Bits8>();
+}
+
 static void gus_dma_event(uint32_t)
 {
-	if (gus->PerformDmaTransfer()) {
+	if (gus->PerformDramDmaTransfer()) {
 		PIC_AddEvent(gus_dma_event, MS_PER_DMA_XFER);
 	}
 }
@@ -741,6 +750,106 @@ void Gus::StartDmaTransfers()
 {
 	PIC_RemoveEvents(gus_dma_event);
 	PIC_AddEvent(gus_dma_event, MS_PER_DMA_XFER);
+}
+
+// Sampling Frequency (48h), section 2.6.1.6 of the UltraSound Lowlevel Toolkit
+// revision 2.01.
+int Gus::GetRecordSampleRateHz() const noexcept
+{
+	return 9878400 / (16 * (sampling_frequency + 2));
+}
+
+// Nothing is plugged into the emulated inputs, so a recording is silence. The
+// record channel is looked up per run and gets no GUS callback: the guest
+// picks it, and it may belong to another device or controller.
+bool Gus::PerformRecordDmaTransfer()
+{
+	if (!sampling_control_register.is_enabled) {
+		record_bytes_owed = 0.0;
+		return false;
+	}
+	auto* channel = (dma2 == dma1) ? dma_channel : DMA_GetChannel(dma2);
+	if (!channel || channel->is_masked) {
+		record_bytes_owed = 0.0;
+		return true;
+	}
+
+	const auto is_16bit_data = (record_sample_size == SampleSize::Bits16);
+	const int bytes_per_frame = (sampling_control_register.is_stereo ? 2 : 1) *
+	                            (is_16bit_data ? 2 : 1);
+	record_bytes_owed += GetRecordSampleRateHz() * bytes_per_frame *
+	                     MS_PER_RECORD_XFER / MillisInSecond;
+
+	// Whole samples per slice, so the MSB of 16-bit data keeps its byte.
+	const size_t bytes_per_word = channel->is_16bit + 1u;
+	const size_t bytes_per_unit = std::max<size_t>(bytes_per_word,
+	                                               is_16bit_data ? 2 : 1);
+	const auto owed_bytes       = static_cast<size_t>(record_bytes_owed) /
+	                        bytes_per_unit * bytes_per_unit;
+	const auto words_left = static_cast<size_t>(channel->curr_count) + 1;
+	const auto words = std::min(owed_bytes / bytes_per_word, words_left);
+
+	// The 8237's terminal count flag stays set until its status port is
+	// read, so the end of this transfer comes from its own count.
+	const bool reaches_terminal_count = (words == words_left);
+
+	if (words > 0) {
+		const auto bytes = words * bytes_per_word;
+		record_bytes_owed -= static_cast<double>(bytes);
+
+		// Unsigned silence is mid-scale; inverting the MSB makes it zero.
+		const uint8_t silence_msb = sampling_control_register.are_samples_high_bit_inverted
+		                                  ? 0x00
+		                                  : 0x80;
+		record_silence.assign(bytes, 0x00);
+		const size_t msb_offset = is_16bit_data ? 1 : 0;
+		const size_t step       = is_16bit_data ? 2 : 1;
+		for (auto i = msb_offset; i < bytes; i += step) {
+			record_silence[i] = silence_msb;
+		}
+
+		[[maybe_unused]] const auto transferred =
+		        channel->Write(words, record_silence.data());
+		assert(transferred == words);
+	}
+
+	if (reaches_terminal_count) {
+		sampling_control_register.has_pending_terminal_count_irq = true;
+		record_bytes_owed                                        = 0.0;
+		UpdateDmaTerminalCountIrq();
+		return false;
+	}
+	return true;
+}
+
+static void gus_record_event(uint32_t)
+{
+	if (gus->PerformRecordDmaTransfer()) {
+		PIC_AddEvent(gus_record_event, MS_PER_RECORD_XFER);
+	}
+}
+
+void Gus::StartRecordDmaTransfers()
+{
+	PIC_RemoveEvents(gus_record_event);
+	PIC_AddEvent(gus_record_event, MS_PER_RECORD_XFER);
+}
+
+// IRQ Status (2X6) bit 7 is shared by the DRAM and the record DMA, section 2.9.
+void Gus::UpdateDmaTerminalCountIrq()
+{
+	const bool dram_wants_irq = dma_control_register.has_pending_terminal_count_irq &&
+	                            dma_control_register.wants_irq_on_terminal_count;
+	const bool record_wants_irq =
+	        sampling_control_register.has_pending_terminal_count_irq &&
+	        sampling_control_register.wants_irq_on_terminal_count;
+
+	if (dram_wants_irq || record_wants_irq) {
+		irq_status |= 0x80;
+	} else {
+		irq_status &= 0x7f;
+	}
+	CheckIrq();
 }
 
 void Gus::DmaCallback(const DmaChannel*, DmaEvent event)
@@ -965,15 +1074,16 @@ uint16_t Gus::ReadFromRegister()
 	case 0x41: // DMA control register - read acknowledges DMA IRQ
 		reg = dma_control_register.data;
 		dma_control_register.has_pending_terminal_count_irq = false;
-		irq_status &= 0x7f;
-		CheckIrq();
+		UpdateDmaTerminalCountIrq();
 		return static_cast<uint16_t>(reg << 8);
 	case 0x42: // DMA address register
 		return dma_addr;
 	case 0x45: // Timer control register matches Adlib's behavior
 		return static_cast<uint16_t>(timer_ctrl << 8);
-	case 0x49: // DMA sample register
-		reg = dma_control_register.data;
+	case 0x49: // DMA sampling control register - read acknowledges its IRQ
+		reg = sampling_control_register.data;
+		sampling_control_register.has_pending_terminal_count_irq = false;
+		UpdateDmaTerminalCountIrq();
 		return static_cast<uint16_t>(reg << 8);
 	case 0x4c: // Reset register
 		return static_cast<uint16_t>(reset_register.data << 8);
@@ -1089,8 +1199,14 @@ void Gus::Reset() noexcept
 	adlib_command_reg = ADLIB_CMD_DEFAULT;
 
 	dma_control_register.data = {};
+	dram_dma_sample_size      = SampleSize::Bits8;
+	PIC_RemoveEvents(gus_dma_event);
 
-	sample_ctrl = 0;
+	sampling_control_register.data = {};
+	record_sample_size             = SampleSize::Bits8;
+	sampling_frequency             = 0;
+	record_bytes_owed              = 0.0;
+	PIC_RemoveEvents(gus_record_event);
 
 	timer_ctrl = 0;
 	timer_one  = Timer{TIMER_1_DEFAULT_DELAY};
@@ -1124,7 +1240,9 @@ void Gus::UpdateRecordingDmaAddress(const uint8_t new_address)
 {
 	dma2 = new_address;
 
-	// TODO: Populate when we have audio input writing to a DMA channel
+	// Brings up the channel's controller, as the playback path does, so the
+	// guest can program it; the record event looks the channel up again.
+	DMA_GetChannel(dma2);
 
 #if LOG_GUS
 	LOG_MSG("GUS: Assigned recording DMA address to %u", dma2);
@@ -1332,6 +1450,8 @@ void Gus::WriteToRegister()
 	case 0x10: // Undocumented register used in Fast Tracker 2
 		return;
 	case 0x41: // DMA control register
+	{
+		const bool was_pending = dma_control_register.has_pending_terminal_count_irq;
 		dma_control_register.data = static_cast<uint8_t>(register_data >> 8);
 
 		// This is the only place where the application tells the GUS if
@@ -1339,15 +1459,16 @@ void Gus::WriteToRegister()
 		// write in bit 6 that can't be read back because this bit takes
 		// on a different meaning when reading the DMA control register.
 		//
-		PerformDmaTransfer = std::bind(
-		        dma_control_register.are_samples_16bit
-		                ? &Gus::SizedDmaTransfer<SampleSize::Bits16>
-		                : &Gus::SizedDmaTransfer<SampleSize::Bits8>,
-		        this);
+		dram_dma_sample_size = dma_control_register.are_samples_16bit
+		                             ? SampleSize::Bits16
+		                             : SampleSize::Bits8;
+		dma_control_register.has_pending_terminal_count_irq = was_pending;
+		UpdateDmaTerminalCountIrq();
 
 		if (dma_control_register.is_enabled) {
 			StartDmaTransfers();
 		}
+	}
 		return;
 	case 0x42: // Gravis DRAM DMA address register
 		dma_addr        = register_data;
@@ -1383,11 +1504,26 @@ void Gus::WriteToRegister()
 		timer_two.value = static_cast<uint8_t>(register_data >> 8);
 		timer_two.delay = (0x100 - timer_two.value) * TIMER_2_DEFAULT_DELAY;
 		return;
+	case 0x48:
+		sampling_frequency = static_cast<uint8_t>(register_data >> 8);
+		return;
 	case 0x49: // DMA sampling control register
-		sample_ctrl = static_cast<uint8_t>(register_data >> 8);
-		if (sample_ctrl & 1) {
-			StartDmaTransfers();
+	{
+		const bool was_pending = sampling_control_register.has_pending_terminal_count_irq;
+		sampling_control_register.data = static_cast<uint8_t>(
+		        register_data >> 8);
+		record_sample_size = sampling_control_register.are_samples_16bit
+		                           ? SampleSize::Bits16
+		                           : SampleSize::Bits8;
+		sampling_control_register.has_pending_terminal_count_irq = was_pending;
+		UpdateDmaTerminalCountIrq();
+
+		if (sampling_control_register.is_enabled) {
+			StartRecordDmaTransfers();
+		} else {
+			PIC_RemoveEvents(gus_record_event);
 		}
+	}
 		return;
 	case 0x4c: // Reset register
 		reset_register.data = static_cast<uint8_t>(register_data >> 8);

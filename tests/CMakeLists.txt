@@ -96,6 +96,7 @@ add_executable(dosbox_tests
     fraction_tests.cpp
     fs_utils_tests.cpp
     fs_utf8_shortname_tests.cpp
+    gus_dma_tests.cpp
     i8042_wide_read_tests.cpp
     int10_modes_tests.cpp
     ipx_setting_tests.cpp
