@@ -348,8 +348,8 @@ inline int round_to_multiple_of(int m, int x)
 	return static_cast<int>(i * m);
 }
 
-// Rounds a floating point value to a 64-bit integer,
-// clamps the result to the target type.
+// The range check keeps the rounding call's input inside what its result
+// type can hold; past that the result is unspecified.
 
 inline uint8_t round_to_uint8(const float value)
 {
@@ -387,13 +387,8 @@ inline uint32_t round_to_uint32(const float value)
 		return 0;
 	}
 
-#ifdef WIN32
-	// On Windows 'long' is a 32-bit type (64-bit on Linux or macOS), so it cannot
-	// store UINT32_MAX - thus 'std::llround' is used
+	// long is 32 bits on Windows; only llround holds every uint32
 	return clamp_to_uint32(std::llround(value));
-#else
-	return clamp_to_uint32(std::lround(value));
-#endif
 }
 
 inline int8_t round_to_int8(const float value)

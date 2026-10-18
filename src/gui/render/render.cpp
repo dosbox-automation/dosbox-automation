@@ -232,7 +232,11 @@ static void start_line_handler(const void* src_line_data, const bool is_line_dir
 			// swap followed by a texture upload to the GPU.
 			//
 			if (!maybe_gfx_start_update()) {
-				current_line_handler = empty_line_handler;
+				// The TTF renderer already counts this frame's lines as
+				// delivered and reports them clean next frame; only a
+				// cache clear gets them drawn.
+				render.scale.clear_cache = true;
+				current_line_handler     = empty_line_handler;
 				return;
 			}
 

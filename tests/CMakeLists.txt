@@ -152,6 +152,8 @@ add_executable(dosbox_tests
     webserver_cpu_write_tests.cpp
     webserver_frame_tap_tests.cpp
     multi_prefix_tests.cpp
+    one_process_hint.cpp
+    one_process_hint_tests.cpp
     zmbv_tests.cpp
     render_scale_tests.cpp
     truetype_freetype_tests.cpp

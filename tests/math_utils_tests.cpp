@@ -433,4 +433,11 @@ TEST(round_to_integer, input_over_boundary)
 	EXPECT_EQ(round_to_int32(LargeNegative), INT32_MIN);
 }
 
+// A 32-bit long (Windows) cannot hold this; the Linux run only guards it
+TEST(round_to_integer, unsigned_32_above_the_signed_range)
+{
+	EXPECT_EQ(round_to_uint32(3.0e9f), 3000000000u);
+	EXPECT_EQ(round_to_uint32(4294967040.0f), 4294967040u);
+}
+
 } // namespace
