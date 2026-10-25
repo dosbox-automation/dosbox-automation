@@ -141,6 +141,19 @@ webserver an attack surface by design. The short version:
   line's `--run` doubles `%` for the AUTOEXEC.BAT batch expansion.
   The name is echoed back with control characters replaced and its length
   capped.
+- The program menu (UniMenu, `Y:\DOS\UNIMENU.EXE`) starts only what MOUNT
+  offered it. The engine keeps the list and starts the chosen entry through
+  the same resolver and checks as `-run`, so nothing the menu sends becomes
+  a command line, and outside a menu that MOUNT opened it starts nothing.
+  The menu turn goes only to the bundled UniMenu: with another drive or an
+  overlay at Y:, MOUNT does not run whatever sits at that path.
+  The overlay commands from DOS answer only while the webserver has switched
+  them on. A `CHOOSER.TML` from the archive is read through the
+  mounted drive, at most 16 KiB; labels lose their control characters and
+  are cut at 60 characters. An entry is dropped when its program is not an
+  8.3 path or carries `..`, control characters or `> < | & % ;`, and when
+  its arguments run over 40 characters or carry control characters or
+  those six.
 - Lua scripts run sandboxed: no filesystem or process access, bytecode
   rejected, dangerous globals removed, instruction and pattern-complexity
   limits against runaway scripts.

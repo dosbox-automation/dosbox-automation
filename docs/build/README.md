@@ -9,6 +9,7 @@ carry the details:
 - [Linux](linux.md)
 - [Windows](windows.md)
 - [macOS](macos.md)
+- [FreeBSD](freebsd.md)
 
 ## The short version
 

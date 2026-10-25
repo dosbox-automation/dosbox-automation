@@ -4,11 +4,14 @@
 # Porting dosbox-automation to another operating system
 
 This is the list of places a port has to touch, written so that you do
-not have to read the whole tree to find them. Linux, Windows and macOS
-are the platforms the project builds and tests itself. FreeBSD came in
-as a community port (PR 9, 2026-09) and is kept building on a FreeBSD
-VM, but it is community-supported: no house hardware runs it beyond the
-build and the unit tests, and reports and fixes are welcome.
+not have to read the whole tree to find them. Linux, Windows, macOS on
+Apple silicon and FreeBSD on x86-64 are the platforms the project builds,
+tests and releases itself from 0.86.0 on. FreeBSD came in as a community
+port (PR 9, 2026-09) and is built and tested on a FreeBSD VM. Linux on
+ARM64 is meant to follow as a test build from an Alma 9 ARM64 builder, for
+people who want to try it on a Raspberry Pi; reports are welcome. Other systems, NetBSD among
+them, are ports we take when someone sends them: the list below is what
+such a port touches.
 
 ## What a port must add
 
@@ -50,17 +53,31 @@ stops at the first one you skip.
    renderer workarounds keyed by platform (the llvmpipe channel swap on
    BSD lives there). Look at those three before adding a new `#if`
    elsewhere.
-7. **Tests that assume a host layout.** `tests/host_browser_tests.cpp`
+7. **Archive mounts.** The engine reads archives through a helper
+   process and hands it the open archive: `src/misc/child_process.cpp`
+   passes the descriptor over a socket with `SCM_RIGHTS` on POSIX and as
+   an inherited handle on Windows, and `src/dos/archive/descriptor.cpp`
+   makes the duplicate that must not leak into other children
+   (`F_DUPFD_CLOEXEC`, `DuplicateHandle` without inheritance). One sidecar
+   is held by one engine through `src/dos/archive/archive_lock.cpp`
+   (`flock`, `LockFileEx`). The archive cache and the saves directory come
+   from `get_cache_dir()` and `get_data_dir()` in `src/misc/cross.cpp`.
+   DOS file attributes on host folders, the sidecar included, are stored
+   as an extended attribute in
+   `src/misc/fs_utils_posix.cpp` (`xattr` on Linux and macOS, `extattr`
+   on FreeBSD); a system with neither answers access denied to attribute
+   changes, and the tests that need them skip there.
+8. **Tests that assume a host layout.** `tests/host_browser_tests.cpp`
    looks for `true` in `/usr/bin` and `/bin`; `tests/mount_policy_tests.cpp`
    picks a system directory that is not a symlink on the host
    (`kPlainSystemDir`). `tests/CMakeLists.txt` has the BSD+GCC path for
    GoogleTest. A new host that fails one of these usually needs the
    test taught about its layout, not the test disabled.
-8. **Packaging** in `scripts/packaging/`. The Linux tarball script, the
+9. **Packaging** in `scripts/packaging/`. The Linux tarball script, the
    desktop and metainfo files, the macOS `Info.plist` template and the
    Windows installer script name the binary `dosbox-automation`; a new
    package format goes next to them.
-9. **A build document** in `docs/build/`, one per platform, with the
+10. **A build document** in `docs/build/`, one per platform, with the
    exact commands you verified. Say what you tested on and what you
    did not.
 
@@ -83,6 +100,6 @@ system, headless runs use `SDL_VIDEODRIVER=offscreen`.
 ## Sending it
 
 Open a pull request with the project's template, tested on the port
-and on at least one of the three house platforms, with the build
-document from step 9. Ports are reviewed like any other contribution:
+and on at least one of the house platforms, with the build
+document from step 10. Ports are reviewed like any other contribution:
 the code is read, built and run here before it merges.
