@@ -1298,6 +1298,10 @@ TEST_F(ArchiveImagesTest, AStoreBelowTheDeepestLevelIsRefused)
 TEST_F(ArchiveImagesTest, ADiskInsideAZipWithALongJolietNameResolves)
 {
 	// G17: King's Quest IV's zip on the disc has a 104-character name.
+	if (!ArchiveFixtures::LibarchiveReadsJolietName(104)) {
+		GTEST_SKIP() << "warning: the linked libarchive cuts Joliet names "
+		                "at 103 characters (unpatched system library)";
+	}
 	const auto name = std::string(100, 'k') + ".zip";
 	const auto iso  = ArchiveFixtures::IsoWithJolietFile(name,
                                                             Slurp(tmp / "game.zip"));

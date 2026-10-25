@@ -448,6 +448,30 @@ inline std::string IsoWithJolietFile(const std::string& joliet_name,
 	return iso;
 }
 
+// Upstream libarchive cuts Joliet names at 103 characters (libarchive
+// issue #3718); our vcpkg overlay patches that out, a system library does not.
+inline bool LibarchiveReadsJolietName(const size_t length)
+{
+	assert(length > 4 && length <= 110);
+	const auto name   = std::string(length - 4, 'j') + ".zip";
+	const auto iso    = IsoWithJolietFile(name, "probe");
+	struct archive* a = archive_read_new();
+	if (a == nullptr) {
+		return false;
+	}
+	archive_read_support_format_iso9660(a);
+	bool whole = false;
+	if (archive_read_open_memory(a, iso.data(), iso.size()) == ARCHIVE_OK) {
+		struct archive_entry* entry = nullptr;
+		while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+			const char* path = archive_entry_pathname_utf8(entry);
+			whole = whole || (path != nullptr && name == path);
+		}
+	}
+	archive_read_free(a);
+	return whole;
+}
+
 inline void put16(std::vector<uint8_t>& out, const uint32_t v)
 {
 	out.push_back(static_cast<uint8_t>(v & 0xff));

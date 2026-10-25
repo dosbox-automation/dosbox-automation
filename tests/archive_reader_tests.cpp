@@ -253,8 +253,19 @@ TEST_F(ArchiveReaderTest, AJolietNameOf103CharactersIsReadWhole)
 	          (std::vector<std::string>{name}));
 }
 
+// Every libarchive reads 103 whole; a probe that says no here would
+// silently skip the long-name tests on every host.
+TEST(ArchiveReader, TheJolietProbeReadsA103CharacterName)
+{
+	EXPECT_TRUE(ArchiveFixtures::LibarchiveReadsJolietName(103));
+}
+
 TEST_F(ArchiveReaderTest, AJolietNamePast103CharactersIsReadWhole)
 {
+	if (!ArchiveFixtures::LibarchiveReadsJolietName(110)) {
+		GTEST_SKIP() << "warning: the linked libarchive cuts Joliet names "
+		                "at 103 characters (unpatched system library)";
+	}
 	const auto name = NameOfLength(110);
 	EXPECT_EQ(JolietListing(tmp_dir, name, limits),
 	          (std::vector<std::string>{name}));
@@ -262,6 +273,10 @@ TEST_F(ArchiveReaderTest, AJolietNamePast103CharactersIsReadWhole)
 
 TEST_F(ArchiveReaderTest, AJolietNamePast103CharactersLosesOnlyItsVersion)
 {
+	if (!ArchiveFixtures::LibarchiveReadsJolietName(110)) {
+		GTEST_SKIP() << "warning: the linked libarchive cuts Joliet names "
+		                "at 103 characters (unpatched system library)";
+	}
 	const auto name = NameOfLength(108);
 	EXPECT_EQ(JolietListing(tmp_dir, name + ";1", limits),
 	          (std::vector<std::string>{name}));
