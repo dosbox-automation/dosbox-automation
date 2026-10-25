@@ -11,6 +11,7 @@ are unchanged afterwards.
 import hashlib
 import io
 import shutil
+import tarfile
 import time
 import zipfile
 from pathlib import Path
@@ -137,6 +138,31 @@ def test_sequential_archive_is_refused_unless_cached(dosbox_e2e, tmp_path):
         settings={**settings_for(tmp_path), "archive_sequential": "cache"},
     )
     wait_text(inst2.client, "hi")
+
+
+def test_a_refusal_names_the_archive_as_typed_on_a_line_of_its_own(
+        dosbox_e2e, tmp_path):
+    """ada-pbr6: with the working directory above the archive, MOUNT used
+    to print the shorter cwd-relative name, on the reason's line."""
+    tgz = tmp_path / "game" / "doom.tar.gz"
+    tgz.parent.mkdir(parents=True)
+    with tarfile.open(tgz, "w:gz") as t:
+        info = tarfile.TarInfo("doom.exe")
+        info.size = 100
+        info.mtime = 631152000
+        t.addfile(info, io.BytesIO(b"x" * 100))
+    inst = dosbox_e2e(
+        autoexec_lines=[f"mount c {tgz}"],
+        work_dir=tmp_path,
+        conf_dir=tmp_path / "game",
+        settings=settings_for(tmp_path),
+    )
+    wait_text(inst.client, "sequential archive")
+    r = inst.client.screen_text()
+    assert r.status_code == 200, r.text
+    rows = [row.rstrip() for row in r.json()["text"].split("\n")]
+    # A name longer than a row wraps; its rows join without a gap.
+    assert f"{tgz}is a sequential archive" in "".join(rows), "\n".join(rows)
 
 
 def test_mount_listing_names_the_archive(dosbox_e2e, tmp_path):
@@ -425,20 +451,48 @@ def test_a_program_named_like_a_shell_command_runs_as_itself(tmp_path):
     assert sidecar_files(tmp_path) == ["DONE.TXT"]
 
 
-def test_several_programs_are_listed_and_the_engine_stays(dosbox_e2e, tmp_path):
+def tap(client, key):
+    events = [{"type": "key", "key": key, "pressed": True},
+              {"type": "key", "key": key, "pressed": False}]
+    deadline = time.monotonic() + 5.0
+    while True:
+        r = client.input_sequence(events)
+        if r.status_code != 409 or time.monotonic() > deadline:
+            break
+        time.sleep(0.05)
+    assert r.status_code == 200, r.text
+
+
+def test_several_programs_open_the_menu_and_escape_keeps_the_engine(dosbox_e2e, tmp_path):
     zip_path = build_program_zip(tmp_path / "game" / "game.zip", {
         "FIRST.BAT": DONE_BAT, "SECOND.BAT": DONE_BAT})
     inst = dosbox_e2e(conf_dir=tmp_path / "game",
                       settings=settings_for(tmp_path),
                       extra_args=[str(zip_path)])
-    text = wait_text(inst.client, "several programs")
-    assert "FIRST.BAT SECOND.BAT" in text, text
-    # The autoexec changes to C: as for a directory argument.
+    text = wait_text(inst.client, "Select a program")
+    assert "(FIRST.BAT)" in text and "(SECOND.BAT)" in text, text
+    tap(inst.client, "KBD_esc")
+    # Nothing chosen runs nothing, and the engine stays.
     wait_text(inst.client, "C:\\>")
     time.sleep(1)
     assert inst.proc.poll() is None
     assert inst.client.program_state().json().get("is_shell") is True
-    assert not (tmp_path / "saves").exists() or "DONE.TXT" not in sidecar_files(tmp_path)
+    assert "DONE.TXT" not in sidecar_files(tmp_path)
+
+
+def test_a_choice_from_the_command_line_menu_runs_and_quits(dosbox_e2e, tmp_path):
+    zip_path = build_program_zip(tmp_path / "game" / "game.zip", {
+        "FIRST.BAT": DONE_BAT, "SECOND.BAT": DONE_BAT})
+    inst = dosbox_e2e(conf_dir=tmp_path / "game",
+                      settings=settings_for(tmp_path),
+                      extra_args=[str(zip_path)])
+    wait_text(inst.client, "Select a program")
+    tap(inst.client, "KBD_enter")
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline and inst.proc.poll() is None:
+        time.sleep(0.2)
+    assert inst.proc.poll() == 0, "the engine did not quit after the program"
+    assert sidecar_files(tmp_path) == ["DONE.TXT"]
 
 
 def test_mount_run_typed_at_the_prompt(dosbox_e2e, tmp_path):

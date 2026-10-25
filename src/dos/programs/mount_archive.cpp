@@ -387,16 +387,26 @@ std::string NormalizeRoot(std::string root)
 	return root;
 }
 
+// The archive as the user typed it, for the messages; the hook and the
+// log keep the resolved path.
+std::string ShownName(const MountParameters& params)
+{
+	if (!params.shown_path.empty() || params.paths.empty()) {
+		return params.shown_path;
+	}
+	return params.paths[0];
+}
+
 // A refusal the policy did not see: reported through its hook as well,
 // so the tests and the API see one stream of verdicts.
-void ReportSidecarDenied(const std_fs::path& raw, const DenyReason reason,
-                         const std::string& detail)
+void ReportSidecarDenied(const std_fs::path& raw, const std::string& shown,
+                         const DenyReason reason, const std::string& detail)
 {
 	const auto denied = Denied(reason);
 	if (MountPolicy::verdict_hook) {
 		MountPolicy::verdict_hook(raw, denied);
 	}
-	MOUNT::ReportMountDenied(PathToUtf8(raw), denied, detail);
+	MOUNT::ReportMountDenied(shown, denied, detail);
 }
 
 // One sidecar, one mount: the lock is cross-process, this map is the
@@ -428,6 +438,7 @@ std::optional<ResolvedSidecar> ResolveSidecar(const MountParameters& params,
 	if (place.refusal.reason != DenyReason::None) {
 		if (place.refusal.reason == DenyReason::SidecarUnavailable) {
 			ReportSidecarDenied(raw_archive,
+			                    ShownName(params),
 			                    place.refusal.reason,
 			                    place.detail);
 		} else {
@@ -442,6 +453,7 @@ std::optional<ResolvedSidecar> ResolveSidecar(const MountParameters& params,
 	out.key = std_fs::weakly_canonical(out.directory, ec).string();
 	if (sidecar_locks.contains(out.key)) {
 		ReportSidecarDenied(raw_archive,
+		                    ShownName(params),
 		                    DenyReason::SidecarBusy,
 		                    PathToUtf8(out.directory));
 		return {};
@@ -450,6 +462,7 @@ std::optional<ResolvedSidecar> ResolveSidecar(const MountParameters& params,
 	                                FileLock::Mode::Exclusive);
 	if (!out.lock) {
 		ReportSidecarDenied(raw_archive,
+		                    ShownName(params),
 		                    DenyReason::SidecarBusy,
 		                    PathToUtf8(out.directory));
 		return {};
@@ -457,7 +470,10 @@ std::optional<ResolvedSidecar> ResolveSidecar(const MountParameters& params,
 	auto error = std::string();
 	if (!EnsureSidecarRecord(
 	            out.directory, archive, source.IdentityHash(), source, &error)) {
-		ReportSidecarDenied(raw_archive, DenyReason::SidecarUnavailable, error);
+		ReportSidecarDenied(raw_archive,
+		                    ShownName(params),
+		                    DenyReason::SidecarUnavailable,
+		                    error);
 		return {};
 	}
 	return out;
@@ -539,6 +555,7 @@ bool MOUNT::MountArchive(MountParameters& params)
 		                  "mount the others on drives of their own");
 		return false;
 	}
+	const auto shown    = ShownName(params);
 	const auto settings = ReadArchiveSettings();
 	// 4.1: a member path whose leaf is an archive mounts that archive.
 	auto members   = std::vector<std::string>();
@@ -551,7 +568,7 @@ bool MOUNT::MountArchive(MountParameters& params)
 			if (MountPolicy::verdict_hook) {
 				MountPolicy::verdict_hook(split->archive, denied);
 			}
-			ReportMountDenied(params.paths[0], denied, why);
+			ReportMountDenied(shown, denied, why);
 			return false;
 		};
 		if (!chain) {
@@ -574,7 +591,7 @@ bool MOUNT::MountArchive(MountParameters& params)
 	                                         MountPolicy::ConfAnchor(),
 	                                         settings.sequential_allowed);
 	if (!verdict.verdict.allowed) {
-		ReportMountDenied(params.paths[0],
+		ReportMountDenied(shown,
 		                  verdict.verdict,
 		                  HeadKindName(verdict.sniff.kind));
 		return false;
@@ -583,6 +600,7 @@ bool MOUNT::MountArchive(MountParameters& params)
 	// Plan 4b: a single-image container mounts as its image, never as a drive.
 	if (ArchiveMount::IsSingleImageContainer(resolved)) {
 		ReportSidecarDenied(raw,
+		                    shown,
 		                    DenyReason::NotAnArchive,
 		                    "a single image: mount it as the image");
 		return false;
@@ -590,6 +608,7 @@ bool MOUNT::MountArchive(MountParameters& params)
 	// N2: an ISO is a chain level or a CD leaf, never a drive of files.
 	if (verdict.sniff.kind == HeadKind::Iso9660 && members.empty()) {
 		ReportSidecarDenied(raw,
+		                    shown,
 		                    DenyReason::NotAnArchive,
 		                    "a CD image: mount it as the image");
 		return false;
@@ -601,14 +620,12 @@ bool MOUNT::MountArchive(MountParameters& params)
 	auto detail = std::string();
 	auto* cache = OpenStore(settings, &detail);
 	if (!cache) {
-		ReportMountDenied(params.paths[0],
-		                  Denied(DenyReason::CacheUnavailable),
-		                  detail);
+		ReportMountDenied(shown, Denied(DenyReason::CacheUnavailable), detail);
 		return false;
 	}
 	auto scratch = cache->MakeScratch();
 	if (!scratch) {
-		ReportMountDenied(params.paths[0],
+		ReportMountDenied(shown,
 		                  Denied(DenyReason::CacheUnavailable),
 		                  "cannot create a scratch directory under the cache");
 		return false;
@@ -634,7 +651,7 @@ bool MOUNT::MountArchive(MountParameters& params)
 		if (MountPolicy::verdict_hook) {
 			MountPolicy::verdict_hook(raw, denied);
 		}
-		ReportMountDenied(params.paths[0], denied, opened.detail);
+		ReportMountDenied(shown, denied, opened.detail);
 		return false;
 	}
 
@@ -657,7 +674,7 @@ bool MOUNT::MountArchive(MountParameters& params)
 		if (MountPolicy::verdict_hook) {
 			MountPolicy::verdict_hook(raw, denied);
 		}
-		ReportMountDenied(params.paths[0], denied, entry.detail);
+		ReportMountDenied(shown, denied, entry.detail);
 		return false;
 	}
 	if (!members.empty()) {
@@ -689,7 +706,7 @@ bool MOUNT::MountArchive(MountParameters& params)
 	auto leased = cache->Acquire(*source, source_path);
 	if (leased.status != CacheStatus::Ok) {
 		drop_scratch();
-		ReportMountDenied(params.paths[0],
+		ReportMountDenied(shown,
 		                  Denied(DenyReason::CacheUnavailable),
 		                  std::string(CacheStatusText(leased.status)) +
 		                          ": " + leased.detail);
@@ -776,17 +793,17 @@ bool MOUNT::MountArchive(MountParameters& params)
 		using Failure = ArchiveDrive::CreateResult::Failure;
 		switch (made.failure) {
 		case Failure::RootNotFound:
-			ReportMountDenied(params.paths[0],
+			ReportMountDenied(shown,
 			                  Denied(DenyReason::ArchiveRootNotFound),
 			                  root);
 			break;
 		case Failure::TreeInvalid:
-			ReportMountDenied(params.paths[0],
+			ReportMountDenied(shown,
 			                  Denied(DenyReason::ArchiveCorrupt),
 			                  made.error);
 			break;
 		default:
-			ReportMountDenied(params.paths[0],
+			ReportMountDenied(shown,
 			                  Denied(DenyReason::CacheUnavailable),
 			                  made.error);
 			break;
@@ -804,7 +821,7 @@ bool MOUNT::MountArchive(MountParameters& params)
 	if (params.scratch) {
 		auto why = std::string();
 		if (!EnsureScratch(params, &why)) {
-			ReportSidecarDenied(raw, DenyReason::CacheUnavailable, why);
+			ReportSidecarDenied(raw, shown, DenyReason::CacheUnavailable, why);
 			return false;
 		}
 		auto error   = std::string();
@@ -816,7 +833,7 @@ bool MOUNT::MountArchive(MountParameters& params)
 		if (!unioned) {
 			ArchiveCache::DiscardScratch(*params.scratch_made);
 			params.scratch_made.reset();
-			ReportSidecarDenied(raw, DenyReason::CacheUnavailable, error);
+			ReportSidecarDenied(raw, shown, DenyReason::CacheUnavailable, error);
 			return false;
 		}
 		augra::log_info(LogComponent,
@@ -842,7 +859,10 @@ bool MOUNT::MountArchive(MountParameters& params)
 		                                  identity,
 		                                  &error);
 		if (!unioned) {
-			ReportSidecarDenied(raw, DenyReason::SidecarUnavailable, error);
+			ReportSidecarDenied(raw,
+			                    shown,
+			                    DenyReason::SidecarUnavailable,
+			                    error);
 			return false;
 		}
 		sidecar_locks.emplace(sidecar->key, std::move(*sidecar->lock));
@@ -878,7 +898,8 @@ std::string MOUNT::CacheOverviewText(const ArchiveManagement::CacheOverview& ove
 	const auto mib = [](const int64_t bytes) {
 		return std::to_string(bytes / MiB);
 	};
-	auto text = "Archive cache: " + PathToUtf8(overview.directory) + "\n";
+	// Paths stand on lines of their own, the rest fits 80 columns (ada-pbr6).
+	auto text = "Archive cache:\n  " + PathToUtf8(overview.directory) + "\n";
 	if (!overview.problem.empty()) {
 		return text + "  " + overview.problem + "\n";
 	}
@@ -891,7 +912,7 @@ std::string MOUNT::CacheOverviewText(const ArchiveManagement::CacheOverview& ove
 		text += ", " + mib(*overview.free_bytes) + " MiB free (" +
 		        mib(overview.min_free_bytes) + " MiB kept)";
 	}
-	text += ", unused entries live " +
+	text += "\n  unused entries live " +
 	        std::to_string(overview.ttl_seconds / (24 * 60 * 60)) + " days\n";
 	auto entries = overview.entries;
 	std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
@@ -907,9 +928,12 @@ std::string MOUNT::CacheOverviewText(const ArchiveManagement::CacheOverview& ove
 			const auto days = std::max<int64_t>(0,
 			                                    (now - e.last_use) /
 			                                            (24 * 60 * 60));
-			text += std::to_string(days) + " days ago  " + e.archive_path;
+			text += std::to_string(days) + " days ago";
 		}
 		text += (e.locked ? "  (in use)" : "") + std::string("\n");
+		if (!e.damaged) {
+			text += "    " + e.archive_path + "\n";
+		}
 	}
 	if (entries.empty()) {
 		text += "  no entries\n";

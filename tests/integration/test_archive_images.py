@@ -250,6 +250,28 @@ def test_cd_from_inside_an_archive(dosbox_e2e, tmp_path):
     inst.shutdown()
 
 
+def test_a_member_image_is_named_as_typed_when_mounted(dosbox_e2e, tmp_path):
+    """ada-pbr6: the mounted line named the cache copy (.../files/N)."""
+    g = tmp_path / "g"
+    zip_path = build_images_zip(g / "game.zip")
+    inst = dosbox_e2e(
+        autoexec_lines=[f"mount d {zip_path}/cd/game.iso", "echo MOUNTED-MARK"],
+        conf_dir=g,
+        settings=settings_for(tmp_path),
+    )
+    deadline = time.monotonic() + 20.0
+    joined = ""
+    while time.monotonic() < deadline and "MOUNTED-MARK" not in joined:
+        r = inst.client.screen_text()
+        assert r.status_code == 200, r.text
+        # Raw rows keep a wrapped line contiguous when joined.
+        joined = "".join(r.json()["text"].split("\n"))
+        time.sleep(0.2)
+    assert f"{zip_path}/cd/game.iso mounted as D drive" in joined, joined
+    assert "/files/" not in joined, joined
+    inst.shutdown()
+
+
 def test_the_swap_takes_a_member(dosbox_e2e, tmp_path):
     g = tmp_path / "g"
     zip_path = build_images_zip(g / "game.zip")

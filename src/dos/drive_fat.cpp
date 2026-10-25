@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "dos/drives.h"
 
@@ -1010,10 +1011,14 @@ fatDrive::fatDrive(const char* sysFilename, uint32_t bytesector,
 		        CountOfClusters);
 		fattype = FAT16;
 	} else {
-		LOG_MSG("FAT: Mounted %s as FAT32 volume with %d clusters",
-		        sysFilename,
-		        CountOfClusters);
-		fattype = FAT32;
+		// A real FAT32 boot sector already failed the zero sectors per
+		// FAT check; this count behind a 16-bit FAT size would put
+		// 32-bit entries over a FAT16 root directory.
+		created_successfully = false;
+		LOG_WARNING("DOS: MOUNT - %s has %d clusters, a FAT32 volume. FAT32 is not implemented.",
+		            sysFilename,
+		            CountOfClusters);
+		return;
 	}
 
 	/* There is no cluster 0, this means we are in the root directory */

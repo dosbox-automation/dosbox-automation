@@ -532,13 +532,12 @@ TEST_F(MountTest, FreesizeOverridesDirDefaults)
 
 TEST_F(MountTest, FreesizeForFloppyIsInKbNotMb)
 {
-	const auto result = Mount("D " + P("raw.dat") +
-	                          " -t floppy -fs none -freesize 720");
+	const auto result = Mount("A " + P("plain_dir") + " -t floppy -freesize 720");
 
 	ASSERT_TRUE(result.has_value());
 
 	EXPECT_EQ(result->type, MountType::FloppyImage);
-	EXPECT_EQ(result->fstype, MountFileSystemType::None);
+	EXPECT_FALSE(result->is_image_mode);
 	EXPECT_EQ(result->mediaid, MediaId::Floppy1_44MB);
 
 	EXPECT_EQ(result->sizes[0], 512);
@@ -1186,13 +1185,19 @@ TEST_F(MountTest, ChsAcceptedForIsoMount)
 	EXPECT_EQ(result->sizes[3], 123);
 }
 
-TEST_F(MountTest, FreesizeMutatesGeometryForImageMount)
+// ada-7nf2: free space belongs to directory mounts; on an image -freesize
+// became a geometry that did not match the image.
+TEST_F(MountTest, FreesizeOnAHardDiskImageIsRefused)
 {
 	const auto result = Mount("1 " + P("bootable.img") + " -t hdd -freesize 50");
+	EXPECT_FALSE(result.has_value());
+}
 
-	ASSERT_TRUE(result.has_value());
-
-	EXPECT_NE(result->sizes[3], 0);
+TEST_F(MountTest, FreesizeOnARawFloppyImageIsRefused)
+{
+	const auto result = Mount("D " + P("raw.dat") +
+	                          " -t floppy -fs none -freesize 720");
+	EXPECT_FALSE(result.has_value());
 }
 
 // ---------------------------------------------------------------------
@@ -1478,6 +1483,57 @@ TEST_F(MountTest, InvariantCheckDetectsAnUnvalidatedConstruction)
 	EXPECT_FALSE(sink::WasAllowed(sink::constructed.front()));
 }
 
+// A 1.44 MB image whose boot sector keeps a 16-bit FAT size and gives
+// total_sectors in the 32-bit field; the DOS 2 jump and media F0h make
+// the floppy path take the BPB as written.
+static std_fs::path write_bpb_image(const std_fs::path& path,
+                                    const uint32_t total_sectors)
+{
+	std::vector<uint8_t> image(1474560, 0);
+	image[0]         = 0xeb;
+	image[1]         = 0x3c;
+	image[2]         = 0x90;
+	const auto put16 = [&image](const size_t at, const uint16_t value) {
+		image[at]     = static_cast<uint8_t>(value & 0xff);
+		image[at + 1] = static_cast<uint8_t>(value >> 8);
+	};
+	put16(11, 512); // bytes per sector
+	image[13] = 1;  // sectors per cluster
+	put16(14, 1);   // reserved sectors
+	image[16] = 2;  // FAT copies
+	put16(17, 512); // root directory entries
+	image[21] = 0xf0;
+	put16(22, 256); // sectors per FAT
+	put16(24, 18);  // sectors per track
+	put16(26, 2);   // heads
+	put16(32, static_cast<uint16_t>(total_sectors & 0xffff));
+	put16(34, static_cast<uint16_t>(total_sectors >> 16));
+	image[510] = 0x55;
+	image[511] = 0xaa;
+	std::ofstream(path, std::ios::binary)
+	        .write(reinterpret_cast<const char*>(image.data()),
+	               static_cast<std::streamsize>(image.size()));
+	return path;
+}
+
+// ada-dqxh: FAT32 is not implemented. A FAT32 cluster count behind a
+// 16-bit FAT size mounted with 32-bit entries over a FAT16 root.
+TEST_F(MountTest, AFat32ClusterCountIsRefused)
+{
+	const auto path = write_bpb_image(test_file_path / "fat32count.img", 70000);
+	const auto drive = std::make_shared<fatDrive>(
+	        path.string().c_str(), 512, 0, 0, 0, 0xF0, true);
+	EXPECT_FALSE(drive->created_successfully);
+}
+
+TEST_F(MountTest, TheSameBootSectorWithAFat12CountMounts)
+{
+	const auto path = write_bpb_image(test_file_path / "fat12count.img", 2880);
+	const auto drive = std::make_shared<fatDrive>(
+	        path.string().c_str(), 512, 0, 0, 0, 0xF0, true);
+	EXPECT_TRUE(drive->created_successfully);
+}
+
 #if !defined(WIN32)
 TEST_F(MountTest, SymlinkToDeviceIsRefusedByThePolicyItself)
 {
@@ -1578,8 +1634,7 @@ TEST_F(MountTest, EveryKnownOptionTogetherLeavesOnlyThePath)
 	// fail here as a leftover instead of surfacing as a mount failure.
 	const auto result = Mount("C " + P("bootable.img") +
 	                          " -t hdd -fs fat -ro -label GAME -pr"
-	                          " -size 512,63,16,81 -freesize 10"
-	                          " -chs 100,16,63 -ide");
+	                          " -size 512,63,16,81 -chs 100,16,63 -ide");
 
 	ASSERT_TRUE(result.has_value());
 	ASSERT_EQ(result->paths.size(), 1);
@@ -1589,6 +1644,19 @@ TEST_F(MountTest, EveryKnownOptionTogetherLeavesOnlyThePath)
 	EXPECT_TRUE(result->roflag);
 	EXPECT_TRUE(result->is_ide);
 	EXPECT_EQ(result->sizes[3], 100);
+}
+
+TEST_F(MountTest, EveryDirectoryOptionTogetherLeavesOnlyThePath)
+{
+	const auto result = Mount("C " + P("plain_dir") +
+	                          " -ro -label GAME -freesize 10");
+
+	ASSERT_TRUE(result.has_value());
+	ASSERT_EQ(result->paths.size(), 1);
+	EXPECT_EQ(result->type, MountType::Directory);
+	EXPECT_EQ(result->label, "GAME");
+	EXPECT_TRUE(result->roflag);
+	EXPECT_EQ(result->sizes[3], 10 * 1024 * 1024 / (512 * 32));
 }
 
 } // namespace

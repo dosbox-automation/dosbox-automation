@@ -18,6 +18,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace ArchiveImages {
@@ -79,6 +80,10 @@ struct MountParameters {
 	// Design D7: host file of each image named inside an archive, with
 	// what keeps it valid until the mount registers it.
 	std::map<std::string, std::shared_ptr<ArchiveImages::Hold>> member_holds = {};
+	// ada-pbr6: a refusal names the first path as typed, and a mounted line
+	// names each image member by its archive, not the cache copy.
+	std::string shown_path                          = "";
+	std::map<std::string, std::string> member_shown = {};
 	// Design D8: -run with its optional name, -exit to leave after it.
 	std::optional<std::string> run = {};
 	bool run_exit                  = false;
@@ -146,6 +151,8 @@ public:
 	// PROGRAM_MOUNT_ARCHIVE_UNSUPPORTED's text; the unit tests link a
 	// message stub, so they read it here.
 	static const char* const ArchiveUnsupportedMessage;
+	// The refusals that name a path, by message id, read by the tests too.
+	static const std::vector<std::pair<std::string, std::string>>& RefusalTexts();
 
 private:
 	static void AddMessages();
@@ -192,7 +199,8 @@ private:
 	                  bool path_relative_to_last_config);
 
 	bool AddArchiveMember(const ArchiveMount::MemberPath& member,
-	                      const std::string& typed, MountParameters& params);
+	                      const std::string& path_arg,
+	                      const std::string& shown, MountParameters& params);
 	bool MountPaths(MountParameters& params);
 
 	void MountLocal(MountParameters& params, const std::string& local_path);
