@@ -3419,7 +3419,46 @@ BUNDLED DOS UTILITIES (resources/drives/y/dos/)
                  additional permission per GPL-3.0 section 7, stated in
                  the package's DOC/VIEW/README.TXT.
 
-  Open Watcom    C runtime library, linked into view.com
+  UniMenu        Program menu for archive mounts (v0.1, SJ-ACC-0660)
+                 Copyright (c) 2026 dosbox automation project
+                 License: UniMenu freeware licence, binary only (not GPL)
+                 File: resources/drives/y/dos/unimenu.txt, text below
+
+UniMenu licence
+===============
+
+UniMenu (UNIMENU.EXE, part number SJ-ACC-0660)
+Copyright (c) 2026 dosbox automation project. All rights reserved.
+
+UniMenu is free of charge. You may use it on these terms:
+
+1. Use. You may use UniMenu for non-commercial purposes, together with
+   dosbox-automation or other software written by the dosbox automation
+   project. It is not meant to be used on its own or with other software.
+
+2. Copies. You may pass UniMenu on only together with software of the
+   dosbox automation project, as the project publishes it or as an
+   operating system distribution packages it, unchanged and with this
+   text. It may not be passed on with a fork of that software or with any
+   other software; whoever forks dosbox-automation has to remove UniMenu
+   from the fork.
+
+3. No changes. You may not modify UniMenu, and you may not decompile,
+   disassemble or otherwise reverse engineer it, except where the law of
+   your country allows this whatever a licence says.
+
+4. No warranty. UniMenu is provided as it is, without any warranty. You
+   use it at your own risk. As far as the law allows, the dosbox
+   automation project is not liable for any damage that comes from using
+   it or from not being able to use it.
+
+5. Other parts. UNIMENU.EXE contains the Open Watcom C runtime library,
+   which is under the Sybase Open Watcom Public License 1.0; see
+   THIRD_PARTY_LICENSES.txt.
+
+6. End. This licence ends by itself when you break its terms.
+
+  Open Watcom    C runtime library, linked into view.com and unimenu.exe
                  Copyright (c) Sybase, Inc. and the Open Watcom contributors
                  License: Sybase Open Watcom Public License 1.0
                  Source: https://github.com/open-watcom/open-watcom-v2

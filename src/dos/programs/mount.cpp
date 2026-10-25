@@ -10,7 +10,9 @@
 #include "dos/programs/append.h"
 #include "dos/programs/archive_images.h"
 #include "dos/programs/mount_archive_internal.h"
+#include "dos/programs/archive_chooser.h"
 #include "dos/programs/mount_run.h"
+#include "dos/programs/menu_session.h"
 #include "mount_common.h"
 #include "mount_policy.h"
 
@@ -193,6 +195,19 @@ bool MOUNT::AddWildcardPaths(const std::string& path_arg,
 	return true;
 }
 
+// An image taken out of an archive is named as typed, not by its cache copy.
+static std::vector<std::string> shown_images(const MountParameters& params)
+{
+	auto shown = params.paths;
+	for (auto& path : shown) {
+		if (const auto found = params.member_shown.find(path);
+		    found != params.member_shown.end()) {
+			path = found->second;
+		}
+	}
+	return shown;
+}
+
 void MOUNT::WriteMountStatus(const std::string& image_type,
                              const std::vector<std::string>& images,
                              char drive_letter, bool readonly)
@@ -373,7 +388,7 @@ bool MOUNT::MountImageFat(MountParameters& params)
 	                                  ? MSG_Get("MOUNT_TYPE_FAT_PLURAL")
 	                                  : MSG_Get("MOUNT_TYPE_FAT");
 
-	WriteMountStatus(mount_message, params.paths, params.drive, params.roflag);
+	WriteMountStatus(mount_message, shown_images(params), params.drive, params.roflag);
 
 	const auto fat_image = std::dynamic_pointer_cast<fatDrive>(
 	        fat_images.front());
@@ -468,7 +483,7 @@ bool MOUNT::MountImageIso(const MountParameters& params)
 	                                  ? MSG_Get("MOUNT_TYPE_CDIMAGE_PLURAL")
 	                                  : MSG_Get("MOUNT_TYPE_CDIMAGE");
 
-	WriteMountStatus(mount_message, params.paths, params.drive, params.roflag);
+	WriteMountStatus(mount_message, shown_images(params), params.drive, params.roflag);
 
 	return true;
 }
@@ -879,6 +894,14 @@ bool MOUNT::ParseGeometry(MountParameters& params)
 	default: assertm(false, "Invalid MountType");
 	}
 
+	// An image has its own size; free space is a directory mount's.
+	if (params.is_image_mode && !params.freesize_arg.empty()) {
+		NOTIFY_DisplayWarning(Notification::Source::Console,
+		                      "MOUNT",
+		                      "PROGRAM_MOUNT_FREESIZE_IMAGE");
+		return false;
+	}
+
 	// Parse the free space in mb (kb for floppies)
 	const std::string& mb_size = params.freesize_arg;
 
@@ -1256,6 +1279,7 @@ void MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
                          bool path_relative_to_last_config)
 {
 	auto path_arg_1 = ResolveHostPath(first_path, path_relative_to_last_config);
+	params.shown_path = HostText(first_path);
 
 	// Check first path on the host OS
 	struct stat test   = {};
@@ -1380,7 +1404,10 @@ void MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
 			        path_relative_to_last_config);
 
 			if (const auto lone = ArchiveMount::LoneImageMember(cur_arg)) {
-				if (!AddArchiveMember(*lone, cur_arg, params)) {
+				if (!AddArchiveMember(*lone,
+				                      cur_arg,
+				                      HostText(typed),
+				                      params)) {
 					params.paths.clear();
 					params.member_holds.clear();
 					params.is_image_mode = false;
@@ -1390,7 +1417,10 @@ void MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
 			}
 			if (!local_drive_path_exists(cur_arg.c_str())) {
 				if (const auto member = ArchiveMount::SplitMemberPath(cur_arg)) {
-					if (!AddArchiveMember(*member, cur_arg, params)) {
+					if (!AddArchiveMember(*member,
+					                      cur_arg,
+					                      HostText(typed),
+					                      params)) {
 						params.paths.clear();
 						params.member_holds.clear();
 						params.is_image_mode = false;
@@ -1494,11 +1524,12 @@ void MOUNT::ProcessPaths(const std::string first_path, MountParameters& params,
 // Design D7: one image inside an archive becomes the host file the image
 // code opens; its hold travels in params until the mount registers it.
 bool MOUNT::AddArchiveMember(const ArchiveMount::MemberPath& member,
-                             const std::string& typed, MountParameters& params)
+                             const std::string& path_arg,
+                             const std::string& shown, MountParameters& params)
 {
 	// A locked engine opens nothing; MountPaths refuses with its message.
 	if (MountPolicy::IsLocked()) {
-		params.paths.push_back(typed);
+		params.paths.push_back(path_arg);
 		return true;
 	}
 	ArchiveImages::Request request = {};
@@ -1509,7 +1540,7 @@ bool MOUNT::AddArchiveMember(const ArchiveMount::MemberPath& member,
 	if (params.scratch) {
 		auto why = std::string();
 		if (!EnsureScratch(params, &why)) {
-			ReportMountDenied(typed,
+			ReportMountDenied(shown,
 			                  MountArchiveInternal::Denied(
 			                          DenyReason::CacheUnavailable),
 			                  why);
@@ -1523,7 +1554,7 @@ bool MOUNT::AddArchiveMember(const ArchiveMount::MemberPath& member,
 	         member.archive.filename().string().c_str());
 	auto result = ArchiveImages::Resolve(request);
 	if (!result.resolved) {
-		ReportMountDenied(typed, result.verdict, result.detail);
+		ReportMountDenied(shown, result.verdict, result.detail);
 		return false;
 	}
 	const auto host = result.resolved->host_file.string();
@@ -1535,6 +1566,14 @@ bool MOUNT::AddArchiveMember(const ArchiveMount::MemberPath& member,
 	}
 	params.paths.push_back(host);
 	params.member_holds[host] = std::move(result.resolved->hold);
+	// The archive by its full path, as the archive drive's own line names it.
+	auto ec            = std::error_code();
+	const auto archive = std_fs::weakly_canonical(member.archive, ec);
+	auto mounted = ArchiveMount::PathToUtf8(ec ? member.archive : archive);
+	if (!member.member.empty()) {
+		mounted += "/" + member.member;
+	}
+	params.member_shown[host] = mounted;
 	return true;
 }
 
@@ -1974,7 +2013,75 @@ std::optional<MountParameters> MOUNT::ProcessArguments(CommandLine* cmd,
 // mount standing and runs nothing.
 void MOUNT::QueueRun(const MountParameters& params)
 {
-	auto target = MountRun::Resolve(params.drive, *params.run);
+	// The EXIT of -exit follows the chosen program, so a cancelled menu
+	// leaves the engine standing
+	// Without the bundled UniMenu a menu falls back to -run's own refusal
+	const auto queue_menu = [&](ArchiveChooser::Menu menu) {
+		const auto autostart = menu.autostart;
+		if (!autostart && !MenuSession::MenuProgramAvailable()) {
+			return false;
+		}
+		MenuSession::Open(params.drive,
+		                  std::move(menu),
+		                  params.run_exit);
+		if (autostart && MenuSession::Choose(*autostart)) {
+			return true;
+		}
+		if (!MenuSession::MenuProgramAvailable()) {
+			MenuSession::Close();
+			return false;
+		}
+		std::vector<std::string> lines = {};
+		lines.emplace_back(std::string(1, params.drive) + ":");
+		lines.emplace_back(MenuSession::MenuProgram);
+		if (!SHELL_QueuePendingCommands(std::move(lines))) {
+			WriteOut(MSG_Get("PROGRAM_MOUNT_RUN_BUSY"));
+		}
+		return true;
+	};
+	// Without a name: a curated CHOOSER.TML, then the archive's own
+	// DOSBOX.BAT, then the one program at the root, then the scan
+	// (UniMenu design, 2026-10-19, steps 3 to 6)
+	std::string name = *params.run;
+	MountRun::Target target = {};
+	if (name.empty()) {
+		auto chooser = ArchiveChooser::ReadChooser(params.drive);
+		if (chooser && queue_menu(std::move(*chooser))) {
+			return;
+		}
+		auto scan = ArchiveChooser::ScanPrograms(params.drive);
+		const auto is_root = [](const ArchiveChooser::Entry& e) {
+			return e.exe.find('\\') == std::string::npos;
+		};
+		const auto at_root = std::count_if(scan.entries.begin(),
+		                                   scan.entries.end(),
+		                                   is_root);
+		if (scan.has_dosbox_bat) {
+			name = "DOSBOX.BAT";
+		} else if (at_root == 1) {
+			name = std::find_if(scan.entries.begin(),
+			                    scan.entries.end(),
+			                    is_root)
+			               ->exe;
+		} else if (scan.entries.size() == 1) {
+			name = scan.entries.front().exe;
+		} else if (scan.entries.size() > 1) {
+			std::vector<std::string> candidates = {};
+			for (const auto& e : scan.entries) {
+				candidates.push_back(e.exe);
+			}
+			auto menu = ArchiveChooser::ProgramMenu(
+			        params.drive, std::move(scan.entries));
+			if (queue_menu(std::move(menu))) {
+				return;
+			}
+			target.refusal    = MountRun::Refusal::SeveralPrograms;
+			target.candidates = std::move(candidates);
+		}
+	}
+	if (target.refusal == MountRun::Refusal::None) {
+		target = MountRun::Resolve(params.drive, name);
+	}
 	if (target.lines.empty()) {
 		const MountRun::Texts texts = {
 		        MSG_Get("PROGRAM_MOUNT_RUN_BAD_NAME"),
@@ -1986,7 +2093,7 @@ void MOUNT::QueueRun(const MountParameters& params)
 		        MSG_Get("PROGRAM_MOUNT_RUN_CANDIDATES"),
 		};
 		WriteOut_NoParsing(
-		        MountRun::Describe(target, *params.run, params.drive, texts));
+		        MountRun::Describe(target, name, params.drive, texts));
 		return;
 	}
 	if (params.run_exit) {
@@ -1998,11 +2105,55 @@ void MOUNT::QueueRun(const MountParameters& params)
 }
 
 const char* const MOUNT::ArchiveUnsupportedMessage =
-        "%s cannot be mounted: it uses a compression method that is not\n"
-        "implemented yet (%s).\n"
+        "%s\n"
+        "cannot be mounted: it uses a compression method that is not implemented\n"
+        "yet (%s).\n"
         "Please open an issue at\n"
         "https://github.com/dosbox-automation/dosbox-automation/issues\n"
         "and attach the archive, or a link to where it can be downloaded.\n";
+
+// The name stands on a line of its own and the rest fits 80 columns: a
+// long path pushed the reason past the edge, where DOS wraps mid-word.
+const std::vector<std::pair<std::string, std::string>>& MOUNT::RefusalTexts()
+{
+	static const std::vector<std::pair<std::string, std::string>> texts = {
+	        {"PROGRAM_MOUNT_POLICY_REFUSED",
+	         "%s\n"
+	         "was refused by the mount policy: %s.\n"
+	         "Put a dosbox-automation.conf next to the game and start with -conf,\n"
+	         "or add the path to mount_allowed_bases in the primary config.\n"
+	         "The security page of the manual explains the policy.\n"},
+	        {"PROGRAM_MOUNT_POLICY_SYMLINK",
+	         "%s\n"
+	         "was refused by the mount policy: a link is in the path.\n"
+	         "Mount the real directory the link points to instead.\n"},
+	        {"PROGRAM_MOUNT_ARCHIVE_UNSUPPORTED", ArchiveUnsupportedMessage},
+	        {"PROGRAM_MOUNT_ARCHIVE_REFUSED", "%s\ncannot be mounted: %s.\n%s"},
+	        {"PROGRAM_MOUNT_ARCHIVE_SEQUENTIAL",
+	         "%s\n"
+	         "is a sequential archive (%s): reaching any member unpacks\n"
+	         "everything before it. To unpack it into the archive cache once at\n"
+	         "mount time, set archive_sequential = cache in the [dos] section, or\n"
+	         "repack it as a zip.\n"},
+	        {"PROGRAM_MOUNT_ARCHIVE_CACHE",
+	         "%s\n"
+	         "cannot be mounted: the archive cache is unavailable.\n"
+	         "  %s\n"
+	         "Check archive_cache_path, the free space and the cache caps in [dos].\n"},
+	        {"PROGRAM_MOUNT_ARCHIVE_SIDECAR",
+	         "%s\n"
+	         "cannot be mounted: its sidecar is unusable.\n"
+	         "  %s\n"
+	         "Check archive_sidecar_path in [dos] and the sidecar's .source-archive.toml.\n"},
+	        {"PROGRAM_MOUNT_ARCHIVE_ROOT", "%s\nhas no directory %s to use as the root.\n"},
+	        {"PROGRAM_MOUNT_SIDECAR_BUSY",
+	         "%s\n"
+	         "cannot be mounted: its sidecar is in use by another mount.\n"
+	         "  %s\n"
+	         "Unmount that drive first, or mount with -nosidecar to read only.\n"},
+	};
+	return texts;
+}
 
 void MOUNT::AddMessages()
 {
@@ -2045,7 +2196,7 @@ void MOUNT::AddMessages()
 	        "  -scratch        archive mounts: keep the writes for this mount only,\n"
 	        "                  discarded at unmount (installer media)\n"
 	        "  -run [color=white]NAME[reset]       run NAME from the new drive once MOUNT is done; without\n"
-	        "                  NAME, the only .COM, .EXE or .BAT at the drive's root\n"
+	        "                  NAME, its one program, or a menu when there are several\n"
 	        "  -exit           with -run: leave DOSBox when the program ends\n"
 	        "  -reconnect [color=white]DRIVE[reset] reopen an archive mount that reports lost or offline\n"
 	        "  -cache          show the archive cache: size, cap, free space and entries\n"
@@ -2125,35 +2276,15 @@ void MOUNT::AddMessages()
 	MSG_Add("PROGRAM_MOUNT_ERROR_2",
 	        "%s isn't a directory or valid image file.\n");
 
-	MSG_Add("PROGRAM_MOUNT_POLICY_REFUSED",
-	        "%s was refused by the mount policy: %s.\n"
-	        "Put a dosbox-automation.conf next to the game and start with -conf,\n"
-	        "or add the path to mount_allowed_bases in the primary config.\n"
-	        "The security page of the manual explains the policy.\n");
-	MSG_Add("PROGRAM_MOUNT_POLICY_SYMLINK",
-	        "%s was refused by the mount policy: a link is in the path.\n"
-	        "Mount the real directory the link points to instead.\n");
+	for (const auto& [id, text] : RefusalTexts()) {
+		MSG_Add(id.c_str(), text.c_str());
+	}
 
 	MSG_Add("PROGRAM_MOUNT_ARCHIVE_IDENTIFYING", "MOUNT: identifying %s ...\n");
 	MSG_Add("PROGRAM_MOUNT_ARCHIVE_ROOT_USED",
 	        "Using %s as the root of the archive.\n");
 	MSG_Add("PROGRAM_MOUNT_ARCHIVE_ENTERED",
 	        "Entering %s inside the archive.\n");
-	MSG_Add("PROGRAM_MOUNT_ARCHIVE_UNSUPPORTED", ArchiveUnsupportedMessage);
-	MSG_Add("PROGRAM_MOUNT_ARCHIVE_REFUSED",
-	        "%s cannot be mounted as an archive: %s.\n%s");
-	MSG_Add("PROGRAM_MOUNT_ARCHIVE_SEQUENTIAL",
-	        "%s is a sequential archive (%s): reaching any member unpacks everything\n"
-	        "before it. Set archive_sequential = cache in the [dos] section to unpack\n"
-	        "it into the archive cache once at mount time, or repack it as a zip.\n");
-	MSG_Add("PROGRAM_MOUNT_ARCHIVE_CACHE",
-	        "%s cannot be mounted: the archive cache is unavailable (%s).\n"
-	        "Check archive_cache_path, the free space and the cache caps in [dos].\n");
-	MSG_Add("PROGRAM_MOUNT_ARCHIVE_SIDECAR",
-	        "%s cannot be mounted: its sidecar is unusable (%s).\n"
-	        "Check archive_sidecar_path in [dos] and the sidecar's .source-archive.toml.\n");
-	MSG_Add("PROGRAM_MOUNT_ARCHIVE_ROOT",
-	        "%s has no directory %s to use as the root.\n");
 	MSG_Add("PROGRAM_MOUNT_ARCHIVE_RECONNECTED", "Drive %c: reconnected.\n");
 	MSG_Add("PROGRAM_MOUNT_CACHE_TRIMMED",
 	        "Archive cache trimmed: %d expired, %d over the cap and %d damaged "
@@ -2165,9 +2296,6 @@ void MOUNT::AddMessages()
 	        "Drive %c: reconnect failed: %s.\n");
 	MSG_Add("PROGRAM_MOUNT_ARCHIVE_NOT_ARCHIVE",
 	        "Drive %c is not an archive mount.\n");
-	MSG_Add("PROGRAM_MOUNT_SIDECAR_BUSY",
-	        "%s cannot be mounted: its sidecar %s is in use by another mount.\n"
-	        "Unmount that drive first, or mount with -nosidecar to read only.\n");
 	MSG_Add("PROGRAM_MOUNT_SIDECAR_REPLACED",
 	        "The archive changed since %s was written; a new sidecar was created.\n"
 	        "Mount with -sidecar to reuse the old one.\n");
@@ -2248,6 +2376,9 @@ void MOUNT::AddMessages()
 
 	MSG_Add("PROGRAM_MOUNT_INVALID_CHS",
 	        "Invalid CHS format. Use -chs cylinders,heads,sectors\n");
+	MSG_Add("PROGRAM_MOUNT_FREESIZE_IMAGE",
+	        "-freesize sets the free space of a directory mount; an image has its\n"
+	        "own size. Give an image's geometry with -size or -chs.\n");
 
 	MSG_Add("PROGRAM_MOUNT_OVERLAY_REL_ABS",
 	        "The overlay needs to be specified using the same addressing as the underlying\n"

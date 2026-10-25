@@ -270,6 +270,7 @@ protected:
 	{
 		Osd::SetUp();
 		OSDPORT_Init();
+		OSDPORT_EnableOverlay(true);
 	}
 	void TearDown() override
 	{
@@ -277,6 +278,20 @@ protected:
 		Osd::TearDown();
 	}
 };
+
+// Without the automation webserver the port carries the menu protocol only.
+TEST_F(OsdPort, TheOverlayCommandsNeedTheWebserver)
+{
+	OSDPORT_EnableOverlay(false);
+	for (const char c : std::string("HI")) {
+		IO_WriteB(0x3e1, static_cast<uint8_t>(c));
+	}
+	IO_WriteB(0x3e0, 0x01);
+	RecordingDrawContext ctx(640, 480);
+	OSD::OsdManager::Instance().Render(0, ctx);
+	EXPECT_TRUE(ctx.rects.empty());
+	EXPECT_EQ(IO_ReadB(0x3e0), 0xff);
+}
 
 TEST_F(OsdPort, SignatureIsReadable)
 {

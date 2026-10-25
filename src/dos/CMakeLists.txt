@@ -54,6 +54,7 @@ target_sources(dosboxcommon PRIVATE
   programs/choice.cpp
   programs/clip.cpp
   programs/docs_location.cpp
+  programs/doskey.cpp
   programs/guide.cpp
   programs/help.cpp
   programs/join.cpp
@@ -69,6 +70,8 @@ target_sources(dosboxcommon PRIVATE
   programs/more.cpp
   programs/more_output.cpp
   programs/mount.cpp
+  programs/archive_chooser.cpp
+  programs/menu_session.cpp
   programs/mount_archive.cpp
   programs/archive_images.cpp
   programs/mount_common.cpp

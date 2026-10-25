@@ -11,10 +11,14 @@
 #include "dos/archive/archive_helper_client.h"
 #include "dos/archive/archive_lock.h"
 #include "dos/archive/archive_reader.h"
+#include "dos/archive/head_sniff.h"
 #include "dos/drive_swap.h"
 #include "dos/drives.h"
+#include "misc/support.h"
+#include "dos/programs/archive_chooser.h"
 #include "dos/programs/archive_images.h"
 #include "dos/programs/boot.h"
+#include "dos/programs/menu_session.h"
 #include "dos/programs/mount_archive_internal.h"
 #include "dos/programs/mount_common.h"
 #include "dos/programs/mount_policy.h"
@@ -35,6 +39,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -169,8 +174,20 @@ protected:
 		MountPolicy::drive_construction_hook = &CaptureConstruction;
 		program = std::make_unique<MOUNT>();
 	}
+	// The engine always has the bundled Y:, and the menu turn needs it.
+	void MountBundledY()
+	{
+		previous_y = Drives.at(drive_index('Y'));
+		y_replaced = true;
+		Drives.at(drive_index('Y')) = std::make_shared<localDrive>(
+		        (get_resource_path("drives", "y").string() + CROSS_FILESPLIT).c_str(),
+		        512, 32, 32765, 16000, 0xf8, false, true);
+	}
 	void TearDown() override
 	{
+		if (y_replaced) {
+			Drives.at(drive_index('Y')) = previous_y;
+		}
 		for (char d : {'A', 'D', 'E', 'F'}) {
 			if (Drives.at(drive_index(d))) {
 				UnmountHelper(d);
@@ -312,6 +329,8 @@ protected:
 
 	std_fs::path tmp               = {};
 	std::unique_ptr<MOUNT> program = {};
+	std::shared_ptr<DOS_Drive> previous_y = {};
+	bool y_replaced                       = false;
 };
 
 TEST_F(MountArchiveTest, MountsAZipFoundByExtensionAndMagic)
@@ -966,6 +985,43 @@ TEST_F(MountArchiveTest, CacheStatusTextNamesSizeCapTtlAndFreeSpace)
 	none.directory                        = "/c";
 	EXPECT_NE(MOUNT::CacheOverviewText(none).find("no cache yet"),
 	          std::string::npos);
+}
+
+// ada-pbr6: the summary and the entry lines wrapped past 80 columns. Paths
+// stand on lines of their own; everything else fits.
+TEST_F(MountArchiveTest, CacheStatusTextFitsEightyColumns)
+{
+	const std::string cache_dir = "/home/player/.cache/dosbox-automation/" +
+	                              std::string(50, 'c');
+	const std::string archive = "/home/player/Games/collections/" +
+	                            std::string(60, 'a') + ".tar.xz";
+	ArchiveManagement::CacheOverview o  = {};
+	o.exists                            = true;
+	o.directory                         = cache_dir;
+	o.bytes                             = 123456ll << 20;
+	o.cap_bytes                         = 409600ll << 20;
+	o.min_free_bytes                    = 204800ll << 20;
+	o.ttl_seconds                       = 365 * 86400;
+	o.free_bytes                        = 9999999ll << 20;
+	ArchiveManagement::CacheEntryInfo e = {};
+	e.directory    = cache_dir + "/k/kyra2.tar-9c79bfcc";
+	e.archive_path = archive;
+	e.bytes        = 65536ll << 20;
+	e.last_use     = 0;
+	e.locked       = true;
+	o.entries.push_back(e);
+	const auto text = MOUNT::CacheOverviewText(o);
+	auto path_lines = 0;
+	for (const auto part : std::views::split(std::string_view(text), '\n')) {
+		const auto line = std::string(part.begin(), part.end());
+		if (line == "  " + cache_dir || line == "    " + archive) {
+			++path_lines;
+			continue;
+		}
+		EXPECT_LE(line.size(), 79u) << line;
+	}
+	EXPECT_EQ(path_lines, 2) << text;
+	EXPECT_NE(text.find("(in use)"), std::string::npos) << text;
 }
 
 // An entry without a readable record has no archive and no last use to
@@ -2364,12 +2420,86 @@ TEST_F(MountArchiveTest, AnUnsupportedMethodSaysSoAndAsksForTheArchive)
 	EXPECT_NE(text.find("link"), std::string::npos) << text;
 }
 
+// ada-pbr6: a path pushed the reason past 80 columns, where DOS wraps it
+// mid-word. The name stands alone; every other line fits with the longest
+// text the engine puts into it.
+TEST(MountRefusalTexts, TheNameStandsAloneAndTheRestFits)
+{
+	constexpr size_t MaxColumns = 79;
+	const auto longest_reason = [](const std::string_view message_id) {
+		std::string longest = {};
+		for (int i = 0; i < 128; ++i) {
+			const auto reason = static_cast<DenyReason>(i);
+			if (message_id == MountPolicy::DenyMessageId(reason)) {
+				const std::string text = MountPolicy::DenyReasonText(reason);
+				longest = text.size() > longest.size() ? text : longest;
+			}
+		}
+		return longest;
+	};
+	std::string longest_kind = {};
+	for (int i = 0; i < 64; ++i) {
+		const std::string name = ArchiveMount::HeadKindName(
+		        static_cast<ArchiveMount::HeadKind>(i));
+		longest_kind = name.size() > longest_kind.size() ? name : longest_kind;
+	}
+	const std::vector<std::pair<std::string_view, std::string>> samples = {
+	        {    "PROGRAM_MOUNT_POLICY_REFUSED", longest_reason("PROGRAM_MOUNT_POLICY_REFUSED")},
+	        {   "PROGRAM_MOUNT_ARCHIVE_REFUSED", longest_reason("PROGRAM_MOUNT_ARCHIVE_REFUSED")},
+	        {"PROGRAM_MOUNT_ARCHIVE_SEQUENTIAL", longest_kind},
+	        {"PROGRAM_MOUNT_ARCHIVE_UNSUPPORTED", "PKWARE DCL implode, method 10"},
+	        {      "PROGRAM_MOUNT_ARCHIVE_ROOT", "\\GAMES\\COMMANDR\\KEEN4"},
+	};
+	ASSERT_FALSE(MOUNT::RefusalTexts().empty());
+	for (const auto& [id, text] : MOUNT::RefusalTexts()) {
+		std::string sample = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+		for (const auto& [sample_id, value] : samples) {
+			if (sample_id == id) {
+				sample = value;
+			}
+		}
+		auto lines = std::vector<std::string>{};
+		for (const auto part : std::views::split(std::string_view(text), '\n')) {
+			lines.emplace_back(part.begin(), part.end());
+		}
+		ASSERT_FALSE(lines.empty()) << id;
+		EXPECT_EQ(lines.front(), "%s") << id;
+		for (size_t n = 1; n < lines.size(); ++n) {
+			auto line = lines[n];
+			if (line.find_first_not_of(' ') == line.find("%s") &&
+			    line.ends_with("%s")) {
+				continue;
+			}
+			for (auto at = line.find("%s"); at != std::string::npos;
+			     at = line.find("%s", at + sample.size())) {
+				line.replace(at, 2, sample);
+			}
+			EXPECT_LE(line.size(), MaxColumns) << id << ": " << line;
+		}
+	}
+}
+
 TEST_F(MountArchiveTest, RunQueuesTheNamedProgram)
 {
 	const auto zip = Built("two.zip", Kind::ZipStored, TwoPrograms());
 	ASSERT_TRUE(Mount("D " + zip.string() + " -run GAME.EXE").has_value());
 	EXPECT_EQ(SHELL_TakePendingCommands(),
 	          (std::vector<std::string>{"D:", "D:\\GAME.EXE"}));
+}
+
+// The menu lists a folder's game before a root setup; the one program at
+// the root is still the one -run starts.
+TEST_F(MountArchiveTest, RunWithoutANameStartsTheOneRootProgramBeforeFolders)
+{
+	const std::vector<FileEntry> entries = {
+	        {"SETUP.EXE", "MZ"},
+	        {"game/", "", true},
+	        {"game/RUN.EXE", "MZ"},
+	};
+	const auto zip = Built("mixed.zip", Kind::ZipStored, entries);
+	ASSERT_TRUE(Mount("D " + zip.string() + " -run").has_value());
+	EXPECT_EQ(SHELL_TakePendingCommands(),
+	          (std::vector<std::string>{"D:", "D:\\SETUP.EXE"}));
 }
 
 TEST_F(MountArchiveTest, RunWithoutANameFindsTheOnlyProgram)
@@ -2380,12 +2510,45 @@ TEST_F(MountArchiveTest, RunWithoutANameFindsTheOnlyProgram)
 	          (std::vector<std::string>{"D:", "D:\\GAME.EXE"}));
 }
 
-TEST_F(MountArchiveTest, RunListsSeveralCandidates)
+TEST_F(MountArchiveTest, RunWithSeveralCandidatesQueuesUniMenu)
 {
+	MountBundledY();
 	const auto zip = Built("two.zip", Kind::ZipStored, TwoPrograms());
 	EXPECT_TRUE(Mount("D " + zip.string() + " -run").has_value());
 	EXPECT_TRUE(DriveAt('D'));
-	EXPECT_TRUE(SHELL_TakePendingCommands().empty());
+	const auto queued = SHELL_TakePendingCommands();
+	ASSERT_FALSE(queued.empty());
+	EXPECT_EQ(queued[0], "D:");
+	EXPECT_NE(queued[1].find("UNIMENU"), std::string::npos);
+}
+
+// An archive drive lists its members in the archive's order, which the
+// menu must not show (Arctic Adventure listed AA2, AA3, AA1, AA4).
+TEST_F(MountArchiveTest, TheMenuSortsTheProgramsOfOneKindByName)
+{
+	const std::vector<FileEntry> entries = {
+	        {"SETUP.EXE", "MZ"},
+	        {"AA2.EXE", "MZ"},
+	        {"bin/", "", true},
+	        {"bin/AA0.EXE", "MZ"},
+	        {"aa3.exe", "MZ"},
+	        {"AA1.EXE", "MZ"},
+	        {"INSTALL.EXE", "MZ"},
+	};
+	const auto zip = Built("arctic.zip", Kind::ZipStored, entries);
+	ASSERT_TRUE(Mount("D " + zip.string()).has_value());
+	const auto scan = ArchiveChooser::ScanPrograms('D');
+	std::vector<std::string> order = {};
+	for (const auto& entry : scan.entries) {
+		order.push_back(entry.exe);
+	}
+	EXPECT_EQ(order,
+	          (std::vector<std::string>{"INSTALL.EXE",
+	                                    "SETUP.EXE",
+	                                    "AA1.EXE",
+	                                    "AA2.EXE",
+	                                    "AA3.EXE",
+	                                    "BIN\\AA0.EXE"}));
 }
 
 // Decision 4 (Stefan 2026-10-05): the mount stays, nothing runs.
@@ -2445,13 +2608,19 @@ TEST_F(MountArchiveTest, RunOnAMemberPathFloppy)
 
 TEST_F(MountArchiveTest, ExitIsQueuedOnlyBehindAProgram)
 {
+	MountBundledY();
 	const auto one = Built("one.zip", Kind::ZipStored, OneProgram());
 	ASSERT_TRUE(Mount("D " + one.string() + " -run GAME.EXE -exit").has_value());
 	EXPECT_EQ(SHELL_TakePendingCommands(),
 	          (std::vector<std::string>{"D:", "D:\\GAME.EXE", "EXIT"}));
 	const auto two = Built("two.zip", Kind::ZipStored, TwoPrograms());
 	ASSERT_TRUE(Mount("E " + two.string() + " -run -exit").has_value());
-	EXPECT_TRUE(SHELL_TakePendingCommands().empty());
+	// The menu is no program: EXIT waits in the session for the choice.
+	EXPECT_EQ(SHELL_TakePendingCommands(),
+	          (std::vector<std::string>{"E:", "Y:\\DOS\\UNIMENU.EXE"}));
+	ASSERT_TRUE(MenuSession::IsOpen());
+	EXPECT_EQ(MenuSession::LinesFor(0).back(), "EXIT");
+	MenuSession::Close();
 	const auto three = Built("three.zip", Kind::ZipStored, OneProgram("three"));
 	ASSERT_TRUE(Mount("F " + three.string() + " -exit -run").has_value());
 	EXPECT_EQ(SHELL_TakePendingCommands(),

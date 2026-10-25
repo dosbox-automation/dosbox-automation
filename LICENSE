@@ -10,6 +10,11 @@ Original works authored by the dosbox-automation project are also
 licensed under GPL-2.0-or-later to maintain compatibility with the
 upstream codebase and other DOSBox forks.
 
+One exception: UniMenu (resources/drives/y/dos/unimenu.exe), the program
+menu on the bundled Y: drive, is a separate program shipped as a binary
+under its own freeware licence in resources/drives/y/dos/unimenu.txt,
+not under the GPL.
+
 The full license text is in THIRD_PARTY_LICENSES.txt.
 
 

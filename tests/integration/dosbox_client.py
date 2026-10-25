@@ -234,6 +234,15 @@ class DosboxClient:
             headers={"Accept": "application/json"},
         )
 
+    def port_read(self, port: int, width: int = 1) -> requests.Response:
+        return self._get("/api/v1/io/port",
+                         params={"port": str(port), "width": str(width)})
+
+    def port_write(self, port: int, value: int,
+                   width: int = 1) -> requests.Response:
+        return self._put("/api/v1/io/port",
+                         json={"port": port, "value": value, "width": width})
+
     def memory_write(self, offset: int, data: bytes) -> requests.Response:
         return self._put(
             f"/api/v1/memory/{offset}",

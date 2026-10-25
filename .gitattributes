@@ -3,6 +3,8 @@
 
 # use Windows line endings for DOS/Windows shell scripts
 *.bat	text eol=crlf
+# UniMenu's licence is read with TYPE in DOS
+resources/drives/y/dos/unimenu.txt	text eol=crlf
 # use Unix line endings for Linux/macOS shell scripts
 *.sh 	text eol=lf
 

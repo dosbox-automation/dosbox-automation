@@ -70,6 +70,7 @@
 #include "misc/support.h"
 #include "misc/video.h"
 #include "network/ethernet.h"
+#include "gui/osd/osd_port.h"
 #include "shell/autoexec.h"
 #include "shell/shell.h"
 #include "utils/math_utils.h"
@@ -1179,6 +1180,8 @@ void DOSBOX_InitModules()
 	DISKNOISE_Init();
 	SERIAL_Init();
 	DOS_Init();
+	// UniMenu's ports answer with or without the automation webserver
+	OSDPORT_Init();
 
 	IPX_Init();
 	ETHERNET_Init();
@@ -1197,6 +1200,7 @@ void DOSBOX_DestroyModules()
 	ETHERNET_Destroy();
 	IPX_Destroy();
 
+	OSDPORT_Destroy();
 	DOS_Destroy();
 	SERIAL_Destroy();
 	DISKNOISE_Destroy();

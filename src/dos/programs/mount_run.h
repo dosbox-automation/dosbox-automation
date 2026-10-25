@@ -4,12 +4,35 @@
 #ifndef DOSBOX_MOUNT_RUN_H
 #define DOSBOX_MOUNT_RUN_H
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "dos/dos.h"
+
 // Design D8: the program MOUNT -run starts on the drive it just mounted.
 namespace MountRun {
+
+std::string AsciiUpper(std::string_view text);
+
+// FindFirst writes into a DTA, so the caller's stays untouched. A nested
+// search clobbers the outer walk's state.
+class TempDtaSearch {
+public:
+	TempDtaSearch();
+	~TempDtaSearch();
+	TempDtaSearch(const TempDtaSearch&)            = delete;
+	TempDtaSearch& operator=(const TempDtaSearch&) = delete;
+
+	std::optional<DOS_DTA::Result> First(const std::string& pattern);
+	std::optional<DOS_DTA::Result> Next();
+
+private:
+	DOS_DTA::Result Current();
+
+	const RealPt saved_dta;
+};
 
 enum class Refusal {
 	None,

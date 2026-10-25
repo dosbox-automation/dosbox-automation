@@ -18,6 +18,50 @@ CHECK_NARROWING();
 
 namespace MountRun {
 
+std::string AsciiUpper(const std::string_view text)
+{
+	std::string upper(text);
+	for (auto& c : upper) {
+		if (c >= 'a' && c <= 'z') {
+			c = static_cast<char>(c - 'a' + 'A');
+		}
+	}
+	return upper;
+}
+
+TempDtaSearch::TempDtaSearch() : saved_dta(dos.dta())
+{
+	dos.dta(dos.tables.tempdta);
+}
+
+TempDtaSearch::~TempDtaSearch()
+{
+	dos.dta(saved_dta);
+}
+
+std::optional<DOS_DTA::Result> TempDtaSearch::First(const std::string& pattern)
+{
+	if (!DOS_FindFirst(pattern.c_str(), FatAttributeFlags::NotVolume)) {
+		return {};
+	}
+	return Current();
+}
+
+std::optional<DOS_DTA::Result> TempDtaSearch::Next()
+{
+	if (!DOS_FindNext()) {
+		return {};
+	}
+	return Current();
+}
+
+DOS_DTA::Result TempDtaSearch::Current()
+{
+	DOS_DTA::Result result = {};
+	DOS_DTA(dos.dta()).GetResult(result);
+	return result;
+}
+
 namespace {
 
 constexpr size_t MaxNameLength = 64;
@@ -47,17 +91,6 @@ bool IsShortName(const std::string_view component)
 	}
 	return std::all_of(base.begin(), base.end(), IsNameCharacter) &&
 	       std::all_of(ext.begin(), ext.end(), IsNameCharacter);
-}
-
-std::string AsciiUpper(const std::string_view text)
-{
-	std::string upper(text);
-	for (auto& c : upper) {
-		if (c >= 'a' && c <= 'z') {
-			c = static_cast<char>(c - 'a' + 'A');
-		}
-	}
-	return upper;
 }
 
 // The components of a name relative to the root, one leading separator
@@ -91,46 +124,6 @@ bool IsProgramExtension(const std::string_view ext)
 	return std::find(ProgramExtensions.begin(), ProgramExtensions.end(), ext) !=
 	       ProgramExtensions.end();
 }
-
-// FindFirst writes into a DTA, so the caller's stays untouched.
-class TempDtaSearch {
-public:
-	TempDtaSearch() : saved_dta(dos.dta())
-	{
-		dos.dta(dos.tables.tempdta);
-	}
-	~TempDtaSearch()
-	{
-		dos.dta(saved_dta);
-	}
-	TempDtaSearch(const TempDtaSearch&)            = delete;
-	TempDtaSearch& operator=(const TempDtaSearch&) = delete;
-
-	std::optional<DOS_DTA::Result> First(const std::string& pattern)
-	{
-		if (!DOS_FindFirst(pattern.c_str(), FatAttributeFlags::NotVolume)) {
-			return {};
-		}
-		return Current();
-	}
-	std::optional<DOS_DTA::Result> Next()
-	{
-		if (!DOS_FindNext()) {
-			return {};
-		}
-		return Current();
-	}
-
-private:
-	DOS_DTA::Result Current()
-	{
-		DOS_DTA::Result result = {};
-		DOS_DTA(dos.dta()).GetResult(result);
-		return result;
-	}
-
-	const RealPt saved_dta;
-};
 
 // The engine's own probes of a drive are never answered from APPEND's list.
 std::vector<std::string> RootPrograms(const char drive)
