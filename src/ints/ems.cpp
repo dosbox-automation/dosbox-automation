@@ -101,14 +101,16 @@ static uint16_t get_free_pages()
 	return std::min(MaxPages, static_cast<size_t>(MEM_FreeTotal() / EMM_MAX_PHYS));
 }
 
-static uint16_t GEMMIS_seg;
+// Taken from the DOS table pool on the first request and kept across EMS
+// rebuilds, until DOS frees that pool.
+static uint16_t GEMMIS_seg            = 0;
+static uint32_t GEMMIS_pool_generation = 0;
 
 class device_EMM final : public DOS_Device {
 public:
 	device_EMM(bool is_emm386_avail) : is_emm386(is_emm386_avail)
 	{
 		SetName(EmsDeviceName.c_str());
-		GEMMIS_seg = 0;
 	}
 
 	bool Read(uint8_t* /*data*/, uint16_t* /*size*/) override
@@ -155,7 +157,11 @@ bool device_EMM::ReadFromControlChannel(PhysPt bufptr,uint16_t size,uint16_t * r
 		case 0x01: {
 			if (!is_emm386) return false;
 			if (size!=6) return false;
-			if (GEMMIS_seg==0) GEMMIS_seg=DOS_GetMemory(0x20);
+			if (GEMMIS_seg == 0 ||
+			    GEMMIS_pool_generation != DOS_TableMemoryGeneration()) {
+				GEMMIS_seg             = DOS_GetMemory(0x20);
+				GEMMIS_pool_generation = DOS_TableMemoryGeneration();
+			}
 			PhysPt GEMMIS_addr=PhysicalMake(GEMMIS_seg,0);
 
 			mem_writew(GEMMIS_addr+0x00,0x0004);			// flags
@@ -1433,7 +1439,6 @@ public:
 		call_vdma.Set_RealVec(0x4b);
 
 		vcpi.enabled=false;
-		GEMMIS_seg=0;
 
 		ems_type = GetEMSType(section);
 		if (ems_type <= 0) {
@@ -1549,7 +1554,6 @@ public:
 			DOS_DelDevice(emm_device);
 			emm_device=nullptr;
 		}
-		GEMMIS_seg=0;
 
 		/* Remove the emsname and callback hack */
 		char buf[32]= { 0 };

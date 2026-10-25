@@ -4,9 +4,14 @@
 
 #include "dos/dos.h"
 
+#include <cstdint>
+#include <string_view>
+
 #include <gtest/gtest.h>
 
+#include "dos/dos_system.h"
 #include "dosbox_test_fixture.h"
+#include "hardware/memory.h"
 
 namespace {
 
@@ -59,6 +64,71 @@ TEST_F(DOSRuntimeSettingsTest, CountryChangeDoesNotRebuildEmsXms)
 
 	const uint16_t after = DOS_GetMemory(1);
 	EXPECT_EQ(after - before, 1);
+}
+
+// ada-sk8u: the GEMMIS structure (EMMXXXX0 IOCTL read, subfunction 01h,
+// asked for by Windows 3.x and 9x) took 0x20 paragraphs from the pool
+// again after every EMS rebuild.
+TEST_F(DOSRuntimeSettingsTest, EmsReinitKeepsTheGemmisStructure)
+{
+	const PhysPt buffer       = PhysicalMake(DOS_GetMemory(1), 0);
+	const auto request_gemmis = [buffer]() -> uint32_t {
+		for (auto* device : Devices) {
+			if (device &&
+			    std::string_view(device->GetName()) == "EMMXXXX0") {
+				mem_writeb(buffer, 0x01);
+				uint16_t retcode = 0;
+				EXPECT_TRUE(device->ReadFromControlChannel(
+				        buffer, 6, &retcode));
+				return mem_readd(buffer);
+			}
+		}
+		ADD_FAILURE() << "no EMMXXXX0 device";
+		return 0;
+	};
+
+	const auto first      = request_gemmis();
+	const uint16_t before = DOS_GetMemory(1);
+
+	DOS_NotifySettingUpdated("ems");
+	const auto second = request_gemmis();
+
+	const uint16_t after = DOS_GetMemory(1);
+	EXPECT_NE(first, 0u);
+	EXPECT_EQ(second, first);
+	EXPECT_EQ(after - before, 1);
+}
+
+// DOS hands its table pool out again after DOS_FreeTableMemory; a GEMMIS
+// kept from before would sit in segments someone else now owns.
+TEST_F(DOSRuntimeSettingsTest, GemmisIsTakenAgainAfterTheTablePoolIsFreed)
+{
+	const PhysPt buffer       = PhysicalMake(DOS_GetMemory(1), 0);
+	const auto request_gemmis = [buffer]() -> uint16_t {
+		for (auto* device : Devices) {
+			if (device &&
+			    std::string_view(device->GetName()) == "EMMXXXX0") {
+				mem_writeb(buffer, 0x01);
+				uint16_t retcode = 0;
+				EXPECT_TRUE(device->ReadFromControlChannel(
+				        buffer, 6, &retcode));
+				return static_cast<uint16_t>(mem_readd(buffer) >> 4);
+			}
+		}
+		ADD_FAILURE() << "no EMMXXXX0 device";
+		return 0;
+	};
+
+	const auto first = request_gemmis();
+	const uint16_t top = DOS_GetMemory(1);
+
+	// Refill the pool to its old top, so the live tables stay untouched.
+	DOS_FreeTableMemory();
+	DOS_GetMemory(static_cast<uint16_t>(top + 1 - DOS_PRIVATE_SEGMENT));
+	const auto second = request_gemmis();
+
+	EXPECT_NE(second, first);
+	EXPECT_GT(second, top);
 }
 
 } // namespace

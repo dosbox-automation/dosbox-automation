@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText:  2021-2025 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "cpu/callback.h"
 #include "dos.h"
@@ -25,6 +26,7 @@ RealPt DOS_TableLowCase;
 static callback_number_t call_casemap = 0;
 
 static uint16_t dos_memseg=DOS_PRIVATE_SEGMENT;
+static uint32_t table_memory_generation = 0;
 
 uint16_t DOS_GetMemory(uint16_t pages) {
 	if ((Bitu)pages+(Bitu)dos_memseg>=DOS_PRIVATE_SEGMENT_END) {
@@ -38,6 +40,12 @@ uint16_t DOS_GetMemory(uint16_t pages) {
 void DOS_FreeTableMemory()
 {
 	dos_memseg = DOS_PRIVATE_SEGMENT;
+	++table_memory_generation;
+}
+
+uint32_t DOS_TableMemoryGeneration()
+{
+	return table_memory_generation;
 }
 
 static Bitu DOS_CaseMapFunc(void) {

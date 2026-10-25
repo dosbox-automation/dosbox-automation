@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText:  2020-2025 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #ifndef DOSBOX_DOS_H
 #define DOSBOX_DOS_H
@@ -318,6 +319,8 @@ bool DOS_FreeMemory(uint16_t segment);
 void DOS_FreeProcessMemory(uint16_t pspseg);
 uint16_t DOS_GetMemory(uint16_t pages);
 void DOS_FreeTableMemory();
+// Changes whenever DOS_FreeTableMemory hands the pool out again.
+uint32_t DOS_TableMemoryGeneration();
 
 bool DOS_ShouldUseInterruptStacks(const SectionProp& section);
 void DOS_InstallInterruptStacks(const SectionProp& section);
