@@ -39,15 +39,18 @@
 #include "misc/cross.h"
 #include "misc/support.h"
 #include "shell/command_line.h"
+#include "shell/shell_args.h"
 #include "utils/string_utils.h"
 
 // clang-format off
 static const std::map<std::string, SHELL_Cmd> shell_cmds = {
+	{ "BREAK",    {&DOS_Shell::CMD_BREAK,    "BREAK",    HELP_Filter::All,    HELP_Category::Misc } },
 	{ "CALL",     {&DOS_Shell::CMD_CALL,     "CALL",     HELP_Filter::All,    HELP_Category::Batch } },
 	{ "CD",       {&DOS_Shell::CMD_CHDIR,    "CHDIR",    HELP_Filter::Common, HELP_Category::File } },
 	{ "CHDIR",    {&DOS_Shell::CMD_CHDIR,    "CHDIR",    HELP_Filter::All,    HELP_Category::File } },
 	{ "CLS",      {&DOS_Shell::CMD_CLS,      "CLS",      HELP_Filter::Common, HELP_Category::Misc} },
 	{ "COPY",     {&DOS_Shell::CMD_COPY,     "COPY",     HELP_Filter::Common, HELP_Category::File} },
+	{ "CTTY",     {&DOS_Shell::CMD_CTTY,     "CTTY",     HELP_Filter::All,    HELP_Category::Misc } },
 	{ "DATE",     {&DOS_Shell::CMD_DATE,     "DATE",     HELP_Filter::All,    HELP_Category::Misc } },
 	{ "DEL",      {&DOS_Shell::CMD_DELETE,   "DELETE",   HELP_Filter::Common, HELP_Category::File } },
 	{ "DELETE",   {&DOS_Shell::CMD_DELETE,   "DELETE",   HELP_Filter::All,    HELP_Category::File } },
@@ -64,6 +67,7 @@ static const std::map<std::string, SHELL_Cmd> shell_cmds = {
 	{ "MKDIR",    {&DOS_Shell::CMD_MKDIR,    "MKDIR",    HELP_Filter::All,    HELP_Category::File } },
 	{ "PATH",     {&DOS_Shell::CMD_PATH,     "PATH",     HELP_Filter::All,    HELP_Category::Misc} },
 	{ "PAUSE",    {&DOS_Shell::CMD_PAUSE,    "PAUSE",    HELP_Filter::All,    HELP_Category::Batch } },
+	{ "PROMPT",   {&DOS_Shell::CMD_PROMPT,   "PROMPT",   HELP_Filter::All,    HELP_Category::Misc } },
 	{ "RD",       {&DOS_Shell::CMD_RMDIR,    "RMDIR",    HELP_Filter::Common, HELP_Category::File } },
 	{ "REM",      {&DOS_Shell::CMD_REM,      "REM",      HELP_Filter::All,    HELP_Category::Batch } },
 	{ "REN",      {&DOS_Shell::CMD_RENAME,   "RENAME",   HELP_Filter::Common, HELP_Category::File } },
@@ -74,6 +78,7 @@ static const std::map<std::string, SHELL_Cmd> shell_cmds = {
 	{ "TIME",     {&DOS_Shell::CMD_TIME,     "TIME",     HELP_Filter::All,    HELP_Category::Misc } },
 	{ "TYPE",     {&DOS_Shell::CMD_TYPE,     "TYPE",     HELP_Filter::Common, HELP_Category::Misc } },
 	{ "VER",      {&DOS_Shell::CMD_VER,      "VER",      HELP_Filter::All,    HELP_Category::Misc } },
+	{ "VERIFY",   {&DOS_Shell::CMD_VERIFY,   "VERIFY",   HELP_Filter::All,    HELP_Category::Misc } },
 	{ "VOL",      {&DOS_Shell::CMD_VOL,      "VOL",      HELP_Filter::All,    HELP_Category::Misc } },
 	// a shell command, not a Z: program: WORKBENCH.COM does not fit 8.3
 	{ "WORKBENCH", {&DOS_Shell::CMD_WORKBENCH, "WORKBENCH", HELP_Filter::Common, HELP_Category::Dosbox } }
@@ -785,6 +790,27 @@ std::string to_search_pattern(const char* arg)
 	}
 
 	return pattern;
+}
+
+// The day's name from SHELL_CMD_DATE_DAYS: a length digit, then seven names
+// of that length from Sunday on.
+static std::string day_abbreviation(const uint8_t weekday)
+{
+	const auto date_string = MSG_Get("SHELL_CMD_DATE_DAYS");
+
+	std::string day = {};
+	if (!date_string.empty() && isdigit(date_string[0])) {
+
+		constexpr size_t MaxDayAbbreviationLength = 5;
+		constexpr size_t DaysPerWeek              = 7;
+
+		const size_t length = date_string[0] - '0';
+		if (length < MaxDayAbbreviationLength && weekday < DaysPerWeek &&
+		    date_string.size() == (length * DaysPerWeek + 1)) {
+			day = date_string.substr(weekday * length + 1, length);
+		}
+	}
+	return day;
 }
 
 char* format_date(const uint16_t year, const uint8_t month, const uint8_t day)
@@ -1676,14 +1702,19 @@ void DOS_Shell::CMD_SET(char* args)
 	} else {
 		*p++ = 0;
 		/* parse p for envirionment variables */
-		char parsed[CMD_MAXLINE];
-		char* p_parsed = parsed;
+		// Text past the old fixed line buffer's length is dropped.
+		constexpr auto MaxValueLength = static_cast<size_t>(CMD_MAXLINE - 1);
+		std::string parsed = {};
+		const auto append  = [&parsed](const std::string_view text) {
+			parsed.append(text.substr(0, MaxValueLength - parsed.size()));
+		};
 		while (*p) {
 			if (*p != '%') {
-				*p_parsed++ = *p++; // Just add it (most likely
-				                    // path)
+				append(std::string_view(p, 1)); // Just add it (most
+				                                // likely path)
+				++p;
 			} else if (*(p + 1) == '%') {
-				*p_parsed++ = '%';
+				append("%");
 				p += 2; //%% => %
 			} else {
 				char* second = strchr(++p, '%');
@@ -1693,21 +1724,11 @@ void DOS_Shell::CMD_SET(char* args)
 				*second++ = 0;
 
 				if (const auto envvar = psp->GetEnvironmentValue(p)) {
-					const auto& temp = *envvar;
-					const uintptr_t remaining_len = std::min(
-					        sizeof(parsed) -
-					                static_cast<uintptr_t>(
-					                        p_parsed - parsed),
-					        sizeof(parsed));
-					safe_strncpy(p_parsed,
-					             temp.c_str(),
-					             remaining_len);
-					p_parsed += strlen(p_parsed);
+					append(*envvar);
 				}
 				p = second;
 			}
 		}
-		*p_parsed = 0;
 		/* Try setting the variable */
 		if (!SetEnv(args, parsed)) {
 			WriteOut(MSG_Get("SHELL_CMD_SET_OUT_OF_SPACE"));
@@ -2010,28 +2031,12 @@ void DOS_Shell::CMD_DATE(char* args)
 	reg_ah = 0x2a; // get system date
 	CALLBACK_RunRealInt(0x21);
 
-	const auto date_string = MSG_Get("SHELL_CMD_DATE_DAYS");
-
-	char day[6] = {0};
-	if (!date_string.empty() && isdigit(date_string[0])) {
-
-		constexpr size_t MaxDayAbbreviationLength = 5;
-		constexpr size_t DaysPerWeek              = 7;
-
-		const size_t length = date_string[0] - '0';
-		if (length < MaxDayAbbreviationLength &&
-		    date_string.size() == (length * DaysPerWeek + 1)) {
-			// Date string appears valid
-			for (size_t i = 0; i < length; i++) {
-				day[i] = date_string[reg_al * length + 1 + i];
-			}
-		}
-	}
+	const auto day = day_abbreviation(reg_al);
 
 	bool dateonly = scan_and_remove_cmdline_switch(args, "T");
 	if (!dateonly) {
 		WriteOut(MSG_Get("SHELL_CMD_DATE_NOW"));
-		WriteOut("%s ", day);
+		WriteOut("%s ", day.c_str());
 	}
 	WriteOut("%s\n",
 	         format_date((uint16_t)reg_cx, (uint8_t)reg_dh, (uint8_t)reg_dl));
@@ -2392,6 +2397,116 @@ void DOS_Shell::CMD_WORKBENCH(char* args)
 	if (endpoint && !WEBSERVER_ToolPageIsLoopback(*endpoint)) {
 		WriteOut(MSG_Get("SHELL_CMD_WORKBENCH_TOKEN_PROMPT"));
 	}
+}
+
+// MS-DOS 4.0 USA-MS.MSG: "BREAK is %1", "VERIFY is %1", "Must specify ON
+// or OFF"; the flags are the kernel's (INT 21h 33h, 2Eh and 54h).
+static void on_off_command(DOS_Shell& shell, char* args, const char* word, bool& flag)
+{
+	switch (ShellArgs::ParseOnOff(args ? args : "")) {
+	case ShellArgs::OnOff::Show:
+		shell.WriteOut(MSG_Get("SHELL_CMD_ON_OFF_IS"),
+		               word,
+		               MSG_Get(flag ? "SHELL_CMD_ON" : "SHELL_CMD_OFF").c_str());
+		break;
+	case ShellArgs::OnOff::On: flag = true; break;
+	case ShellArgs::OnOff::Off: flag = false; break;
+	case ShellArgs::OnOff::Invalid:
+		shell.WriteOut(MSG_Get("SHELL_CMD_ON_OFF_REQUIRED"));
+		break;
+	}
+}
+
+void DOS_Shell::CMD_BREAK(char* args)
+{
+	HELP("BREAK");
+	on_off_command(*this, args, "BREAK", dos.breakcheck);
+}
+
+void DOS_Shell::CMD_VERIFY(char* args)
+{
+	HELP("VERIFY");
+	on_off_command(*this, args, "VERIFY", dos.verify);
+}
+
+// MS-DOS 4.0 TCMD2B.ASM CTTY: the device, never a file, becomes the
+// standard input, output and error of the shell.
+void DOS_Shell::CMD_CTTY(char* args)
+{
+	HELP("CTTY");
+	const auto device = ShellArgs::ParseDeviceName(args ? args : "");
+	uint16_t handle   = 0;
+	if (!device || !DOS_OpenFile(device->c_str(), OPEN_READWRITE, &handle)) {
+		WriteOut(MSG_Get("SHELL_CMD_CTTY_INVALID_DEVICE"));
+		return;
+	}
+	reg_ax = 0x4400; // IOCTL get device information
+	reg_bx = handle;
+	CALLBACK_RunRealInt(0x21);
+	constexpr uint8_t IsDevice = 0x80;
+	if ((cpu_regs.flags & FLAG_CF) || !(reg_dl & IsDevice)) {
+		DOS_CloseFile(handle);
+		WriteOut(MSG_Get("SHELL_CMD_CTTY_INVALID_DEVICE"));
+		return;
+	}
+	uint8_t newline[]     = {'\r', '\n'};
+	uint16_t newline_size = sizeof(newline);
+	DOS_WriteFile(handle, newline, &newline_size);
+
+	// Console input and output bits, as COMMAND.COM sets them.
+	reg_dx = static_cast<uint16_t>(reg_dl | 0x03);
+	reg_ax = 0x4401; // IOCTL set device information
+	reg_bx = handle;
+	CALLBACK_RunRealInt(0x21);
+
+	for (uint16_t standard = STDIN; standard <= STDERR; ++standard) {
+		DOS_ForceDuplicateEntry(handle, standard);
+	}
+	DOS_CloseFile(handle);
+}
+
+void DOS_Shell::CMD_PROMPT(char* args)
+{
+	HELP("PROMPT");
+	// Set directly, not through a SET line: a | or < in the text would
+	// be parsed as a pipe or a redirection a second time.
+	const auto text = PromptCommand::ParseArguments(args ? args : "");
+	if (!SetEnv("PROMPT", text)) {
+		WriteOut(MSG_Get("SHELL_CMD_SET_OUT_OF_SPACE"));
+	}
+}
+
+PromptCommand::Context DOS_Shell::PromptContext()
+{
+	PromptCommand::Context context = {};
+
+	context.drive = [] {
+		return static_cast<char>(DOS_GetDefaultDrive() + 'A');
+	};
+	context.drive_path = [] {
+		char dir[DOS_PATHLENGTH];
+		reset_str(dir);
+		DOS_GetCurrentDir(0, dir);
+		return std::string(1, static_cast<char>(DOS_GetDefaultDrive() + 'A')) +
+		       ":\\" + dir;
+	};
+	context.time = [] {
+		reg_ah = 0x2c; // get system time
+		CALLBACK_RunRealInt(0x21);
+		return std::string(format_time(reg_ch, reg_cl, reg_dh, reg_dl, true));
+	};
+	context.date = [] {
+		reg_ah = 0x2a; // get system date
+		CALLBACK_RunRealInt(0x21);
+		return day_abbreviation(reg_al) + " " +
+		       format_date(reg_cx, reg_dh, reg_dl);
+	};
+	context.version = [] {
+		return format_str(MSG_Get("SHELL_CMD_PROMPT_VERSION"),
+		                  dos.version.major,
+		                  dos.version.minor);
+	};
+	return context;
 }
 
 void DOS_Shell::CMD_VER(char* args)

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "dos/programs.h"
 
@@ -10,6 +11,7 @@
 #include "programs/boot.h"
 #include "programs/choice.h"
 #include "programs/clip.h"
+#include "programs/doskey.h"
 #include "programs/guide.h"
 #include "programs/help.h"
 #include "programs/join.h"
@@ -72,6 +74,7 @@ void DOS_SetupPrograms()
 	PROGRAMS_MakeFile("CLIP.EXE", ProgramCreate<CLIP>);
 	PROGRAMS_MakeFile("COMMAND.COM", SHELL_ProgramCreate);
 	PROGRAMS_MakeFile("CONFIG.COM", CONFIG_ProgramCreate);
+	PROGRAMS_MakeFile("DOSKEY.COM", ProgramCreate<DOSKEY>);
 	PROGRAMS_MakeFile("GUIDE.COM", ProgramCreate<GUIDE>);
 	PROGRAMS_MakeFile("HELP.COM", ProgramCreate<HELP>);
 	PROGRAMS_MakeFile("JOIN.EXE", ProgramCreate<JOIN>);

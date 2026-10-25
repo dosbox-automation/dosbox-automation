@@ -64,12 +64,15 @@ add_executable(dosbox_tests
     archive_tree_tests.cpp
     archive_zip_central_directory_tests.cpp
     autoexec_archive_tests.cpp
+    doskey_tests.cpp
     head_sniff_tests.cpp
     rar4_headers_tests.cpp
     sidecar_locator_tests.cpp
     sidecar_record_tests.cpp
     batch_file_tests.cpp
     bda_cursor_type_tests.cpp
+    vga_text_panning_tests.cpp
+    vga_mode_switch_tests.cpp
     bit_view_tests.cpp
     bitops_tests.cpp
     cache_dir_tests.cpp
@@ -108,12 +111,15 @@ add_executable(dosbox_tests
     messages_adjust_tests.cpp
     mixer_tests.cpp
     mode_symbolic_tests.cpp
+    archive_chooser_tests.cpp
+    menu_session_tests.cpp
     mount_archive_tests.cpp
     mount_run_tests.cpp
     mount_tests.cpp
     ne2000_tests.cpp
     path_command_tests.cpp
     port_containers_tests.cpp
+    prompt_command_tests.cpp
     program_append_tests.cpp
     program_join_tests.cpp
     program_mixer_tests.cpp
@@ -123,6 +129,7 @@ add_executable(dosbox_tests
     rwqueue_tests.cpp
     shader_common_tests.cpp
     shader_pragma_parser_tests.cpp
+    shell_args_tests.cpp
     shell_banner_tests.cpp
     shell_cmds_tests.cpp
     shell_redirection_tests.cpp

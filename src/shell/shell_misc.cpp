@@ -57,7 +57,13 @@ void DOS_Shell::ShowPrompt()
 	// (if drive is messed up)
 	DOS_GetCurrentDir(0, dir);
 	CONSOLE_InjectMissingNewline();
-	WriteOut("%c:\\%s>", drive, dir);
+	// PROMPT's text in the guest's code page, never a format string.
+	const auto prompt = psp->GetEnvironmentValue("PROMPT");
+	if (prompt && !prompt->empty()) {
+		WriteOut_NoParsing(PromptCommand::Render(*prompt, PromptContext()));
+	} else {
+		WriteOut("%c:\\%s>", drive, dir);
+	}
 
 	// prevents excessive newline if cmd prints nothing
 	CONSOLE_ResetLastWrittenChar('\n');
@@ -134,6 +140,9 @@ std::string DOS_Shell::ReadCommand()
 		}
 
 		if (byte_count == 0) {
+			// End of input (NUL after CTTY NUL): run the machine a slice before
+			// the next read, as DOS keeps running behind a dead prompt.
+			[[maybe_unused]] const auto shutdown = CALLBACK_Idle();
 			break;
 		}
 
@@ -473,21 +482,19 @@ void CommandPrompt::SetCursor(const std::string::size_type index)
 	                   position_zero.page);
 }
 
-// Only for use in ExecuteProgram()
-// Not suitable for generic use as it only handles 3 letter file extensions.
-// It also doesn't look at space padding, which never happens here.
-// Space padding matters when dealing with internal DOS data strctures which we are not doing.
-static std::string_view get_executable_extension(const std::string_view filename)
+// Only the last path element counts, so '..\GAME' has no extension
+// (COMMAND.COM's Strip, MS-DOS 4.0 v4.0/src/CMD/COMMAND/PATH2.ASM).
+static std::string_view get_typed_extension(const std::string_view name)
 {
-	constexpr size_t ExtensionSize = 4;
-	if (filename.size() <= ExtensionSize) {
+	const auto separator    = name.find_last_of("\\/:");
+	const auto last_element = (separator == std::string_view::npos)
+	                                ? name
+	                                : name.substr(separator + 1);
+	const auto dot          = last_element.find('.');
+	if (dot == std::string_view::npos) {
 		return "";
 	}
-	const auto dot_position = filename.size() - ExtensionSize;
-	if (filename[dot_position] != '.') {
-		return "";
-	}
-	return filename.substr(dot_position);
+	return last_element.substr(dot);
 }
 
 bool DOS_Shell::ExecuteProgram(std::string_view name, std::string_view args)
@@ -503,7 +510,7 @@ bool DOS_Shell::ExecuteProgram(std::string_view name, std::string_view args)
 	}
 
 	const auto fullname  = ResolvePath(name);
-	const auto extension = get_executable_extension(fullname);
+	const auto extension = get_typed_extension(fullname);
 
 	if (iequals(extension, ".BAT")) {
 		const auto current_echo = batchfiles.empty()
@@ -556,7 +563,7 @@ std::string DOS_Shell::ResolvePath(const std::string_view name) const
 		                std::make_move_iterator(path_directories.end()));
 	}
 
-	const bool has_extension = !get_executable_extension(name).empty();
+	const bool has_extension = !get_typed_extension(name).empty();
 
 	// With an extension the name is tried as typed; without one, "DOOM"
 	// is tried as DOOM.COM, DOOM.EXE, DOOM.BAT in that order.

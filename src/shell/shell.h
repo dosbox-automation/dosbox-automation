@@ -16,6 +16,7 @@
 
 #include "cpu/callback.h"
 #include "dos/programs.h"
+#include "shell/prompt_command.h"
 
 class DOS_Shell;
 
@@ -121,6 +122,14 @@ public:
 	void ParseLine(char* line);
 	void InputCommand(char* line);
 	void ShowPrompt();
+	// The history converted to the given code page.
+	std::vector<std::string> HistoryCommands(uint16_t code_page) const
+	{
+		return history ? history->GetCommands(code_page)
+		               : std::vector<std::string>{};
+	}
+	// What PROMPT's $ codes show.
+	PromptCommand::Context PromptContext();
 	void DoCommand(char* cmd);
 
 	// Returned by the GetRedirection(...) member function
@@ -171,6 +180,10 @@ public:
 	void CMD_CHOICE(char* args);
 	void CMD_ATTRIB(char* args);
 	void CMD_PATH(char* args);
+	void CMD_BREAK(char* args);
+	void CMD_VERIFY(char* args);
+	void CMD_CTTY(char* args);
+	void CMD_PROMPT(char* args);
 	void CMD_SHIFT(char* args);
 	void CMD_VER(char* args);
 	void CMD_LS(char* args);

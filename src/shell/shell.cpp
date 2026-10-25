@@ -1260,6 +1260,58 @@ void SHELL_InitAndRun()
 	MSG_Add("SHELL_CMD_CHOICE_ABORTED",
 	        "\n[color=yellow]Choice aborted.[reset]\n");
 
+	MSG_Add("SHELL_CMD_ON", "on");
+	MSG_Add("SHELL_CMD_OFF", "off");
+	MSG_Add("SHELL_CMD_ON_OFF_IS", "%s is %s\n");
+	MSG_Add("SHELL_CMD_ON_OFF_REQUIRED", "Must specify ON or OFF\n");
+	MSG_Add("SHELL_CMD_BREAK_HELP", "Set or show the Ctrl+C check.\n");
+	MSG_Add("SHELL_CMD_BREAK_HELP_LONG",
+	        "Usage:\n"
+	        "  [color=light-green]break[reset] [color=white][on|off][reset]\n"
+	        "\n"
+	        "Notes:\n"
+	        "  - Without a parameter, [color=light-green]break[reset] shows whether the check is on.\n"
+	        "  - With the check on, DOS looks for Ctrl+C at more of its calls.\n");
+	MSG_Add("SHELL_CMD_VERIFY_HELP", "Set or show the write verify flag.\n");
+	MSG_Add("SHELL_CMD_VERIFY_HELP_LONG",
+	        "Usage:\n"
+	        "  [color=light-green]verify[reset] [color=white][on|off][reset]\n"
+	        "\n"
+	        "Notes:\n"
+	        "  - Without a parameter, [color=light-green]verify[reset] shows whether the flag is on.\n");
+	MSG_Add("SHELL_CMD_CTTY_HELP", "Change the device the shell reads from and writes to.\n");
+	MSG_Add("SHELL_CMD_CTTY_HELP_LONG",
+	        "Usage:\n"
+	        "  [color=light-green]ctty[reset] [color=light-cyan]DEVICE[reset]\n"
+	        "\n"
+	        "Parameters:\n"
+	        "  [color=light-cyan]DEVICE[reset]  a character device such as [color=white]NUL[reset], [color=white]CON[reset] or [color=white]COM1[reset]\n"
+	        "\n"
+	        "Notes:\n"
+	        "  - [color=light-green]ctty[reset] [color=white]nul[reset] hides the output of a batch file until [color=light-green]ctty[reset] [color=white]con[reset].\n"
+	        "  - Typed at the prompt, [color=light-green]ctty[reset] [color=white]nul[reset] leaves no way to type until a restart.\n");
+	MSG_Add("SHELL_CMD_CTTY_INVALID_DEVICE", "Invalid device\n");
+	MSG_Add("SHELL_CMD_PROMPT_HELP", "Change the command prompt.\n");
+	MSG_Add("SHELL_CMD_PROMPT_HELP_LONG",
+	        "Usage:\n"
+	        "  [color=light-green]prompt[reset]\n"
+	        "  [color=light-green]prompt[reset] [color=light-cyan]TEXT[reset]\n"
+	        "\n"
+	        "Parameters:\n"
+	        "  [color=light-cyan]TEXT[reset]  the prompt, plain text and these codes:\n"
+	        "        $p drive and path   $n drive         $g >   $l <   $b |\n"
+	        "        $t time             $d date          $q =   $$ $\n"
+	        "        $v DOS version      $_ new line      $e escape (27)\n"
+	        "        $h backspace\n"
+	        "\n"
+	        "Notes:\n"
+	        "  - Running [color=light-green]prompt[reset] without text goes back to the default prompt.\n"
+	        "  - The text is kept in the PROMPT variable, as [color=light-green]set[reset] shows it.\n"
+	        "\n"
+	        "Examples:\n"
+	        "  [color=light-green]prompt[reset] [color=light-cyan]$p$g[reset]\n"
+	        "  [color=light-green]prompt[reset] [color=light-cyan]$t$_$p$g[reset]\n");
+	MSG_Add("SHELL_CMD_PROMPT_VERSION", "DOS version %d.%02d");
 	MSG_Add("SHELL_CMD_PATH_HELP",
 	        "Display or set a search path for executable files.\n");
 	MSG_Add("SHELL_CMD_PATH_HELP_LONG",

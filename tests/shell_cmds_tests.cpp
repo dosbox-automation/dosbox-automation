@@ -370,7 +370,6 @@ protected:
 		DOS_SetDefaultDrive(DriveC);
 
 		constexpr uint16_t PspParagraphs = 0x10;
-		constexpr uint16_t EnvParagraphs = 0x10;
 		previous_psp                     = dos.psp();
 		dos.psp(MCB_DOS);
 		uint16_t blocks = PspParagraphs;
@@ -379,9 +378,9 @@ protected:
 		DOS_PSP psp(psp_segment);
 		psp.MakeNew(PspParagraphs);
 		dos.psp(psp_segment);
-		blocks = EnvParagraphs;
+		blocks = env_paragraphs;
 		ASSERT_TRUE(DOS_AllocateMemory(&env_segment, &blocks));
-		for (uint16_t i = 0; i < EnvParagraphs * 16; ++i) {
+		for (int i = 0; i < env_paragraphs * 16; ++i) {
 			mem_writeb(PhysicalMake(env_segment, i), 0);
 		}
 		psp.SetEnvironment(env_segment);
@@ -412,6 +411,7 @@ protected:
 	uint16_t previous_psp                     = 0;
 	uint16_t psp_segment                      = 0;
 	uint16_t env_segment                      = 0;
+	uint16_t env_paragraphs                   = 0x10;
 };
 
 TEST_F(PendingCommandsTest, QueuedCommandsRunAfterTheLineThatQueuedThem)
@@ -502,6 +502,63 @@ TEST_F(PendingCommandsCallTest, ACalledBatchFinishesBeforeTheNextQueuedLine)
 	             });
 	EXPECT_THAT(order, ElementsAre("INSIDE", "EXIT"))
 	        << ::testing::PrintToString(seen);
+}
+
+// ada-cw1y: text after an expansion that filled SET's line buffer was
+// written past its end.
+class SetCommandTest : public PendingCommandsCallTest {
+protected:
+	SetCommandTest()
+	{
+		env_paragraphs = 0x200;
+	}
+};
+
+TEST_F(SetCommandTest, AnExpansionPastTheLineLengthIsCutThere)
+{
+	DOS_PSP psp(psp_segment);
+	ASSERT_TRUE(psp.SetEnvironmentValue("BIG", std::string(3000, 'A')));
+
+	char args[] = "X=%BIG%%BIG%tail";
+	shell().CMD_SET(args);
+
+	const auto value = psp.GetEnvironmentValue("X");
+	ASSERT_TRUE(value.has_value());
+	EXPECT_EQ(*value, std::string(CMD_MAXLINE - 1, 'A'));
+}
+
+// ada-rbal: only the last path element says whether an extension was
+// typed (COMMAND.COM's Strip, MS-DOS 4.0 v4.0/src/CMD/COMMAND/PATH2.ASM).
+class ProgramLookupTest : public PendingCommandsCallTest {
+protected:
+	void EnterSubdirectory(const std_fs::path& host_relative,
+	                       const char* const dos_path)
+	{
+		WriteHostFile("AA.BAT", "@ECHO OFF\r\n");
+		std_fs::create_directories(tmp / host_relative);
+		Drives.at(DriveC)->EmptyCache();
+		ASSERT_TRUE(DOS_ChangeDir(dos_path));
+	}
+};
+
+TEST_F(ProgramLookupTest, ARelativeNameWithoutExtensionFindsTheBatch)
+{
+	EnterSubdirectory("TEST", "\\TEST");
+	EXPECT_TRUE(shell().ExecuteProgram("..\\AA", ""));
+}
+
+TEST_F(ProgramLookupTest, TwoLevelsUpWithoutExtensionFindsTheBatch)
+{
+	EnterSubdirectory(std_fs::path("ONE") / "TWO", "\\ONE\\TWO");
+	EXPECT_TRUE(shell().ExecuteProgram("..\\..\\AA", ""));
+}
+
+TEST_F(ProgramLookupTest, ADotInADirectoryNameIsNoExtension)
+{
+	std_fs::create_directories(tmp / "V1.0");
+	std::ofstream(tmp / "V1.0" / "GAME.BAT", std::ios::binary) << "@ECHO OFF\r\n";
+	Drives.at(DriveC)->EmptyCache();
+	EXPECT_TRUE(shell().ExecuteProgram("V1.0\\GAME", ""));
 }
 
 // ada-jyw6: the host path SUBST builds from a local drive's basedir is

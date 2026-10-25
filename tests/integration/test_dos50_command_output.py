@@ -120,3 +120,105 @@ def test_path_with_only_delimiters_shows_the_path(dosbox_e2e, tmp_path):
     screen = screen_after(dosbox_e2e, tmp_path, ["path C:\\DOS", "path,", "path"])
     assert output_of(screen, "path,") == ["PATH=C:\\DOS"]
     assert output_of(screen, "path") == ["PATH=C:\\DOS"]
+
+
+# PROMPT (ada-nc0d): MS-DOS 5.0 User's Guide p. 545; the autoexec echoes each
+# line after the prompt in force, so the prompt shows in front of it.
+def test_prompt_sets_the_prompt_and_prompt_alone_restores_it(dosbox_e2e, tmp_path):
+    screen = screen_after(
+        dosbox_e2e, tmp_path, ["prompt $n$g", "echo one", "prompt", "echo two"]
+    )
+    assert "Z>echo one" in screen, screen
+    assert "Z:\\>echo two" in screen, screen
+
+
+def test_prompt_codes_render(dosbox_e2e, tmp_path):
+    screen = screen_after(
+        dosbox_e2e, tmp_path, ["prompt [$p$q$v$x]$_$n$b$g", "echo marker"]
+    )
+    at = screen.index("Z|>echo marker")
+    assert screen[at - 1] == "[Z:\\=DOS version 5.00]", screen
+
+
+def test_prompt_takes_an_equal_sign_and_shows_in_set(dosbox_e2e, tmp_path):
+    screen = screen_after(dosbox_e2e, tmp_path, ["prompt=$n$g", "set"])
+    assert "Z>set" in screen, screen
+    assert "PROMPT=$n$g" in output_of(screen, "set"), screen
+
+
+# BREAK, VERIFY, CTTY (ada-9i0i): texts from MS-DOS 4.0 USA-MS.MSG.
+@pytest.mark.parametrize("command", ["break", "verify"])
+def test_on_off_commands_show_and_set_their_flag(dosbox_e2e, tmp_path, command):
+    screen = screen_after(
+        dosbox_e2e,
+        tmp_path,
+        [command, f"{command} on", command, f"{command} OFF", command, f"{command} x"],
+    )
+    word = command.upper()
+    assert output_of(screen, command) == [f"{word} is off"]
+    assert output_of(screen, f"{command} on") == []
+    assert output_of(screen, command, occurrence=1) == [f"{word} is on"]
+    assert output_of(screen, command, occurrence=2) == [f"{word} is off"]
+    assert output_of(screen, f"{command} x") == ["Must specify ON or OFF"]
+
+
+def test_ctty_nul_hides_the_output_until_ctty_con(dosbox_e2e, tmp_path):
+    screen = screen_after(
+        dosbox_e2e,
+        tmp_path,
+        ["ctty nul", "echo hidden-line", "ctty con", "echo shown-line"],
+    )
+    text = "\n".join(screen)
+    assert "hidden-line" not in text, text
+    assert "shown-line" in screen, screen
+
+
+def test_ctty_refuses_what_is_not_a_device(dosbox_e2e, tmp_path):
+    screen = screen_after(dosbox_e2e, tmp_path, ["ctty", "ctty nosuchdev", "ctty con nul"])
+    assert output_of(screen, "ctty") == ["Invalid device"]
+    assert output_of(screen, "ctty nosuchdev") == ["Invalid device"]
+    assert output_of(screen, "ctty con nul") == ["Invalid device"]
+
+
+# The prompt reads end of input from NUL at once; without an idle the shell
+# spun inside one call and the web API stopped answering.
+def test_the_api_answers_after_ctty_nul_at_the_prompt(dosbox_e2e, tmp_path):
+    instance = dosbox_e2e(autoexec_lines=["ctty nul"], conf_dir=tmp_path)
+    time.sleep(2.0)
+    for _ in range(5):
+        r = instance.client.screen_text()
+        assert r.status_code == 200, r.text
+        time.sleep(0.2)
+
+
+# DOSKEY (ada-ld1z): the shell has its own history, so DOSKEY loads nothing;
+# macros are refused.
+def test_doskey_says_it_once_and_loads_high(dosbox_e2e, tmp_path):
+    screen = screen_after(
+        dosbox_e2e, tmp_path, ["doskey", "lh doskey /bufsize=512 /insert", "doskey /m"]
+    )
+    assert output_of(screen, "doskey") == [
+        "DOSKey installed (the command history is built into the shell)."
+    ]
+    assert output_of(screen, "lh doskey /bufsize=512 /insert") == []
+    assert output_of(screen, "doskey /m") == []
+
+
+def test_doskey_refuses_macros_and_unknown_switches(dosbox_e2e, tmp_path):
+    screen = screen_after(dosbox_e2e, tmp_path, ["doskey ls=dir $*", "doskey /x"])
+    assert output_of(screen, "doskey ls=dir $*") == ["DOSKEY macros are not supported."]
+    assert output_of(screen, "doskey /x") == ["Illegal switch: /x"]
+
+
+def test_doskey_history_lists_the_typed_commands(dosbox_e2e, tmp_path):
+    instance = dosbox_e2e(autoexec_lines=["cls"], conf_dir=tmp_path)
+    client = instance.client
+    client.wait_shell(timeout=10)
+    for line in ["echo first-typed\n", "doskey /h\n"]:
+        deadline = time.monotonic() + 10
+        while client.type_string(line).status_code == 409:
+            assert time.monotonic() < deadline
+            time.sleep(0.1)
+        time.sleep(1.5)
+    screen = [row.rstrip() for row in client.screen_text().json()["text"].splitlines()]
+    assert output_of(screen, "doskey /h")[-2:] == ["echo first-typed", "doskey /h"], screen
