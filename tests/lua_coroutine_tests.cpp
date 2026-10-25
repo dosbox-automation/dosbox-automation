@@ -128,6 +128,20 @@ TEST_F(LuaCoroutineTest, StopAbortsRunningScript)
 	EXPECT_EQ(coroutine.State(), Lua::ScriptState::Idle);
 }
 
+TEST_F(LuaCoroutineTest, StopAfterInstructionLimitKeepsTheError)
+{
+	engine.LoadScript("for i = 1, 999999999 do local x = i * i end", "limit");
+	coroutine.Start();
+	ASSERT_EQ(coroutine.DispatchFrame(1), Lua::ScriptState::Error);
+
+	coroutine.Stop();
+	coroutine.Stop();
+
+	EXPECT_EQ(coroutine.State(), Lua::ScriptState::Error);
+	EXPECT_NE(coroutine.ErrorMessage().find("instruction limit exceeded"),
+	          std::string::npos);
+}
+
 TEST_F(LuaCoroutineTest, DispatchFrameNoOpWhenIdle)
 {
 	auto state = coroutine.DispatchFrame(1);
