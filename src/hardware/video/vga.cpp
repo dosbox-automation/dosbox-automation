@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "vga.h"
 
@@ -42,9 +43,26 @@ void VGA_LogInitialization(const char *adapter_name,
 	         check_cast<int16_t>(num_modes));
 }
 
+// A demo can switch between 16 and 256 colours through the registers
+// alone; the planes and the DAC are the only state the new mode may use.
+static void refresh_derived_state(const VGAModes mode)
+{
+	switch (mode) {
+	case M_EGA:
+	case M_LIN4: VGA_ExpandPlanesIntoPixelBuffer(); break;
+	case M_VGA:
+		VGA_RebuildChainedPixelCache();
+		VGA_DACSetEntirePalette();
+		break;
+	case M_LIN8: VGA_DACSetEntirePalette(); break;
+	default: break;
+	}
+}
+
 void VGA_SetModeNow(VGAModes mode) {
 	if (vga.mode == mode) return;
 	vga.mode=mode;
+	refresh_derived_state(mode);
 	VGA_SetupHandlers();
 	VGA_StartResizeAfter(0);
 }
@@ -53,6 +71,7 @@ void VGA_SetModeNow(VGAModes mode) {
 void VGA_SetMode(VGAModes mode) {
 	if (vga.mode == mode) return;
 	vga.mode=mode;
+	refresh_derived_state(mode);
 	VGA_SetupHandlers();
 	VGA_StartResize();
 }

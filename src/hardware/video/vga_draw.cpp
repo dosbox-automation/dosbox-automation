@@ -1033,7 +1033,7 @@ static uint8_t* draw_text_line_from_dac_palette(Bitu vidstart, Bitu line)
 
 	// The first write-index into the draw buffer. Increasing this shifts
 	// the console text right (and vice-versa)
-	const uint16_t draw_idx_start = 8 + vga.draw.panning;
+	const uint16_t draw_idx_start = TextLineDrawStart(vga.draw.panning);
 
 	// This holds the to-be-written pixel offset, and is incremented per
 	// pixel and also per character block.
@@ -1132,7 +1132,7 @@ static uint8_t* draw_text_line_from_dac_palette(Bitu vidstart, Bitu line)
 			}
 		}
 	}
-	return TempLine + 32;
+	return TempLine + TextLineLeadPixels * sizeof(uint32_t);
 }
 
 static void VGA_ProcessSplit()

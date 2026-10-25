@@ -8,6 +8,7 @@
 
 #include "dosbox.h"
 
+#include <cassert>
 #include <string>
 #include <utility>
 
@@ -116,6 +117,18 @@ constexpr auto NumVgaColors = 256;
 constexpr auto NumVgaSequencerRegisters = 0x05;
 constexpr auto NumVgaGraphicsRegisters  = 0x09;
 constexpr auto NumVgaAttributeRegisters = 0x15;
+
+// A text line is drawn this many pixels into the line buffer; the
+// unpanned line's first visible pixel sits there.
+constexpr uint16_t TextLineLeadPixels = 8;
+
+// PEL panning shifts the video data left, by at most eight dots in text
+// (IBM Video Subsystem, VGA Function, 1992, figure 2-88).
+constexpr uint16_t TextLineDrawStart(const uint16_t panning)
+{
+	assert(panning <= TextLineLeadPixels);
+	return TextLineLeadPixels - panning;
+}
 
 constexpr auto vesa_2_0_modes_start = 0x120;
 
@@ -1174,6 +1187,8 @@ void VGA_SetRefreshRateMode(const std::string& pref);
 double VGA_GetRefreshRate();
 
 void VGA_DACSetEntirePalette(void);
+void VGA_ExpandPlanesIntoPixelBuffer();
+void VGA_RebuildChainedPixelCache();
 void VGA_StartRetrace(void);
 void VGA_StartUpdateLFB(void);
 void VGA_SetBlinking(uint8_t enabled);

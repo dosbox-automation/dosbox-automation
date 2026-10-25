@@ -5,6 +5,7 @@
 
 #include "dosbox.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
@@ -174,35 +175,63 @@ public:
 	}
 };
 
+// The 16-colour modes draw from fastmem, one colour index per pixel; this
+// expands the four planes of one address into its eight pixels.
+static inline void expand_planes_into_pixels(const PhysPt start)
+{
+	VgaLatch pixels;
+	pixels.d = ((uint32_t*)vga.mem.linear)[start];
+
+	uint8_t* write_pixels = &vga.fastmem[start << 3];
+
+	VgaLatch temp;
+	temp.d                   = (pixels.d >> 4) & 0x0f0f0f0f;
+	const uint32_t colors0_3 = Expand16Table[0][temp.b[0]] |
+	                           Expand16Table[1][temp.b[1]] |
+	                           Expand16Table[2][temp.b[2]] |
+	                           Expand16Table[3][temp.b[3]];
+	*(uint32_t*)write_pixels = colors0_3;
+
+	temp.d                   = pixels.d & 0x0f0f0f0f;
+	const uint32_t colors4_7 = Expand16Table[0][temp.b[0]] |
+	                           Expand16Table[1][temp.b[1]] |
+	                           Expand16Table[2][temp.b[2]] |
+	                           Expand16Table[3][temp.b[3]];
+	*(uint32_t*)(write_pixels + 4) = colors4_7;
+}
+
+// Writes in a 256-colour mode change only the planes, so the 16-colour
+// pixel buffer is rebuilt from them when such a mode is entered.
+void VGA_ExpandPlanesIntoPixelBuffer()
+{
+	assert(vga.mem.linear && vga.fastmem);
+	const PhysPt num_addresses = vga.vmemsize / 4;
+	for (PhysPt start = 0; start < num_addresses; ++start) {
+		expand_planes_into_pixels(start);
+	}
+}
+
+// Chained mode 13h draws from a byte-per-pixel copy of the planes that
+// only its own write handler keeps, with the first line repeated at 64K.
+void VGA_RebuildChainedPixelCache()
+{
+	assert(vga.mem.linear && vga.fastmem);
+	constexpr PhysPt ChainedWindow = 64 * 1024;
+	constexpr PhysPt ReplicatedLine = 320;
+	for (PhysPt addr = 0; addr < ChainedWindow; ++addr) {
+		vga.fastmem[addr] = vga.mem.linear[((addr & ~3) << 2) + (addr & 3)];
+	}
+	std::copy_n(vga.fastmem, ReplicatedLine, vga.fastmem + ChainedWindow);
+}
+
 class VGA_ChainedEGA_Handler final : public PageHandler {
 public:
 	uint8_t readHandler(PhysPt addr) { return vga.mem.linear[addr]; }
 	void writeHandler(PhysPt start, uint8_t val) {
 		ModeOperation(val);
 		/* Update video memory and the pixel buffer */
-		VgaLatch pixels;
 		vga.mem.linear[start] = val;
-		start >>= 2;
-		pixels.d=((uint32_t*)vga.mem.linear)[start];
-
-		uint8_t * write_pixels=&vga.fastmem[start<<3];
-
-		uint32_t colors0_3, colors4_7;
-		VgaLatch temp;
-		temp.d=(pixels.d>>4) & 0x0f0f0f0f;
-		colors0_3 =
-			Expand16Table[0][temp.b[0]] |
-			Expand16Table[1][temp.b[1]] |
-			Expand16Table[2][temp.b[2]] |
-			Expand16Table[3][temp.b[3]];
-		*(uint32_t *)write_pixels=colors0_3;
-		temp.d=pixels.d & 0x0f0f0f0f; //-V519
-		colors4_7 =
-			Expand16Table[0][temp.b[0]] |
-			Expand16Table[1][temp.b[1]] |
-			Expand16Table[2][temp.b[2]] |
-			Expand16Table[3][temp.b[3]];
-		*(uint32_t *)(write_pixels+4)=colors4_7;
+		expand_planes_into_pixels(start >> 2);
 	}
 public:
 	VGA_ChainedEGA_Handler()  {
@@ -285,24 +314,7 @@ public:
 		pixels.d&=vga.config.full_not_map_mask;
 		pixels.d|=(data & vga.config.full_map_mask);
 		((uint32_t*)vga.mem.linear)[start]=pixels.d;
-		uint8_t * write_pixels=&vga.fastmem[start<<3];
-
-		uint32_t colors0_3, colors4_7;
-		VgaLatch temp;
-		temp.d=(pixels.d>>4) & 0x0f0f0f0f;
-			colors0_3 =
-			Expand16Table[0][temp.b[0]] |
-			Expand16Table[1][temp.b[1]] |
-			Expand16Table[2][temp.b[2]] |
-			Expand16Table[3][temp.b[3]];
-		*(uint32_t *)write_pixels=colors0_3;
-		temp.d=pixels.d & 0x0f0f0f0f; //-V519
-		colors4_7 =
-			Expand16Table[0][temp.b[0]] |
-			Expand16Table[1][temp.b[1]] |
-			Expand16Table[2][temp.b[2]] |
-			Expand16Table[3][temp.b[3]];
-		*(uint32_t *)(write_pixels+4)=colors4_7;
+		expand_planes_into_pixels(start);
 	}
 public:
 	VGA_UnchainedEGA_Handler()  {

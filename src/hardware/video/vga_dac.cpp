@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText:  2020-2026 The DOSBox Staging Team
 // SPDX-FileCopyrightText:  2002-2021 The DOSBox Team
 // SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 dosbox-automation contributors
 
 #include "dosbox.h"
 
@@ -343,6 +344,14 @@ void VGA_DAC_CombineColor(const uint8_t palette_idx, const uint8_t color_idx)
 	}
 }
 
+// In 256 colours the DAC is the whole palette; entries written while a
+// 16-colour mode showed only reached the attribute-mapped sixteen.
+void VGA_DACSetEntirePalette()
+{
+	for (auto i = 0; i < NumVgaColors; ++i) {
+		vga_dac_update_color(check_cast<uint8_t>(i));
+	}
+}
 
 void VGA_DAC_SetEntry(const uint8_t color_idx, const uint8_t red,
                       const uint8_t green, const uint8_t blue)
