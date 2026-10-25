@@ -438,6 +438,11 @@ static void setup_security(const std::string& addr, int port,
 	});
 
 	server.set_payload_max_length(10 * 1024 * 1024);
+
+	// httplib closes an idle keep-alive socket after 5 s, and a pooled
+	// client reusing it in that instant gets no answer: close after every
+	// response instead.
+	server.set_keep_alive_max_count(1);
 }
 
 // Tool pages live outside the static mounts because httplib serves a
@@ -747,7 +752,7 @@ void WEBSERVER_Init()
 
 		// Guest-side OSD access (osd.com) is part of the
 		// automation surface, so it comes and goes with it
-		OSDPORT_Init();
+		OSDPORT_EnableOverlay(true);
 
 		const auto resource_home = get_resource_path("webserver").string();
 		const auto use_token_file = section->GetBool("webserver_token_file");
@@ -770,7 +775,7 @@ void WEBSERVER_Init()
 
 void WEBSERVER_Destroy()
 {
-	OSDPORT_Destroy();
+	OSDPORT_EnableOverlay(false);
 	Webserver::server.stop();
 	Webserver::remove_token_file();
 }
