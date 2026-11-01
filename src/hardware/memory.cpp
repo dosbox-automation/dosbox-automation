@@ -163,6 +163,15 @@ PageHandler * MEM_GetPageHandler(Bitu phys_page) {
 	return &illegal_page_handler;
 }
 
+bool MEM_PageReadable(Bitu phys_page) {
+	const PageHandler *handler = MEM_GetPageHandler(phys_page);
+	return handler == &ram_page_handler || handler == &rom_page_handler;
+}
+
+bool MEM_PageWritable(Bitu phys_page) {
+	return MEM_GetPageHandler(phys_page) == &ram_page_handler;
+}
+
 void MEM_SetPageHandler(Bitu phys_page,Bitu pages,PageHandler * handler) {
 	for (;pages>0;pages--) {
 		memory.phandlers[phys_page]=handler;

@@ -60,11 +60,6 @@
       "description": "Direct x86 I/O port access."
     }
   ],
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
   "paths": {
     "/api/v1/status": {
       "get": {
@@ -2144,13 +2139,6 @@
     }
   },
   "components": {
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "The API token printed to the log at startup (or written to the token file). Send it as `Authorization: Bearer <token>`."
-      }
-    },
     "parameters": {
       "MemorySegment": {
         "name": "segment",

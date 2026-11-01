@@ -53,6 +53,12 @@ HostPt MEM_GetBlockPage();
 uint32_t MEM_FreeTotal();                      // free 4 KB pages
 uint32_t MEM_FreeLargest();                    // largest free 4 KB pages block
 uint32_t MEM_TotalPages();                     // total amount of 4 KB pages
+
+// True when the physical page maps to plain host RAM (or ROM): safe for
+// the webserver memory commands to touch without faulting into an
+// illegal-page handler. Device/MMIO and unmapped pages return false.
+bool MEM_PageReadable(Bitu phys_page);
+bool MEM_PageWritable(Bitu phys_page);
 uint32_t MEM_AllocatedPages(MemHandle handle); // amount of allocated pages of handle
 MemHandle MEM_AllocatePages(Bitu pages, bool sequence);
 MemHandle MEM_GetNextFreePage();

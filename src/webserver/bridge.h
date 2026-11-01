@@ -17,7 +17,7 @@ public:
 	virtual ~Command() {}
 	virtual void Execute() = 0;
 
-	void WaitForCompletion(const uint32_t timeout_ms = 250);
+	void WaitForCompletion(const uint32_t timeout_ms = 1000);
 
 	// Set by Execute() to report errors without throwing on the
 	// emulation thread. Handlers should check this after

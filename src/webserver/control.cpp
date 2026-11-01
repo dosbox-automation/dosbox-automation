@@ -31,6 +31,34 @@ void ShutdownCommand::Post(const httplib::Request&, httplib::Response& res)
 	send_json(res, j);
 }
 
+void ControlHandlers::PostPause(const httplib::Request&, httplib::Response& res)
+{
+	WEBSERVER_SetPaused(true);
+
+	json j;
+	j["paused"] = true;
+	j["note"]   = "machine held at an instruction boundary; memory and "
+	              "freeze commands answer while paused; resume with "
+	              "/api/v1/control/resume";
+	send_json(res, j);
+}
+
+void ControlHandlers::PostResume(const httplib::Request&, httplib::Response& res)
+{
+	WEBSERVER_SetPaused(false);
+
+	json j;
+	j["paused"] = false;
+	send_json(res, j);
+}
+
+void ControlHandlers::GetPaused(const httplib::Request&, httplib::Response& res)
+{
+	json j;
+	j["paused"] = WEBSERVER_IsPaused();
+	send_json(res, j);
+}
+
 void ControlHandlers::GetProgramState(const httplib::Request&, httplib::Response& res)
 {
 	json j;

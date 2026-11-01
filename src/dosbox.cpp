@@ -119,12 +119,28 @@ static Bitu normal_loop()
 	Bits ret;
 
 	while (true) {
-		if (PIC_RunQueue()) {
-			if (WEBSERVER_IsEnabled()) {
-				Webserver::Bridge::Instance().ProcessRequests();
-				LuaReapStalledWaits();
-			}
+		if (WEBSERVER_IsEnabled()) {
+			// Drain the API command queue on every pass of the loop,
+			// not only when PIC events are pending. Memory commands
+			// execute on this emulation thread, so they now answer
+			// while a busy program runs (at instruction boundaries)
+			// instead of timing out waiting for an idle moment.
+			Webserver::Bridge::Instance().ProcessRequests();
+			LuaReapStalledWaits();
 
+			// Pause mode: freeze the guest (no CPU decode, no ticks)
+			// but keep pumping the queue and the event loop, so API
+			// reads and window handling keep working while the machine
+			// is held.
+			if (WEBSERVER_IsPaused()) {
+				if (!GFX_PollAndHandleEvents()) {
+					return 0;
+				}
+				continue;
+			}
+		}
+
+		if (PIC_RunQueue()) {
 			ret = (*cpudecoder)();
 			if (ret < 0) {
 				return 1;

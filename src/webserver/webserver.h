@@ -71,9 +71,9 @@ static T num_param(const httplib::Request& req, Source src, const std::string& n
 
 void send_json(httplib::Response& res, const nlohmann::json& j);
 
-// True when a request may bypass the bearer-token check: a GET/HEAD for one of
-// the fixed documentation assets (landing page, API explorer, openapi spec,
-// vendored Swagger UI). Exact-match only, so no traversal or token file leaks.
+// True when the path is served as a public documentation asset: GET/HEAD for
+// one of the fixed pages (landing page, API explorer, openapi spec, vendored
+// Swagger UI). Exact-match only, so no traversal can escape the static mounts.
 bool IsPublicDocPath(const std::string& method, const std::string& path);
 
 } // namespace Webserver
@@ -82,6 +82,11 @@ void WEBSERVER_Init();
 void WEBSERVER_Destroy();
 void WEBSERVER_AddConfigSection(const ConfigPtr& conf);
 bool WEBSERVER_IsEnabled();
+
+// Machine pause: the CPU and guest timers freeze at an instruction boundary
+// until resumed. The API keeps answering while paused.
+void WEBSERVER_SetPaused(bool paused);
+bool WEBSERVER_IsPaused();
 
 struct WebserverEndpoint {
 	std::string bind_address = {};

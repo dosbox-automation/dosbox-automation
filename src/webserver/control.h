@@ -14,6 +14,9 @@ namespace Webserver {
 struct ControlHandlers {
 	static void GetProgramState(const httplib::Request& req, httplib::Response& res);
 	static void GetStatus(const httplib::Request& req, httplib::Response& res);
+	static void PostPause(const httplib::Request& req, httplib::Response& res);
+	static void PostResume(const httplib::Request& req, httplib::Response& res);
+	static void GetPaused(const httplib::Request& req, httplib::Response& res);
 };
 
 } // namespace Webserver

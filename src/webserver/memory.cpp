@@ -74,6 +74,27 @@ static void parse_mem_addr(const httplib::Request& req, Segment& segment,
 	}
 }
 
+// True when every 4 KB page covered by [start, start+size) maps to plain
+// host RAM (or ROM for reads). Without this, a span inside total RAM but
+// beyond mapped pages faults into the illegal-page handler mid-scan and
+// aborts the engine.
+static bool range_mapped(uint64_t start, uint64_t size, const bool write)
+{
+	if (size == 0) {
+		return true;
+	}
+	const uint64_t first_page = start / MemPageSize;
+	const uint64_t last_page  = (start + size - 1) / MemPageSize;
+	for (uint64_t page = first_page; page <= last_page; ++page) {
+		const bool ok = write ? MEM_PageWritable(static_cast<Bitu>(page))
+		                      : MEM_PageReadable(static_cast<Bitu>(page));
+		if (!ok) {
+			return false;
+		}
+	}
+	return true;
+}
+
 void ReadMemoryCommand::Execute()
 {
 	regs.load();
@@ -90,6 +111,13 @@ void ReadMemoryCommand::Execute()
 		error = "Address range 0x" + std::to_string(effective_addr) + " + " +
 		        std::to_string(len) + " exceeds emulated memory size (" +
 		        std::to_string(mem_total) + " bytes)";
+		return;
+	}
+
+	if (!range_mapped(effective_addr, len, false)) {
+		error = "Address range 0x" + std::to_string(effective_addr) + " + " +
+		        std::to_string(len) +
+		        " includes an unmapped or device page";
 		return;
 	}
 
@@ -149,6 +177,13 @@ void WriteMemoryCommand::Execute()
 		        " + " + std::to_string(data.size()) +
 		        " exceeds emulated memory size (" +
 		        std::to_string(mem_total) + " bytes)";
+		return;
+	}
+
+	if (!range_mapped(effective_addr, data.size(), true)) {
+		error = "Address range 0x" + std::to_string(effective_addr) + " + " +
+		        std::to_string(data.size()) +
+		        " includes an unmapped, read-only or device page";
 		return;
 	}
 
@@ -261,6 +296,12 @@ void SearchMemoryCommand::Execute()
 		return;
 	}
 	const auto len = end - start;
+	if (!range_mapped(start, len, false)) {
+		error = "Search range 0x" + std::to_string(start) + "..0x" +
+		        std::to_string(end) + " includes an unmapped or device page";
+		return;
+	}
+
 	std::vector<uint8_t> buf(len);
 	MEM_BlockRead(start, buf.data(), len);
 	matches = ScanBufferForValue(buf, value, width);
