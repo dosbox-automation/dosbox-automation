@@ -515,12 +515,11 @@ The API requires `webserver_allow_remote=true` in dosbox config for non-localhos
 
 ## License
 
-Licensed under either of:
+Licensed under **GNU General Public License version 2 or later (GPL-2.0-or-later)**.
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
-- MIT License ([LICENSE-MIT](LICENSE-MIT))
+This maintains compatibility with the upstream dosbox-automation and DOSBox codebases.
 
-at your option.
+See [LICENSE](../../LICENSE) for the full license text.
 
 ---
 
