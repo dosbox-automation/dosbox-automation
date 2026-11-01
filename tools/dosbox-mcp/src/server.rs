@@ -9,6 +9,8 @@ use rmcp::{
     model::*,
     schemars, tool, tool_handler, tool_router,
     ServerHandler,
+    model::{Resource, ResourceTemplate, Prompt, PromptArgument, PromptMessage, PromptMessageRole, ResourceContents, PaginatedRequestParam, ListResourcesResult, ListResourceTemplatesResult, ReadResourceRequestParam, ReadResourceResult, GetPromptRequestParam, GetPromptResult, ListPromptsResult, RawResource, RawResourceTemplate},
+    service::{RoleServer, RequestContext},
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -621,13 +623,883 @@ pub struct WritePortParams {
 
 // ============ ServerHandler Implementation ============
 
+// ----- Documentation Resources -----
+const API_REFERENCE_MD: &str = include_str!("../docs/api-reference.md");
+const CONFIG_GUIDE_MD: &str = include_str!("../docs/configuration.md");
+const WORKFLOWS_MD: &str = include_str!("../docs/workflows.md");
+const QUICKSTART_MD: &str = include_str!("../docs/quickstart.md");
+
+fn doc_resource(uri: &str, name: &str, description: &str, content: &str) -> Resource {
+    let raw = RawResource {
+        uri: uri.to_string(),
+        name: name.to_string(),
+        description: Some(description.to_string()),
+        mime_type: Some("text/markdown".to_string()),
+        size: Some(content.len() as u32),
+    };
+    Resource::new(raw, None)
+}
+
+fn doc_resource_template(uri_template: &str, name: &str, description: &str) -> ResourceTemplate {
+    let raw = RawResourceTemplate {
+        uri_template: uri_template.to_string(),
+        name: name.to_string(),
+        description: Some(description.to_string()),
+        mime_type: Some("text/markdown".to_string()),
+    };
+    ResourceTemplate::new(raw, None)
+}
+
 #[tool_handler]
 impl ServerHandler for DosBoxMcpServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
-            instructions: Some("MCP server for dosbox-automation REST API. Provides tools for controlling DOSBox instances including input injection, memory access, video capture, drive management, and Lua scripting.".into()),
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
+            instructions: Some(
+                "MCP server for dosbox-automation REST API. Provides tools for controlling DOSBox instances including input injection, memory access, video capture, drive management, and Lua scripting.\n\n\
+                **Documentation Resources** (read via `resources/read`):\n\
+                - `docs://dosbox-mcp/api-reference` — Complete API reference for all 43 tools\n\
+                - `docs://dosbox-mcp/configuration` — Server configuration guide\n\
+                - `docs://dosbox-mcp/workflows` — Common workflow examples (game install, memory trainer, testing)\n\
+                - `docs://dosbox-mcp/quickstart` — Quick start guide\n\n\
+                **Prompts** (invoke via `prompts/get`):\n\
+                - `install-game` — Step-by-step game installation from CD/ISO\n\
+                - `memory-trainer` — Find and freeze memory values (lives, ammo, etc.)\n\
+                - `automated-test` — Record/replay deterministic input sequences\n\
+                - `lua-script` — Load and execute Lua automation scripts".into()
+            ),
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+                .enable_resources()
+                .enable_prompts()
+                .build(),
             ..Default::default()
+        }
+    }
+
+    // ---- Resources ----
+    fn list_resources(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+        _context: RequestContext<RoleServer>,
+    ) -> impl Future<Output = Result<ListResourcesResult, McpErrorInternal>> + Send + '_ {
+        let resources = vec![
+            doc_resource(
+                "docs://dosbox-mcp/api-reference",
+                "API Reference",
+                "Complete API reference for all 43 MCP tools with parameters, examples, and error codes",
+                API_REFERENCE_MD,
+            ),
+            doc_resource(
+                "docs://dosbox-mcp/configuration",
+                "Configuration Guide",
+                "Server configuration: config file, CLI options, environment variables, multi-instance setup",
+                CONFIG_GUIDE_MD,
+            ),
+            doc_resource(
+                "docs://dosbox-mcp/workflows",
+                "Workflow Examples",
+                "Common workflows: game installation, memory trainer, automated testing, Lua scripting",
+                WORKFLOWS_MD,
+            ),
+            doc_resource(
+                "docs://dosbox-mcp/quickstart",
+                "Quick Start Guide",
+                "Get running in 3 steps: install, configure MCP client, start server",
+                QUICKSTART_MD,
+            ),
+        ];
+        std::future::ready(Ok(ListResourcesResult {
+            resources,
+            next_cursor: None,
+        }))
+    }
+
+    fn list_resource_templates(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+        _context: RequestContext<RoleServer>,
+    ) -> impl Future<Output = Result<ListResourceTemplatesResult, McpErrorInternal>> + Send + '_ {
+        let templates = vec![
+            doc_resource_template(
+                "docs://dosbox-mcp/tool/{tool_name}",
+                "Individual Tool Reference",
+                "Get detailed reference for a specific tool by name (e.g., 'type_text', 'read_memory')",
+            ),
+        ];
+        std::future::ready(Ok(ListResourceTemplatesResult {
+            resource_templates: templates,
+            next_cursor: None,
+        }))
+    }
+
+    fn read_resource(
+        &self,
+        request: ReadResourceRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> impl Future<Output = Result<ReadResourceResult, McpErrorInternal>> + Send + '_ {
+        let uri = request.uri.as_str();
+        let contents = match uri {
+            "docs://dosbox-mcp/api-reference" => ResourceContents::text(API_REFERENCE_MD, uri),
+            "docs://dosbox-mcp/configuration" => ResourceContents::text(CONFIG_GUIDE_MD, uri),
+            "docs://dosbox-mcp/workflows" => ResourceContents::text(WORKFLOWS_MD, uri),
+            "docs://dosbox-mcp/quickstart" => ResourceContents::text(QUICKSTART_MD, uri),
+            uri if uri.starts_with("docs://dosbox-mcp/tool/") => {
+                let tool_name = uri.strip_prefix("docs://dosbox-mcp/tool/").unwrap_or("");
+                let content = self.get_tool_doc(tool_name);
+                ResourceContents::text(content, uri)
+            }
+            _ => {
+                return std::future::ready(Err(McpErrorInternal::resource_not_found(
+                    format!("Resource not found: {}", uri),
+                    None,
+                )));
+            }
+        };
+        std::future::ready(Ok(ReadResourceResult {
+            contents: vec![contents],
+        }))
+    }
+
+    // ---- Prompts ----
+    fn list_prompts(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+        _context: RequestContext<RoleServer>,
+    ) -> impl Future<Output = Result<ListPromptsResult, McpErrorInternal>> + Send + '_ {
+        let prompts = vec![
+            Prompt::new(
+                "install-game",
+                Some("Install a DOS game from CD/ISO image step by step"),
+                Some(vec![
+                    PromptArgument { name: "drive".into(), description: Some("Drive letter to mount (e.g., 'D')".into()), required: Some(true) },
+                    PromptArgument { name: "image_path".into(), description: Some("Path to ISO/IMG disk image".into()), required: Some(true) },
+                    PromptArgument { name: "install_cmd".into(), description: Some("Install command to run (e.g., 'd:\\install.exe')".into()), required: Some(false) },
+                ]),
+            ),
+            Prompt::new(
+                "memory-trainer",
+                Some("Find a value in memory and freeze it (infinite lives, ammo, etc.)"),
+                Some(vec![
+                    PromptArgument { name: "value".into(), description: Some("Value to search for (e.g., current lives count)".into()), required: Some(true) },
+                    PromptArgument { name: "width".into(), description: Some("Search width: 1=byte, 2=word, 4=dword".into()), required: Some(false) },
+                    PromptArgument { name: "freeze_value".into(), description: Some("Value to freeze at (e.g., 99 for infinite lives)".into()), required: Some(true) },
+                ]),
+            ),
+            Prompt::new(
+                "automated-test",
+                Some("Record input sequence, replay deterministically, verify frame"),
+                Some(vec![
+                    PromptArgument { name: "test_name".into(), description: Some("Name for this test".into()), required: Some(true) },
+                    PromptArgument { name: "record_duration_secs".into(), description: Some("How long to record (seconds)".into()), required: Some(false) },
+                ]),
+            ),
+            Prompt::new(
+                "lua-script",
+                Some("Load and execute a Lua automation script"),
+                Some(vec![
+                    PromptArgument { name: "script".into(), description: Some("Lua script source code".into()), required: Some(true) },
+                    PromptArgument { name: "name".into(), description: Some("Optional name for the script".into()), required: Some(false) },
+                ]),
+            ),
+        ];
+        std::future::ready(Ok(ListPromptsResult {
+            prompts,
+            next_cursor: None,
+        }))
+    }
+
+    fn get_prompt(
+        &self,
+        request: GetPromptRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> impl Future<Output = Result<GetPromptResult, McpErrorInternal>> + Send + '_ {
+        let name = request.name.as_str();
+        let args = request.arguments.unwrap_or_default();
+
+        let result = match name {
+            "install-game" => self.prompt_install_game(&args),
+            "memory-trainer" => self.prompt_memory_trainer(&args),
+            "automated-test" => self.prompt_automated_test(&args),
+            "lua-script" => self.prompt_lua_script(&args),
+            _ => {
+                return std::future::ready(Err(McpErrorInternal::method_not_found::<GetPromptRequestMethod>()));
+            }
+        };
+        std::future::ready(Ok(result))
+    }
+}
+
+impl DosBoxMcpServer {
+    /// Get documentation for a specific tool by name
+    fn get_tool_doc(&self, tool_name: &str) -> String {
+        match tool_name {
+            // Status
+            "get_status" => r#"## get_status
+Get current DOSBox status including program state and CPU info.
+
+**Parameters:** None
+
+**Returns:** `Status` object with emulator state, CPU info, and program info.
+
+**Example:**
+```json
+{ "tool": "get_status", "arguments": {} }
+```"#,
+            "get_program_state" => r#"## get_program_state
+Get the current program execution state.
+
+**Parameters:** None
+
+**Returns:** `ProgramState` with running program name, path, and state.
+
+**Example:**
+```json
+{ "tool": "get_program_state", "arguments": {} }
+```"#,
+            "get_dosbox_info" => r#"## get_dosbox_info
+Get DOSBox version and build information.
+
+**Parameters:** None
+
+**Returns:** `DosBoxInfo` with version, feature flags, binary path.
+
+**Example:**
+```json
+{ "tool": "get_dosbox_info", "arguments": {} }
+```"#,
+            // Control
+            "shutdown" => r#"## shutdown
+Request graceful shutdown of DOSBox.
+
+**Parameters:** None
+
+**Returns:** `ControlResponse` with status.
+
+**Example:**
+```json
+{ "tool": "shutdown", "arguments": {} }
+```"#,
+            "pause" => r#"## pause
+Pause DOSBox emulation.
+
+**Parameters:** None
+
+**Returns:** `ControlResponse`.
+
+**Example:**
+```json
+{ "tool": "pause", "arguments": {} }
+```"#,
+            "resume" => r#"## resume
+Resume DOSBox emulation.
+
+**Parameters:** None
+
+**Returns:** `ControlResponse`.
+
+**Example:**
+```json
+{ "tool": "resume", "arguments": {} }
+```"#,
+            "get_pause_state" => r#"## get_pause_state
+Get current pause state.
+
+**Parameters:** None
+
+**Returns:** Boolean or object indicating paused state.
+
+**Example:**
+```json
+{ "tool": "get_pause_state", "arguments": {} }
+```"#,
+            // CPU
+            "get_registers" => r#"## get_registers
+Get all CPU register values.
+
+**Parameters:** None
+
+**Returns:** `Registers` object with all general-purpose, segment, flag, and FPU registers.
+
+**Example:**
+```json
+{ "tool": "get_registers", "arguments": {} }
+```"#,
+            "get_cycles" => r#"## get_cycles
+Get current CPU cycles setting.
+
+**Parameters:** None
+
+**Returns:** `CpuCycles` with current cycles value.
+
+**Example:**
+```json
+{ "tool": "get_cycles", "arguments": {} }
+```"#,
+            "set_cycles" => r#"## set_cycles
+Set CPU cycles.
+
+**Parameters:**
+- `cycles` (string): Cycles value — numeric (e.g., "5000"), "auto", or "max"
+
+**Returns:** `SetCyclesResponse`.
+
+**Example:**
+```json
+{ "tool": "set_cycles", "arguments": { "cycles": "auto" } }
+```"#,
+            "set_register" => r#"## set_register
+Set a CPU register value.
+
+**Parameters:**
+- `register` (string): Register name (e.g., "eax", "ebx", "eip", "cs", "ds")
+- `value` (u64): Value to set
+
+**Returns:** `ControlResponse`.
+
+**Example:**
+```json
+{ "tool": "set_register", "arguments": { "register": "eax", "value": 0 } }
+```"#,
+            // Memory
+            "read_memory" => r#"## read_memory
+Read memory at offset (max 128 MiB per request). Returns base64-encoded data.
+
+**Parameters:**
+- `offset` (u64): Physical memory offset
+- `length` (u32): Number of bytes to read (max 134,217,728)
+
+**Returns:** `MemoryReadResponse` with base64 data.
+
+**Example:**
+```json
+{ "tool": "read_memory", "arguments": { "offset": 0x100000, "length": 4096 } }
+```"#,
+            "write_memory" => r#"## write_memory
+Write memory at offset (max 128 MiB per request). Data is base64-encoded.
+
+**Parameters:**
+- `offset` (u64): Physical memory offset
+- `data` (Vec<u8>): Base64-encoded data to write (max 134,217,728 bytes)
+
+**Returns:** `MemoryWriteResponse`.
+
+**Example:**
+```json
+{ "tool": "write_memory", "arguments": { "offset": 0x100000, "data": "AQIDBA==" } }
+```"#,
+            "search_memory" => r#"## search_memory
+Search memory for a value (byte/word/dword). Max 16 MiB per request.
+
+**Parameters:**
+- `value` (u64): Value to search for
+- `width` (u8, default=1): Width in bytes: 1 (byte), 2 (word), 4 (dword)
+- `start` (u64, optional): Start address (default: 0)
+- `length` (u32, optional): Bytes to scan (max 16,777,216, default: 16 MiB)
+
+**Returns:** `MemorySearchResponse` with array of matching addresses.
+
+**Example:**
+```json
+{ "tool": "search_memory", "arguments": { "value": 3, "width": 1 } }
+```"#,
+            "allocate_memory" => r#"## allocate_memory
+Allocate memory in DOSBox (CONV, UMB, XMS, EMS).
+
+**Parameters:**
+- `size` (u32): Size in bytes
+- `area` (string, default="CONV"): Memory area — "CONV", "UMB", "XMS", "EMS"
+- `strategy` (string, default="BEST_FIT"): Allocation strategy — "BEST_FIT", "FIRST_FIT", "LAST_FIT"
+
+**Returns:** `MemoryAllocateResponse` with allocated address.
+
+**Example:**
+```json
+{ "tool": "allocate_memory", "arguments": { "size": 65536, "area": "XMS" } }
+```"#,
+            "free_memory" => r#"## free_memory
+Free previously allocated memory.
+
+**Parameters:**
+- `addr` (u64): Physical address of allocated block
+
+**Returns:** `MemoryFreeResponse`.
+
+**Example:**
+```json
+{ "tool": "free_memory", "arguments": { "addr": 0x100000 } }
+```"#,
+            "freeze_memory" => r#"## freeze_memory
+Set a trainer-style value freeze (pins memory to fixed value each frame).
+
+**Parameters:**
+- `address` (u64): Physical address to freeze
+- `value` (u64): Value to freeze
+- `width` (u8, default=1): Width in bytes: 1, 2, or 4
+
+**Returns:** `FreezeResponse`.
+
+**Example:**
+```json
+{ "tool": "freeze_memory", "arguments": { "address": 65536, "value": 99, "width": 1 } }
+```"#,
+            "list_freezes" => r#"## list_freezes
+List active value freezes.
+
+**Parameters:** None
+
+**Returns:** `ListFreezesResponse` with array of active freezes.
+
+**Example:**
+```json
+{ "tool": "list_freezes", "arguments": {} }
+```"#,
+            "clear_freezes" => r#"## clear_freezes
+Remove freezes. With no address, clears all freezes.
+
+**Parameters:**
+- `address` (u64, optional): Specific address to clear (omit to clear all)
+
+**Returns:** `DeleteFreezesResponse`.
+
+**Example:**
+```json
+{ "tool": "clear_freezes", "arguments": {} }
+```"#,
+            // Input
+            "type_text" => r#"## type_text
+Type text into DOSBox at specified characters per second (default: 30 cps).
+
+**Parameters:**
+- `text` (string): Text to type (supports escape sequences like \r, \n, \t)
+- `cps` (f32, default=30): Characters per second
+
+**Returns:** `TypeTextResponse`.
+
+**Example:**
+```json
+{ "tool": "type_text", "arguments": { "text": "dir\r", "cps": 20 } }
+```"#,
+            "send_input_sequence" => r#"## send_input_sequence
+Send a sequence of input events (keys, mouse, wheel) with optional timing.
+
+**Parameters:**
+- `events` (InputEvent[]): Array of input events
+
+**InputEvent types:**
+```json
+{ "type": "key", "key": "KBD_enter", "pressed": true, "t": 0 }
+{ "type": "mouse_move", "x_rel": 5.0, "y_rel": -3.0 }
+{ "type": "mouse_button", "button": "left", "pressed": true }
+{ "type": "mouse_wheel", "delta": 1.0 }
+```
+
+**Returns:** `InputSequenceResponse`.
+
+**Example:**
+```json
+{ "tool": "send_input_sequence", "arguments": { "events": [{ "type": "key", "key": "KBD_enter", "pressed": true, "t": 0 }] } }
+```"#,
+            // Video
+            "capture_frame" => r#"## capture_frame
+Capture a frame (raw or rendered) as PNG/JPEG/raw. Returns base64-encoded image.
+
+**Parameters:**
+- `mode` (string, default="raw"): "raw" (emulator framebuffer) or "rendered" (post-shader)
+- `format` (string, default="png"): "png", "jpeg", "raw"
+- `quality` (u8, default=85): JPEG quality 1-100
+
+**Returns:** `CaptureFrameResult` with base64 data, size, format, mode.
+
+**Example:**
+```json
+{ "tool": "capture_frame", "arguments": { "mode": "rendered", "format": "png" } }
+```"#,
+            "get_frame_info" => r#"## get_frame_info
+Get frame dimensions and format info.
+
+**Parameters:** None
+
+**Returns:** `FrameInfo` with width, height, bpp, pitch.
+
+**Example:**
+```json
+{ "tool": "get_frame_info", "arguments": {} }
+```"#,
+            "read_screen_text" => r#"## read_screen_text
+Read text-mode screen content (useful for driving installers).
+
+**Parameters:** None
+
+**Returns:** `ScreenText` with rows, cols, and text content.
+
+**Example:**
+```json
+{ "tool": "read_screen_text", "arguments": {} }
+```"#,
+            // Recording
+            "start_recording" => r#"## start_recording
+Start recording input sequence.
+
+**Parameters:** None
+
+**Returns:** `ControlResponse`.
+
+**Example:**
+```json
+{ "tool": "start_recording", "arguments": {} }
+```"#,
+            "pause_recording" => r#"## pause_recording
+Pause/resume input recording.
+
+**Parameters:** None
+
+**Returns:** `ControlResponse`.
+
+**Example:**
+```json
+{ "tool": "pause_recording", "arguments": {} }
+```"#,
+            "stop_recording" => r#"## stop_recording
+Stop input recording and return recorded data.
+
+**Parameters:** None
+
+**Returns:** `RecordingResult` with events array.
+
+**Example:**
+```json
+{ "tool": "stop_recording", "arguments": {} }
+```"#,
+            "get_recording_status" => r#"## get_recording_status
+Get current recording status.
+
+**Parameters:** None
+
+**Returns:** `RecordingStatus` with recording state.
+
+**Example:**
+```json
+{ "tool": "get_recording_status", "arguments": {} }
+```"#,
+            // Drive
+            "swap_disk" => r#"## swap_disk
+Swap floppy/CD image in a drive.
+
+**Parameters:**
+- `drive` (string): Drive letter (e.g., "A", "C", "D")
+- `image` (string): Path to disk image
+
+**Returns:** `DriveSwapResponse`.
+
+**Example:**
+```json
+{ "tool": "swap_disk", "arguments": { "drive": "D", "image": "/path/to/game.iso" } }
+```"#,
+            "lock_mounts" => r#"## lock_mounts
+Lock or unlock drive mounts.
+
+**Parameters:**
+- `lock` (boolean): Lock state
+
+**Returns:** `MountLockResponse`.
+
+**Example:**
+```json
+{ "tool": "lock_mounts", "arguments": { "lock": true } }
+```"#,
+            "get_mount_lock" => r#"## get_mount_lock
+Get current mount lock state.
+
+**Parameters:** None
+
+**Returns:** `MountLockStatus`.
+
+**Example:**
+```json
+{ "tool": "get_mount_lock", "arguments": {} }
+```"#,
+            // Script
+            "load_script" => r#"## load_script
+Load a Lua script.
+
+**Parameters:**
+- `script` (string): Lua script source code
+- `name` (string, optional): Optional name for the script
+
+**Returns:** `ScriptLoadResponse`.
+
+**Example:**
+```json
+{ "tool": "load_script", "arguments": { "script": "print('hello')", "name": "test" } }
+```"#,
+            "start_script" => r#"## start_script
+Start executing loaded Lua script.
+
+**Parameters:** None
+
+**Returns:** `ControlResponse`.
+
+**Example:**
+```json
+{ "tool": "start_script", "arguments": {} }
+```"#,
+            "stop_script" => r#"## stop_script
+Stop running Lua script.
+
+**Parameters:** None
+
+**Returns:** `ControlResponse`.
+
+**Example:**
+```json
+{ "tool": "stop_script", "arguments": {} }
+```"#,
+            "get_script_status" => r#"## get_script_status
+Get Lua script execution status.
+
+**Parameters:** None
+
+**Returns:** `ScriptStatus`.
+
+**Example:**
+```json
+{ "tool": "get_script_status", "arguments": {} }
+```"#,
+            // Capture
+            "start_video_capture" => r#"## start_video_capture
+Start video capture (ZMBV).
+
+**Parameters:**
+- `mode` (string, default="raw"): "raw" or "rendered"
+
+**Returns:** `CaptureStartResponse`.
+
+**Example:**
+```json
+{ "tool": "start_video_capture", "arguments": { "mode": "rendered" } }
+```"#,
+            "stop_video_capture" => r#"## stop_video_capture
+Stop video capture.
+
+**Parameters:** None
+
+**Returns:** `ControlResponse`.
+
+**Example:**
+```json
+{ "tool": "stop_video_capture", "arguments": {} }
+```"#,
+            "get_capture_status" => r#"## get_capture_status
+Get video capture status.
+
+**Parameters:** None
+
+**Returns:** `CaptureStatus`.
+
+**Example:**
+```json
+{ "tool": "get_capture_status", "arguments": {} }
+```"#,
+            "get_compression" => r#"## get_compression
+Get video capture compression settings.
+
+**Parameters:** None
+
+**Returns:** `CaptureCompression` with raw/rendered levels.
+
+**Example:**
+```json
+{ "tool": "get_compression", "arguments": {} }
+```"#,
+            "set_compression" => r#"## set_compression
+Set video capture compression settings.
+
+**Parameters:**
+- `raw` (u8, optional): Compression level for raw mode (0-9)
+- `rendered` (u8, optional): Compression level for rendered mode (0-9)
+
+**Returns:** `CaptureCompression`.
+
+**Example:**
+```json
+{ "tool": "set_compression", "arguments": { "raw": 5, "rendered": 7 } }
+```"#,
+            // I/O
+            "read_port" => r#"## read_port
+Read I/O port (byte or word).
+
+**Parameters:**
+- `port` (u16): Port number (0-65535)
+- `width` (u8, default=1): 1 for byte, 2 for word
+
+**Returns:** `PortReadResponse`.
+
+**Example:**
+```json
+{ "tool": "read_port", "arguments": { "port": 0x3F8, "width": 1 } }
+```"#,
+            "write_port" => r#"## write_port
+Write I/O port (byte or word).
+
+**Parameters:**
+- `port` (u16): Port number (0-65535)
+- `value` (u32): Value to write
+- `width` (u8, default=1): 1 for byte, 2 for word
+
+**Returns:** `PortWriteResponse`.
+
+**Example:**
+```json
+{ "tool": "write_port", "arguments": { "port": 0x3F8, "value": 0x80, "width": 1 } }
+```"#,
+            // DOS
+            "get_dos_internals" => r#"## get_dos_internals
+Get DOS internals (MCB map, etc.).
+
+**Parameters:** None
+
+**Returns:** `DosInternals` with MCB chain, DOS structures.
+
+**Example:**
+```json
+{ "tool": "get_dos_internals", "arguments": {} }
+```"#,
+            _ => "No documentation available for this tool",
+        }.to_string()
+    }
+
+    // ---- Prompt Implementations ----
+    fn prompt_install_game(&self, args: &serde_json::Map<String, serde_json::Value>) -> GetPromptResult {
+        let drive = args.get("drive").and_then(|v| v.as_str()).unwrap_or("D");
+        let image_path = args.get("image_path").and_then(|v| v.as_str()).unwrap_or("/path/to/game.iso");
+        let install_cmd = args.get("install_cmd").and_then(|v| v.as_str()).unwrap_or("d:\\\\install.exe");
+
+        let messages = vec![
+            PromptMessage::new_text(PromptMessageRole::User, format!(
+                "Install a DOS game from CD/ISO using the dosbox-mcp tools.\n\n\
+                **Steps:**\n\
+                1. Mount the disk image to drive {}\n\
+                2. Run the installer\n\
+                3. Navigate installer menus via text input\n\
+                4. Launch the game\n\n\
+                **Tools to use:**\n\
+                - `swap_disk` — mount the ISO\n\
+                - `type_text` — send keystrokes\n\
+                - `read_screen_text` — read installer prompts\n\
+                - `capture_frame` — verify visual state\n\n\
+                **Example sequence:**",
+                drive
+            )),
+            PromptMessage::new_text(PromptMessageRole::Assistant, format!(
+                "{{\"tool\": \"swap_disk\", \"arguments\": {{\"drive\": \"{}\", \"image\": \"{}\" }}}}",
+                drive, image_path
+            )),
+            PromptMessage::new_text(PromptMessageRole::Assistant, format!(
+                "{{\"tool\": \"type_text\", \"arguments\": {{\"text\": \"{}\\r\", \"cps\": 20 }}}}",
+                install_cmd
+            )),
+            PromptMessage::new_text(PromptMessageRole::Assistant, "{\"tool\": \"read_screen_text\", \"arguments\": {}}"),
+            PromptMessage::new_text(PromptMessageRole::User, "Continue sending keystrokes based on installer prompts. Use `read_screen_text` after each step to see the current screen."),
+        ];
+        GetPromptResult {
+            description: Some("Install a DOS game from CD/ISO".into()),
+            messages,
+        }
+    }
+
+    fn prompt_memory_trainer(&self, args: &serde_json::Map<String, serde_json::Value>) -> GetPromptResult {
+        let value = args.get("value").and_then(|v| v.as_u64()).unwrap_or(3);
+        let width = args.get("width").and_then(|v| v.as_u64()).unwrap_or(1) as u8;
+        let freeze_value = args.get("freeze_value").and_then(|v| v.as_u64()).unwrap_or(99);
+
+        let messages = vec![
+            PromptMessage::new_text(PromptMessageRole::User, format!(
+                "Set up a memory trainer (freeze a value like lives, ammo, score).\n\n\
+                **Steps:**\n\
+                1. Search memory for the current value ({})\n\
+                2. Identify the correct address (may need multiple searches)\n\
+                3. Freeze that address to the desired value ({})\n\
+                4. Verify it works\n\
+                5. Clear freezes when done\n\n\
+                **Tools:** `search_memory`, `freeze_memory`, `list_freezes`, `clear_freezes`",
+                value, freeze_value
+            )),
+            PromptMessage::new_text(PromptMessageRole::Assistant, format!(
+                "{{\"tool\": \"search_memory\", \"arguments\": {{\"value\": {}, \"width\": {}}}}}",
+                value, width
+            )),
+            PromptMessage::new_text(PromptMessageRole::User, format!(
+                "Review the returned addresses. If multiple matches, change the value in-game (e.g., lose a life) and search again with the new value to narrow down. Once you have the correct address, freeze it:"
+            )),
+            PromptMessage::new_text(PromptMessageRole::Assistant, format!(
+                "{{\"tool\": \"freeze_memory\", \"arguments\": {{\"address\": <ADDRESS_FROM_SEARCH>, \"value\": {}, \"width\": {}}}}}",
+                freeze_value, width
+            )),
+            PromptMessage::new_text(PromptMessageRole::User, "Verify the freeze works in-game. When finished, clear all freezes:"),
+            PromptMessage::new_text(PromptMessageRole::Assistant, "{\"tool\": \"clear_freezes\", \"arguments\": {}}"),
+        ];
+        GetPromptResult {
+            description: Some("Memory trainer: find and freeze a value".into()),
+            messages,
+        }
+    }
+
+    fn prompt_automated_test(&self, args: &serde_json::Map<String, serde_json::Value>) -> GetPromptResult {
+        let test_name = args.get("test_name").and_then(|v| v.as_str()).unwrap_or("test");
+        let _duration = args.get("record_duration_secs").and_then(|v| v.as_u64()).unwrap_or(30);
+
+        let messages = vec![
+            PromptMessage::new_text(PromptMessageRole::User, format!(
+                "Create an automated test: record input, replay, verify.\n\n\
+                **Test:** {}\n\n\
+                **Workflow:**\n\
+                1. Start recording\n\
+                2. Perform actions in DOSBox\n\
+                3. Stop recording (save the events)\n\
+                4. Reset game state\n\
+                5. Replay with `send_input_sequence`\n\
+                6. Capture frame and compare\n\n\
+                **Tools:** `start_recording`, `stop_recording`, `send_input_sequence`, `capture_frame`",
+                test_name
+            )),
+            PromptMessage::new_text(PromptMessageRole::Assistant, "{\"tool\": \"start_recording\", \"arguments\": {}}"),
+            PromptMessage::new_text(PromptMessageRole::User, "Perform your test actions in DOSBox now..."),
+            PromptMessage::new_text(PromptMessageRole::Assistant, "{\"tool\": \"stop_recording\", \"arguments\": {}}"),
+            PromptMessage::new_text(PromptMessageRole::User, "Save the returned `events` array. Then reset the game state and replay:"),
+            PromptMessage::new_text(PromptMessageRole::Assistant, "{\"tool\": \"send_input_sequence\", \"arguments\": {\"events\": \"<SAVED_EVENTS_ARRAY>\"}}}"),
+            PromptMessage::new_text(PromptMessageRole::User, "Verify the result:"),
+            PromptMessage::new_text(PromptMessageRole::Assistant, "{\"tool\": \"capture_frame\", \"arguments\": {\"mode\": \"raw\", \"format\": \"png\"}}}"),
+        ];
+        GetPromptResult {
+            description: Some("Automated test: record/replay/verify".into()),
+            messages,
+        }
+    }
+
+    fn prompt_lua_script(&self, args: &serde_json::Map<String, serde_json::Value>) -> GetPromptResult {
+        let script = args.get("script").and_then(|v| v.as_str()).unwrap_or("print('Hello from Lua!')");
+        let name = args.get("name").and_then(|v| v.as_str()).unwrap_or("script");
+
+        let messages = vec![
+            PromptMessage::new_text(PromptMessageRole::User, format!(
+                "Load and execute a Lua automation script.\n\n\
+                **Script name:** {}\n\n\
+                **Script:**\n```lua\n{}\n```\n\n\
+                **Tools:** `load_script`, `start_script`, `get_script_status`, `stop_script`",
+                name, script
+            )),
+            PromptMessage::new_text(PromptMessageRole::Assistant, format!(
+                "{{\"tool\": \"load_script\", \"arguments\": {{\"script\": \"{}\", \"name\": \"{}\" }}}}",
+                script.replace('\n', "\\n").replace('"', "\\\""),
+                name
+            )),
+            PromptMessage::new_text(PromptMessageRole::Assistant, "{\"tool\": \"start_script\", \"arguments\": {}}"),
+            PromptMessage::new_text(PromptMessageRole::User, "Monitor execution:"),
+            PromptMessage::new_text(PromptMessageRole::Assistant, "{\"tool\": \"get_script_status\", \"arguments\": {}}"),
+        ];
+        GetPromptResult {
+            description: Some("Load and run a Lua script".into()),
+            messages,
         }
     }
 }

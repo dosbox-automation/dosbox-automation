@@ -101,7 +101,8 @@ impl DosBoxLauncher {
         let url = Url::parse(&self.base_url)
             .context("Invalid base_url")?;
         let port = url.port().unwrap_or(8386);
-        let host = url.host_str().unwrap_or("127.0.0.1");
+        // Always bind to 0.0.0.0 for external access
+        let host = "0.0.0.0";
 
         // Build command
         let mut cmd = Command::new(&self.binary_path);
@@ -129,7 +130,7 @@ impl DosBoxLauncher {
         cmd.arg("--set")
             .arg(format!("webserver_port={}", port));
         cmd.arg("--set")
-            .arg("webserver_allow_remote=off");
+            .arg("webserver_allow_remote=on");
         cmd.arg("--set")
             .arg("webserver_token_file=off");
 
