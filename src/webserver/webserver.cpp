@@ -404,10 +404,8 @@ static void init_config_settings(SectionProp& section)
 	        "default). Open http://localhost:8386 in a browser (or use the configured port)\n"
 	        "to view the API documentation.\n"
 	        "\n"
-	        "The API is unauthenticated and no token is generated. Any
-"
-	        "process that can reach the port can drive the machine; the
-"
+	        "The API is unauthenticated and no token is generated. Any\n"
+	        "process that can reach the port can drive the machine; the\n"
 	        "Host header check still applies to every request.");
 
 	auto bind_ip = section.AddString("webserver_bind_address",
@@ -429,17 +427,14 @@ static void init_config_settings(SectionProp& section)
 
 	auto token_file = section.AddBool("webserver_token_file", OnlyAtStart, false);
 	token_file->SetHelp(
-	        "(Deprecated; ignored. The API no longer issues tokens, so no
-"
-	        "token file is written and DOSBOX_API_TOKEN has no effect. The
-"
+	        "(Deprecated; ignored. The API no longer issues tokens, so no\n"
+	        "token file is written and DOSBOX_API_TOKEN has no effect. The\n"
 	        "setting is kept only so existing config files parse cleanly.)");
 
 	auto tool_token = section.AddString("webserver_tool_token", OnlyAtStart, "embed");
 	tool_token->SetValues({"embed", "prompt"});
 	tool_token->SetHelp(
-	        "(Deprecated; ignored. Tool pages no longer receive an API
-"
+	        "(Deprecated; ignored. Tool pages no longer receive an API\n"
 	        "token; the token field in the page is unused.)");
 
 	auto osd = section.AddBool("webserver_osd", OnlyAtStart, true);
