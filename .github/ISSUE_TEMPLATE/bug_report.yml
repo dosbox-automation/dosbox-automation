@@ -21,7 +21,6 @@ body:
       label: Are you using the latest dosbox-automation version?
       description: |
         Look up the latest release version on the [releases page](https://github.com/dosbox-automation/dosbox-automation/releases).
-        To check your version, run `dosbox --version` or execute the `VER` command inside dosbox-automation. If the version is reported as `git` (meaning you compiled it yourself), put the result of `git describe` in the version field below.
       options:
         - label: I have checked and I'm using the latest release.
           required: true
@@ -29,10 +28,26 @@ body:
   - type: input
     id: verinfo
     attributes:
-      label: Different version than latest?
-      placeholder: "E.g., 0.83.0-alpha, git version, branch testing"
+      label: Output of `dosbox-automation --version`
+      description: The first line it prints. The short hash in the first parentheses tells us which source tree your binary came from.
+      placeholder: "dosbox-automation, version 0.86.0-pre1 (b9f241) (SJ-PRG-0486-20260906)"
     validations:
-      required: false
+      required: true
+
+  - type: dropdown
+    id: build_origin
+    attributes:
+      label: Where does your build come from?
+      description: |
+        This tracker covers the releases from this repository and builds of its sources. If you run a fork or a modified build, report to its authors first. Reports about builds that remove the API token, or listen on all addresses without `webserver_allow_remote`, get closed with a pointer to where the build came from.
+      multiple: false
+      options:
+        - A release from this repository's releases page
+        - Built from this repository's sources
+        - A package from a distribution or another third party
+        - A fork or a modified build
+    validations:
+      required: true
 
   - type: dropdown
     id: os

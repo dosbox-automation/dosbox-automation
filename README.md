@@ -16,15 +16,30 @@ dosbox-automation
 </h3>
 
 <p align="center">
-  A safer DOSBox staging fork with an HTTP REST API, sandbox Lua scripting, frame-accurate input recording, and games that run straight from their zip files - for gamers, game recordings, game launchers, AI agents, and CI pipelines alike.
+  A safer DOSBox, originally based on DOSBox Staging, with an HTTP REST API, sandbox Lua scripting, frame-accurate input recording, and games that run straight from their zip files - for gamers, game recordings, game launchers, AI agents, and CI pipelines alike.
 </p>
 
 <p align="center">
   Releases for <strong>Linux, Windows</strong>, builds from source on <strong>macOS, FreeBSD</strong>&ensp;|&ensp;
   <a href="https://github.com/dosbox-automation/dosbox-automation/releases">Downloads</a>&ensp;|&ensp;
   <a href="https://www.dosbox-automation.org/">Documentation</a>&ensp;|&ensp;
+  <a href="https://github.com/dosbox-automation/dosbox-mcp">dosbox-mcp</a>&ensp;|&ensp;
   <a href="https://www.dosbox-automation.org/0.85.1/automation/security/">Security</a>
 </p>
+
+---
+
+## For AI agents: dosbox-mcp
+
+[dosbox-mcp](https://github.com/dosbox-automation/dosbox-mcp) is our MCP server for dosbox-automation. It connects any agent that speaks the Model Context Protocol, such as Claude Code or Claude Desktop, to a running emulator. The agent types into DOS programs, reads the screen, takes frames and video, runs Lua scripts and inspects memory, all through the same API and the same token.
+
+It is published on PyPI as [dosbox-mcp](https://pypi.org/project/dosbox-mcp/):
+
+```bash
+pipx install dosbox-mcp
+```
+
+The repository has the setup for Claude Code and Claude Desktop. If you write a bridge of your own, [PROTOCOL.md](https://github.com/dosbox-automation/dosbox-mcp/blob/main/PROTOCOL.md) describes the interface it should speak.
 
 ---
 
@@ -224,7 +239,7 @@ Keyboard and mouse input can be recorded as JSON and replayed frame-accurately o
 
 The API also gives you read and write access to guest memory, CPU registers and I/O ports, with memory search and value freezes on top. Useful for debugging DOS programs, building trainers, or writing test assertions that check what the game actually did.
 
-**AI agents:** [dosbox-mcp](https://github.com/dosbox-automation/dosbox-mcp) connects any agent that speaks the Model Context Protocol, such as Claude Code or Claude Desktop, to a running emulator. The agent types into DOS programs, reads the screen, takes frames and video, runs Lua scripts and inspects memory, all through the same API and the same token.
+**AI agents:** [dosbox-mcp](#for-ai-agents-dosbox-mcp), our MCP server, gives Claude Code, Claude Desktop or any other MCP client the typing, the screen, frames and video, Lua scripts, memory, registers, ports and freezes.
 
 The test suite has over 2300 C++ unit tests and about 300 Python integration tests. Several of those are full game installations that run end to end through the API.
 
@@ -266,6 +281,8 @@ Recorded and scripted with the included reference harness, driving the emulator 
 An HTTP server inside an emulator is an attack surface and we treat it as one: bearer-token auth on every endpoint, host header validation, and mount restrictions that limit what the guest can reach on the host. The [security policy](https://www.dosbox-automation.org/0.85.1/automation/security/) has the details.
 
 Security reports go to the contact address in the policy. Everything else goes on the [issue tracker](https://github.com/dosbox-automation/dosbox-automation/issues).
+
+The project lives at [github.com/dosbox-automation](https://github.com/dosbox-automation): the emulator in this repository, the MCP server in [dosbox-mcp](https://github.com/dosbox-automation/dosbox-mcp), the manual at [dosbox-automation.org](https://www.dosbox-automation.org/). The security policy covers the releases from this repository and builds of its `main` branch. A build that removes the API token, or listens on all addresses without `webserver_allow_remote`, is outside it, and reports about such a build belong with whoever made it.
 
 ---
 
